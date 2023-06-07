@@ -141,6 +141,7 @@ int main(void) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   }
+  //Or TLS server
   while (Continue)
     mg_mgr_poll(&mgr, 100);  // Infinite event loop, blocks for upto 100ms
                              // unless there is network activity

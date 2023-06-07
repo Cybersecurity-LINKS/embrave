@@ -4,6 +4,8 @@
 #include <stdint.h>    
 #include <stdio.h>
 #include "../common.h"
+#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #define NONCE_SIZE 32
 
