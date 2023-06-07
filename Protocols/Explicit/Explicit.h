@@ -1,9 +1,13 @@
 #ifndef EXPLICIT_H
 #define EXPLICIT_H
 
-#define NONCE_SIZE 32
 #include <stdint.h>    
 #include <stdio.h>
+#include "../common.h"
+
+#define NONCE_SIZE 32
+
+
 typedef struct {
     uint16_t size;
     uint8_t buffer[NONCE_SIZE];

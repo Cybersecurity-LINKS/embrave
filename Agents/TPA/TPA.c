@@ -9,7 +9,7 @@ int TPA_init(void) {
 
   snprintf((char *)ek_handle, HANDLE_SIZE, "%s", "0x81000003");
   snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
-  if(!initialize_tpm(ek_handle, ak_handle)) {
+  if(!check_keys(ek_handle, ak_handle)) {
     printf("Could not initialize the TPM Keys\n");
     return -1;
   }

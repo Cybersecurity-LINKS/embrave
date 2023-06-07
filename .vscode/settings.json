@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "explicit.h": "c",
+        "common.h": "c"
+    }
+}
