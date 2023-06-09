@@ -6,6 +6,7 @@
 #include "../common.h"
 #include <openssl/sha.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 
 #define NONCE_SIZE 32
 
@@ -24,5 +25,5 @@ typedef struct {
     uint32_t PCR;
 } Ex_challenge;
 
-Ex_challenge* challenge_create(void);
+int challenge_create(Ex_challenge *chl);
 #endif

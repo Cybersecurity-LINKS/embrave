@@ -28,7 +28,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
 #endif
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
-    int n;
+    int n = 0;
    // AK_PUB_BLOB ak_pub;
     //read TPA challenge reply
     struct mg_iobuf *r = &c->recv;
@@ -65,12 +65,19 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {
-    //challenge
     int n;
-/*     if(challenge_create(c) != 0){
+    int tag = 0;
+    //Send Explict tag
+    mg_send(c, &tag, sizeof(int));
+    //Create nonce
+    Ex_challenge chl;
+    if(challenge_create(&chl)!= 0){
       Continue = false;
       return;
-    } */
+    }
+    //Send it
+    mg_send(c, &chl, sizeof(Ex_challenge));
+    printf("CLIENT sent data\n");
     *i= *i+1;
   }else if (end){
       c->is_draining = 1;
