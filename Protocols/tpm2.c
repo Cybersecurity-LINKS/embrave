@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 
 #include <string.h>
 #include <tss2/tss2_mu.h>
