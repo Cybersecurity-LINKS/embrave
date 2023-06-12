@@ -77,7 +77,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     }
     //Send it
     mg_send(c, &chl, sizeof(Ex_challenge));
-    printf("CLIENT sent data\n");
+    //printf("CLIENT sent data\n");
     *i= *i+1;
   }else if (end){
       c->is_draining = 1;

@@ -8,8 +8,8 @@ int challenge_create(Ex_challenge *chl)
     }
 
     chl->nonce_blob.size = NONCE_SIZE;
-    printf("NONCE :");
-    for(int i= 0; i< (int) 32; i++)
+    printf("NONCE sent:");
+    for(int i= 0; i < NONCE_SIZE; i++)
         printf("%02X", chl->nonce_blob.buffer[i]);
     printf("\n");
     return 0;

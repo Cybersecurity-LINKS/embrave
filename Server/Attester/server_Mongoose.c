@@ -66,6 +66,18 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
 int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challenge *chl)
 {
+  //chl = (Ex_challenge *) r->buf;
+  memcpy(chl, r->buf, sizeof(Ex_challenge));
+  mg_iobuf_del(r,0,sizeof(Ex_challenge));
+  if(chl == NULL && chl->nonce_blob.buffer == NULL && chl->nonce_blob.size != NONCE_SIZE){
+    printf("Transmission challenge data error \n");
+    return -1;
+  }
+  printf("NONCE Received:");
+  for(int i= 0; i< (int) chl->nonce_blob.size; i++)
+    printf("%02X", chl->nonce_blob.buffer[i]);
+  printf("\n");
+  //printf("r buf :%ld\n", r->len);
   return 0;
 }
 
