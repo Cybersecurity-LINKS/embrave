@@ -3,8 +3,9 @@
 static const char *s_lsn = "tcp://localhost:8765";   // Listening address
 static bool Continue = true;
 
-void ex_challenge_request(struct mg_connection *c, struct mg_iobuf *r);
-int ex_challenge_reply(struct mg_connection *c, struct mg_iobuf *r);
+
+int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge *chl);
+int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl);
 
 // SERVER event handler
 static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
@@ -23,14 +24,23 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 #endif
   } else if (ev == MG_EV_READ) {
     struct mg_iobuf *r = &c->recv;
-    int tag, n;
+    int tag;
     memcpy(&tag, r->buf, sizeof(int));
     mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
-/*     switch (tag){
+    switch (tag){
     case RA_TYPE_EXPLICIT:
-      ex_challenge_request(c,r);
-      n = ex_challenge_reply(c,r);
-      if (n!=0){
+      Ex_challenge chl;
+      Ex_challenge_reply rpl;
+      load_challenge_request(c,r,&chl);
+      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
+        //TODO
+        printf("ERRORE\n");
+        c->is_closing = 1;
+        Continue = false;
+        break;
+      }
+
+      if (send_challenge_reply(c, r, &rpl) != 0){
         //TODO
         printf("ERRORE\n");
         c->is_closing = 1;
@@ -42,8 +52,8 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       break;
     default:
     //disconnect
-      break; */
-    //}
+      break; 
+    }
     //mg_send(c, r->buf, r->len);  // echo it back
                      // Tell Mongoose we've consumed data
   } else if (ev == MG_EV_CLOSE) {
@@ -54,6 +64,15 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   (void) fn_data;
 }
 
+int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challenge *chl)
+{
+  return 0;
+}
+
+int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl)
+{
+  return 0;
+}
 
 /* 
 //load challenge data
@@ -148,3 +167,4 @@ int main(void) {
   mg_mgr_free(&mgr);         // Free resources
   return 0;
 }
+

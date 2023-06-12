@@ -14,6 +14,9 @@
 
 #define HANDLE_SIZE 11
 
+#define RA_TYPE_EXPLICIT 0
+#define RA_TYPE_DAA 1
+
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, uint16_t *ak_handle);
 #endif

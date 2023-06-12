@@ -15,3 +15,8 @@ int TPA_init(void) {
   }
   return 0;
 }
+
+int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
+{
+  return 0;
+}
