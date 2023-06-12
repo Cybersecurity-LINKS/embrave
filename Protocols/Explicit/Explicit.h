@@ -39,5 +39,9 @@ typedef struct {
     //AK?
 } Ex_challenge_reply;
 
-int challenge_create(Ex_challenge *chl);
+int nonce_create(Nonce *nonce_blob);
+//tpm2 quote
+// soft binding
+//sofbinding verify
+// quote verify
 #endif

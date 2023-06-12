@@ -31,3 +31,13 @@ int challenge_create (struct mg_connection *c) {
 
 }
  */
+
+int RA_explicit_challenge(Ex_challenge *chl)
+{
+    return nonce_create(&(chl->nonce_blob));
+}
+
+int RA_explicit_challenge(Ex_challenge_reply *rpl)
+{
+    return 0;
+}

@@ -8,6 +8,6 @@
 
 #include "../../Protocols/Explicit/Explicit.h"
 
-
-
+int RA_explicit_challenge(Ex_challenge *chl);
+int RA_explicit_challenge(Ex_challenge_reply *rpl);
 #endif
