@@ -18,10 +18,23 @@ int TPA_init(void) {
 
 int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
 {
+  TSS2_RC tss_r;
+  ESYS_CONTEXT *esys_context = NULL;
+  TSS2_TCTI_CONTEXT *tcti_context = NULL;
+  uint16_t ak_handle[HANDLE_SIZE];
   
-  
-  
-  
+  snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
+
+  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
+  if (tss_r != TSS2_RC_SUCCESS) {
+    printf("Could not initialize tcti context\n");
+    return -1;
+  }
+  tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
+  if (tss_r != TSS2_RC_SUCCESS) {
+    printf("Could not initialize esys context\n");
+    return -1;
+  }
   
   
   return 0;
