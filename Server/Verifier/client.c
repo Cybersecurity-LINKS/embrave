@@ -71,7 +71,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     mg_send(c, &tag, sizeof(int));
     //Create nonce
     Ex_challenge chl;
-    if(RA_explicit_challenge(&chl)!= 0){
+    if(RA_explicit_challenge_create(&chl)!= 0){
       Continue = false;
       return;
     }

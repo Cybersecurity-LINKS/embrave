@@ -40,7 +40,7 @@ typedef struct {
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
-//tpm2 quote
+int  create_quote (Ex_challenge *chl, Ex_challenge_reply *rply);
 // soft binding
 //sofbinding verify
 // quote verify
