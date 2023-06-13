@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 //This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
+#ifndef TPM2_UTILS_H_
+#define TPM2_UTILS_H_
+
+
 #include <tss2/tss2_esys.h>
-//#include <tss2/tss2_tpm2_types.h>
+#include <tss2/tss2_tpm2_types.h>
 #include <tss2/tss2_mu.h>
 #include <tss2/tss2_tctildr.h>
 #include <tss2/tss2_sys.h>
@@ -46,6 +50,9 @@
                 } \
             } \
     }
+
+#define MAX_SESSION_CNT 3
+#define SESSION_VERSION 2
 
 typedef enum tpm2_convert_sig_fmt tpm2_convert_sig_fmt;
 enum tpm2_convert_sig_fmt {
@@ -155,6 +162,38 @@ struct tpm2_algorithm {
     TPMI_ALG_HASH alg[TPM2_NUM_PCR_BANKS];
 };
 
+typedef enum tpm2_alg_util_flags tpm2_alg_util_flags;
+enum tpm2_alg_util_flags {
+    tpm2_alg_util_flags_none       = 0,
+    tpm2_alg_util_flags_hash       = 1 << 0,
+    tpm2_alg_util_flags_keyedhash  = 1 << 1,
+    tpm2_alg_util_flags_symmetric  = 1 << 2,
+    tpm2_alg_util_flags_asymmetric = 1 << 3,
+    tpm2_alg_util_flags_kdf        = 1 << 4,
+    tpm2_alg_util_flags_mgf        = 1 << 5,
+    tpm2_alg_util_flags_sig        = 1 << 6,
+    tpm2_alg_util_flags_mode       = 1 << 7,
+    tpm2_alg_util_flags_base       = 1 << 8,
+    tpm2_alg_util_flags_misc       = 1 << 9,
+    tpm2_alg_util_flags_enc_scheme = 1 << 10,
+    tpm2_alg_util_flags_rsa_scheme = 1 << 11,
+    tpm2_alg_util_flags_any        = ~0
+};
+
+static inline const char *tpm2_openssl_get_err(void) {
+    return ERR_error_string(ERR_get_error(), NULL);
+}
+
+/**
+ * Determines if given PCR value is selected in TPMS_PCR_SELECTION structure.
+ * @param pcr_selection the TPMS_PCR_SELECTION structure to check pcr against.
+ * @param pcr the PCR ID to check selection status of.
+ */
+static inline bool tpm2_util_is_pcr_select_bit_set(
+        const TPMS_PCR_SELECTION *pcr_selection, UINT32 pcr) {
+    return (pcr_selection->pcrSelect[((pcr) / 8)] & (1 << ((pcr) % 8)));
+}
+
 tool_rc tpm2_getsapicontext(ESYS_CONTEXT *esys_context, TSS2_SYS_CONTEXT **sys_context);
 tool_rc tpm2_quote(ESYS_CONTEXT *esys_context, tpm2_loaded_object *quote_obj,
     TPMT_SIG_SCHEME *in_scheme, TPM2B_DATA *qualifying_data,
@@ -187,3 +226,38 @@ const EVP_MD *tpm2_openssl_md_from_tpmhalg(TPMI_ALG_HASH algorithm);
 /* static tool_rc tpm2_util_object_load2(ESYS_CONTEXT *ctx, const char *objectstr,
         const char *auth, bool do_auth, tpm2_loaded_object *outobject,
         bool is_restricted_pswd_session, tpm2_handle_flags flags); */
+tool_rc tpm2_tr_get_name(ESYS_CONTEXT *esys_context, ESYS_TR handle,
+        TPM2B_NAME **name);
+TPMI_ALG_HASH tpm2_util_calculate_phash_algorithm(ESYS_CONTEXT *ectx,
+    const char **cphash_path, TPM2B_DIGEST *cp_hash, const char **rphash_path,
+    TPM2B_DIGEST *rp_hash, tpm2_session **sessions);
+void tpm2_util_hexdump(FILE *f, const BYTE *data, size_t len);
+static TPMI_ALG_HASH calc_phash_alg_from_phash_path(const char **phash_path);
+static TPMI_ALG_HASH tpm2_util_calc_phash_algorithm_from_session_types(
+    ESYS_CONTEXT *ectx, tpm2_session **sessions);
+tool_rc tpm2_sess_get_attributes(ESYS_CONTEXT *esys_context, ESYS_TR session,
+        TPMA_SESSION *flags);
+TPMI_ALG_HASH tpm2_session_data_get_authhash(tpm2_session_data *data);
+TPMI_ALG_HASH tpm2_session_get_authhash(tpm2_session *session);
+TPM2_SE tpm2_session_get_type(tpm2_session *session);
+tool_rc tpm2_session_close(tpm2_session **s);
+void tpm2_session_free(tpm2_session **session); 
+tool_rc pcr_read_pcr_values(ESYS_CONTEXT *esys_context,
+        TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs, TPM2B_DIGEST *cp_hash,
+        TPMI_ALG_HASH parameter_hash_algorithm);
+tool_rc tpm2_pcr_read(ESYS_CONTEXT *esys_context, ESYS_TR shandle1,
+        ESYS_TR shandle2, ESYS_TR shandle3,
+        const TPML_PCR_SELECTION *pcr_selection_in, UINT32 *pcr_update_counter,
+        TPML_PCR_SELECTION **pcr_selection_out, TPML_DIGEST **pcr_values,
+        TPM2B_DIGEST *cp_hash, TPMI_ALG_HASH parameter_hash_algorithm);
+tool_rc files_tpm2b_attest_to_tpms_attest(TPM2B_ATTEST *quoted, TPMS_ATTEST *attest);
+bool tpm2_openssl_hash_pcr_banks(TPMI_ALG_HASH hash_alg,
+        TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs, TPM2B_DIGEST *digest);
+bool tpm2_util_verify_digests(TPM2B_DIGEST *quoteDigest,
+        TPM2B_DIGEST *pcr_digest);
+tool_rc tpm2_flush_context(ESYS_CONTEXT *esys_context, ESYS_TR flush_handle,
+    TPM2B_DIGEST *cp_hash, TPMI_ALG_HASH parameter_hash_algorithm);
+static void pcr_update_pcr_selections(TPML_PCR_SELECTION *s1,
+        TPML_PCR_SELECTION *s2);
+static bool pcr_unset_pcr_sections(TPML_PCR_SELECTION *s);
+#endif

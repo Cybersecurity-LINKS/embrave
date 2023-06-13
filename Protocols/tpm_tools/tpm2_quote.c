@@ -112,19 +112,20 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
 
     UINT16 size;
+    int rc;
     BYTE *sig = tpm2_convert_sig(&size, ctx.signature);
     if (!sig) {
         return tool_rc_general_error;
     }
-    tpm2_tool_output("  sig: ");
-    tpm2_util_hexdump(sig, size);
-    tpm2_tool_output("\n");
+
+    tpm2_util_hexdump(stdout, sig, size);
+
     free(sig);
 
     if (ctx.pcr_output) {
         // Filter out invalid/unavailable PCR selections
         if (!pcr_check_pcr_selection(&ctx.cap_data, &ctx.pcr_selections)) {
-            LOG_ERR("Failed to filter unavailable PCR values for quote!");
+            printf("Failed to filter unavailable PCR values for quote!\n");
             return tool_rc_general_error;
         }
 
@@ -132,7 +133,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
         rc = pcr_read_pcr_values(ectx, &ctx.pcr_selections, &ctx.pcrs,
             NULL, TPM2_ALG_ERROR);
         if (rc != tool_rc_success) {
-            LOG_ERR("Failed to retrieve PCR values related to quote!");
+            printf("Failed to retrieve PCR values related to quote!\n");
             return rc;
         }
 
@@ -146,7 +147,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
         bool is_pcr_print_successful = pcr_print_pcr_struct(&ctx.pcr_selections,
             &ctx.pcrs);
         if (!is_pcr_print_successful) {
-            LOG_ERR("Failed to print PCR values related to quote!");
+            printf("Failed to print PCR values related to quote!\n");
             return tool_rc_general_error;
         }
 
@@ -156,18 +157,18 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
             ctx.sig_hash_algorithm, &ctx.pcr_selections, &ctx.pcrs,
             &pcr_digest);
         if (!is_pcr_hashing_success) {
-            LOG_ERR("Failed to hash PCR values related to quote!");
+            printf("Failed to hash PCR values related to quote!\n");
             return tool_rc_general_error;
         }
-        tpm2_tool_output("calcDigest: ");
-        tpm2_util_hexdump(pcr_digest.buffer, pcr_digest.size);
-        tpm2_tool_output("\n");
+        printf("calcDigest: ");
+        tpm2_util_hexdump(stdout, pcr_digest.buffer, pcr_digest.size);
+        printf("\n");
 
         // Make sure digest from quote matches calculated PCR digest
         bool is_pcr_digests_equal = tpm2_util_verify_digests(
             &ctx.attest.attested.quote.pcrDigest, &pcr_digest);
         if (!is_pcr_digests_equal) {
-            LOG_ERR("Error validating calculated PCR composite with quote");
+            printf("Error validating calculated PCR composite with quote\n");
             return tool_rc_general_error;
         }
     }
@@ -193,7 +194,7 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
             ctx.key.auth_str, &ctx.key.object, false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
-        LOG_ERR("Invalid key authorization");
+        printf("Invalid key authorization\n");
         return rc;
     }
 
@@ -207,7 +208,7 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     if (ctx.pcr_path) {
         ctx.pcr_output = fopen(ctx.pcr_path, "wb+");
         if (!ctx.pcr_output) {
-            LOG_ERR("Could not open PCR output file \"%s\" error: \"%s\"",
+            printf("Could not open PCR output file \"%s\" error: \"%s\"",
                     ctx.pcr_path, strerror(errno));
             return tool_rc_general_error;
         }
@@ -240,8 +241,8 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
 
     const char **cphash_path = ctx.cp_hash_path ? &ctx.cp_hash_path : 0;
 
-    ctx.parameter_hash_algorithm = tpm2_util_calculate_phash_algorithm(ectx,
-        cphash_path, &ctx.cp_hash, 0, 0, all_sessions);
+ /*    ctx.parameter_hash_algorithm = tpm2_util_calculate_phash_algorithm(ectx,
+        cphash_path, &ctx.cp_hash, 0, 0, all_sessions); */
 
     /*
      * 4.b Determine if TPM2_CC_<command> is to be dispatched

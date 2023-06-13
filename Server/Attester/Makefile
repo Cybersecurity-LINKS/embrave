@@ -8,7 +8,7 @@ SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Pro
 # define any library to link into executable:
 #  if I want to link libraries (libx.so or libx.a) I use the -llibname option
 FLAGS =\
--ltss2-esys -ltss2-tctildr -ltss2-mu -lssl -lcrypto
+-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -lssl -lcrypto
 
 #LDFLAGS+=\
 -I${WAM_DIR} \
