@@ -25,7 +25,7 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   
   snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
-  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
+  tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     printf("Could not initialize tcti context\n");
     return -1;
@@ -33,10 +33,15 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
   if (tss_r != TSS2_RC_SUCCESS) {
     printf("Could not initialize esys context\n");
+    Tss2_TctiLdr_Finalize (&tcti_context);
     return -1;
   }
   
   
+
+
+  Esys_Finalize(&esys_context);
+  Tss2_TctiLdr_Finalize (&tcti_context);
   return 0;
 }
 

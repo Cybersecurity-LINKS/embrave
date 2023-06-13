@@ -7,11 +7,11 @@
 #include <string.h>
 
 #include "files.h"
-//#include "log.h"
+#include "log.h"
 #include "tpm2.h"
 #include "tpm2_alg_util.h"
 #include "tpm2_convert.h"
-//#include "tpm2_openssl.h"
+#include "tpm2_openssl.h"
 #include "tpm2_systemdeps.h"
 #include "tpm2_tool.h"
 
@@ -72,7 +72,7 @@ static tool_rc quote(ESYS_CONTEXT *ectx) {
         &ctx.qualification_data, &ctx.pcr_selections, &ctx.quoted,
         &ctx.signature, &ctx.cp_hash, ctx.parameter_hash_algorithm);
 }
-
+/* 
 static tool_rc write_output_files(void) {
 
     bool is_file_op_success = true;
@@ -111,7 +111,7 @@ static tool_rc write_output_files(void) {
 
     return is_file_op_success ? tool_rc_success : tool_rc_general_error;
 }
-
+ */
 static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
     UNUSED(ectx);
@@ -220,12 +220,12 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     /*
      * 1.b Add object names and their auth sessions
      */
-    tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
+/*     tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
             ctx.key.auth_str, &ctx.key.object, false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
         LOG_ERR("Invalid key authorization");
         return rc;
-    }
+    } */
 
     /*
      * 2. Restore auxiliary sessions

@@ -3,6 +3,8 @@
         "explicit.h": "c",
         "common.h": "c",
         "tss2_sys.h": "c",
-        "tpm2_auth_util.h": "c"
+        "tpm2_auth_util.h": "c",
+        "tpm2_systemdeps.h": "c",
+        "getopt.h": "c"
     }
 }

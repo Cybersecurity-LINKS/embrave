@@ -4,6 +4,7 @@
 #include <stdint.h>    
 #include <stdio.h>
 #include "../common.h"
+#include "../tpm_tools/tpm2_quote.h"
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>

@@ -4,7 +4,7 @@ CFLAGS = -g
 
 # define the C source files
 SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Protocols/Explicit/Explicit.c\
-../../Protocols/common.c #tpm2_createek.c tpm2_createak.c 
+../../Protocols/common.c ../../Protocols/tpm_tools/tpm2_quote.c ../../Protocols/tpm_tools/tpm2_utils.c 
 # define any library to link into executable:
 #  if I want to link libraries (libx.so or libx.a) I use the -llibname option
 FLAGS =\

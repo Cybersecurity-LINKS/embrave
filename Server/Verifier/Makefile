@@ -7,7 +7,7 @@ CFLAGS = -g
  createek_util.c createak_util.c PCR9Extend.c PEMconvertPub.c ../IMA/ima_read_writeOut_binary.c all_util.c
 
 SRCS = client.c ../Mongoose/mongoose.c ../../Agents/Remote_Attestor/RA.c ../../Protocols/Explicit/Explicit.c\
-../../Protocols/common.c
+../../Protocols/common.c ../../Protocols/tpm_tools/tpm2_quote.c ../../Protocols/tpm_tools/tpm2_utils.c
 # define any library to link into executable:
 #  if I want to link libraries (libx.so or libx.a) I use the -llibname option
 FLAGS = -lssl -lcrypto -D MG_IO_SIZE=102004\
