@@ -1,3 +1,3 @@
 cd ./Server/Attester/
 make 
-#sudo ./TPA
+sudo ./TPA

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #ifndef LIB_TPM2_CAPABILITY_H_
 #define LIB_TPM2_CAPABILITY_H_
 //#include "config.h"

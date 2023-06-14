@@ -6,16 +6,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "files.h"
-#include "log.h"
-#include "tpm2.h"
-#include "tpm2_alg_util.h"
-#include "tpm2_convert.h"
-#include "tpm2_openssl.h"
-#include "tpm2_systemdeps.h"
-#include "tpm2_tool.h"
+#include "./lib/files.h"
+#include "./lib/log.h"
+#include "./lib/tpm2.h"
+#include "./lib/tpm2_alg_util.h"
+#include "./lib/tpm2_convert.h"
+#include "./lib/tpm2_openssl.h"
+#include "./lib/tpm2_systemdeps.h"
+#include "./lib/tpm2_tool.h" 
+
+//#include "tpm2_utils.h" 
 
 #define MAX_SESSIONS 3
+static tool_rc tpm2_quote_stop(ESYS_CONTEXT *ectx);
 typedef struct tpm_quote_ctx tpm_quote_ctx;
 struct tpm_quote_ctx {
     /*
@@ -51,8 +54,8 @@ struct tpm_quote_ctx {
     /*
      * Parameter hashes
      */
-    //const char *cp_hash_path;
-   // TPM2B_DIGEST cp_hash;
+    const char *cp_hash_path;
+    TPM2B_DIGEST cp_hash;
     bool is_command_dispatch;
     TPMI_ALG_HASH parameter_hash_algorithm;
 };
@@ -203,7 +206,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
     }
 
     // Write everything out
-    return write_output_files();
+    //return write_output_files();
 }
 
 static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
@@ -220,12 +223,12 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     /*
      * 1.b Add object names and their auth sessions
      */
-/*     tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
+    tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
             ctx.key.auth_str, &ctx.key.object, false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
         LOG_ERR("Invalid key authorization");
         return rc;
-    } */
+    } 
 
     /*
      * 2. Restore auxiliary sessions
