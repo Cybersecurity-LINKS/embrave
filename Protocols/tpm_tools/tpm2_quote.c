@@ -6,10 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
-#include "tpm2_quote.h"
-
+#include "files.h"
+#include "log.h"
+#include "tpm2.h"
+#include "tpm2_alg_util.h"
+#include "tpm2_convert.h"
+#include "tpm2_openssl.h"
+#include "tpm2_systemdeps.h"
+#include "tpm2_tool.h"
 
 #define MAX_SESSIONS 3
 typedef struct tpm_quote_ctx tpm_quote_ctx;
@@ -47,8 +51,8 @@ struct tpm_quote_ctx {
     /*
      * Parameter hashes
      */
-    const char *cp_hash_path;
-    TPM2B_DIGEST cp_hash;
+    //const char *cp_hash_path;
+   // TPM2B_DIGEST cp_hash;
     bool is_command_dispatch;
     TPMI_ALG_HASH parameter_hash_algorithm;
 };
@@ -66,10 +70,10 @@ static tool_rc quote(ESYS_CONTEXT *ectx) {
 
     return tpm2_quote(ectx, &ctx.key.object, &ctx.in_scheme,
         &ctx.qualification_data, &ctx.pcr_selections, &ctx.quoted,
-        &ctx.signature, &ctx.cp_hash, ctx.parameter_hash_algorithm);
+        &ctx.signature, NULL, ctx.parameter_hash_algorithm);
 }
-
-/* static tool_rc write_output_files(void) {
+/* 
+static tool_rc write_output_files(void) {
 
     bool is_file_op_success = true;
     bool result = true;
@@ -106,26 +110,51 @@ static tool_rc quote(ESYS_CONTEXT *ectx) {
     }
 
     return is_file_op_success ? tool_rc_success : tool_rc_general_error;
-} */
-
+}
+ */
 static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
+    UNUSED(ectx);
+    /*
+     * 1. Outputs that do not require TPM2_CC_<command> dispatch
+     */
+    bool is_file_op_success = true;
+/*     if (ctx.cp_hash_path) {
+        is_file_op_success = files_save_digest(&ctx.cp_hash, ctx.cp_hash_path);
+
+        if (!is_file_op_success) {
+            return tool_rc_general_error;
+        }
+    }
+ */
+    tool_rc rc = tool_rc_success;
+    if (!ctx.is_command_dispatch) {
+        return rc;
+    }
+
+    /*
+     * 2. Outputs generated after TPM2_CC_<command> dispatch
+     */
+    tpm2_tool_output("quoted: ");
+    tpm2_util_print_tpm2b(ctx.quoted);
+    tpm2_tool_output("\nsignature:\n");
+    tpm2_tool_output("  alg: %s\n", tpm2_alg_util_algtostr(
+        ctx.signature->sigAlg, tpm2_alg_util_flags_sig));
 
     UINT16 size;
-    int rc;
     BYTE *sig = tpm2_convert_sig(&size, ctx.signature);
     if (!sig) {
         return tool_rc_general_error;
     }
-
-    tpm2_util_hexdump(stdout, sig, size);
-
+    tpm2_tool_output("  sig: ");
+    tpm2_util_hexdump(sig, size);
+    tpm2_tool_output("\n");
     free(sig);
 
     if (ctx.pcr_output) {
         // Filter out invalid/unavailable PCR selections
         if (!pcr_check_pcr_selection(&ctx.cap_data, &ctx.pcr_selections)) {
-            printf("Failed to filter unavailable PCR values for quote!\n");
+            LOG_ERR("Failed to filter unavailable PCR values for quote!");
             return tool_rc_general_error;
         }
 
@@ -133,7 +162,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
         rc = pcr_read_pcr_values(ectx, &ctx.pcr_selections, &ctx.pcrs,
             NULL, TPM2_ALG_ERROR);
         if (rc != tool_rc_success) {
-            printf("Failed to retrieve PCR values related to quote!\n");
+            LOG_ERR("Failed to retrieve PCR values related to quote!");
             return rc;
         }
 
@@ -147,7 +176,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
         bool is_pcr_print_successful = pcr_print_pcr_struct(&ctx.pcr_selections,
             &ctx.pcrs);
         if (!is_pcr_print_successful) {
-            printf("Failed to print PCR values related to quote!\n");
+            LOG_ERR("Failed to print PCR values related to quote!");
             return tool_rc_general_error;
         }
 
@@ -157,18 +186,18 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
             ctx.sig_hash_algorithm, &ctx.pcr_selections, &ctx.pcrs,
             &pcr_digest);
         if (!is_pcr_hashing_success) {
-            printf("Failed to hash PCR values related to quote!\n");
+            LOG_ERR("Failed to hash PCR values related to quote!");
             return tool_rc_general_error;
         }
-        printf("calcDigest: ");
-        tpm2_util_hexdump(stdout, pcr_digest.buffer, pcr_digest.size);
-        printf("\n");
+        tpm2_tool_output("calcDigest: ");
+        tpm2_util_hexdump(pcr_digest.buffer, pcr_digest.size);
+        tpm2_tool_output("\n");
 
         // Make sure digest from quote matches calculated PCR digest
         bool is_pcr_digests_equal = tpm2_util_verify_digests(
             &ctx.attest.attested.quote.pcrDigest, &pcr_digest);
         if (!is_pcr_digests_equal) {
-            printf("Error validating calculated PCR composite with quote\n");
+            LOG_ERR("Error validating calculated PCR composite with quote");
             return tool_rc_general_error;
         }
     }
@@ -191,12 +220,12 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     /*
      * 1.b Add object names and their auth sessions
      */
-    tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
+/*     tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.key.ctx_path,
             ctx.key.auth_str, &ctx.key.object, false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
-        printf("Invalid key authorization\n");
+        LOG_ERR("Invalid key authorization");
         return rc;
-    }
+    } */
 
     /*
      * 2. Restore auxiliary sessions
@@ -205,14 +234,6 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     /*
      * 3. Command specific initializations
      */
-    if (ctx.pcr_path) {
-        ctx.pcr_output = fopen(ctx.pcr_path, "wb+");
-        if (!ctx.pcr_output) {
-            printf("Could not open PCR output file \"%s\" error: \"%s\"",
-                    ctx.pcr_path, strerror(errno));
-            return tool_rc_general_error;
-        }
-    }
 
     tpm2_algorithm algs;
     rc = pcr_get_banks(ectx, &ctx.cap_data, &algs);
@@ -241,8 +262,8 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
 
     const char **cphash_path = ctx.cp_hash_path ? &ctx.cp_hash_path : 0;
 
- /*    ctx.parameter_hash_algorithm = tpm2_util_calculate_phash_algorithm(ectx,
-        cphash_path, &ctx.cp_hash, 0, 0, all_sessions); */
+    ctx.parameter_hash_algorithm = tpm2_util_calculate_phash_algorithm(ectx,
+        cphash_path, &ctx.cp_hash, 0, 0, all_sessions);
 
     /*
      * 4.b Determine if TPM2_CC_<command> is to be dispatched
@@ -252,7 +273,24 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     return rc;
 }
 
-/* 
+static tool_rc check_options(ESYS_CONTEXT *ectx) {
+
+    UNUSED(ectx);
+
+    /* TODO this whole file needs to be re-done, especially the option validation */
+    if (!ctx.pcr_selections.count) {
+        LOG_ERR("Expected -l to be specified.");
+        return tool_rc_option_error;
+    }
+
+    if (ctx.cp_hash_path && (ctx.signature_path || ctx.message_path)) {
+        LOG_ERR("Cannot produce output when calculating cpHash");
+        return tool_rc_option_error;
+    }
+
+    return tool_rc_success;
+}
+
 static bool on_option(char key, char *value) {
 
     bool result = true;
@@ -320,34 +358,9 @@ static bool on_option(char key, char *value) {
     }
 
     return true;
-} */
-
-/* static bool tpm2_tool_onstart(tpm2_options **opts) {
-
-    static const struct option topts[] = {
-        { "key-context",    required_argument, 0, 'c' },
-        { "auth",           required_argument, 0, 'p' },
-        { "pcr-list",       required_argument, 0, 'l' },
-        { "qualification",  required_argument, 0, 'q' },
-        { "signature",      required_argument, 0, 's' },
-        { "message",        required_argument, 0, 'm' },
-        { "pcr",            required_argument, 0, 'o' },
-        { "pcrs_format",    required_argument, 0, 'F' },
-        { "format",         required_argument, 0, 'f' },
-        { "hash-algorithm", required_argument, 0, 'g' },
-        { "cphash",         required_argument, 0,  0  },
-        { "scheme",         required_argument, 0,  1  },
-    };
-
-    *opts = tpm2_options_new("c:p:l:q:s:m:o:F:f:g:", ARRAY_LEN(topts), topts,
-            on_option, 0, 0);
-
-    return *opts != 0;
 }
- */
-static tool_rc tpm2_tool_quote(ESYS_CONTEXT *ectx) {
 
-   // UNUSED(flags);
+static tool_rc tpm2_tool_onrun(ESYS_CONTEXT *ectx) {
 
     //https://github.com/tpm2-software/tpm2-tools/blob/6e484f59bc65b01ec5b1f81b5bf0897c53a1ff4b/tools/tpm2_tool.c#L68
     //ctx.ectx = ctx_init(tcti);
@@ -355,14 +368,25 @@ static tool_rc tpm2_tool_quote(ESYS_CONTEXT *ectx) {
     //        exit(tool_rc_tcti_error);
     //}
     /*
+     * 1. Process options
+     */
+    tool_rc rc = check_options(ectx);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+    /*
      * 2. Process inputs
      */
-
+    rc = process_inputs(ectx);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
 
     /*
      * 3. TPM2_CC_<command> call
      */
-    tool_rc rc = quote(ectx);
+    rc = quote(ectx);
     if (rc != tool_rc_success) {
         return rc;
     }
@@ -370,10 +394,11 @@ static tool_rc tpm2_tool_quote(ESYS_CONTEXT *ectx) {
     /*
      * 4. Process outputs
      */
-    return process_output(ectx);
+    process_output(ectx);
+    return tpm2_quote_stop(ectx);
 }
 
-static tool_rc tpm2_tool_onstop(ESYS_CONTEXT *ectx) {
+static tool_rc tpm2_quote_stop(ESYS_CONTEXT *ectx) {
 
     UNUSED(ectx);
 
