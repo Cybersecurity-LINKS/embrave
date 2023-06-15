@@ -74,7 +74,7 @@ static tool_rc quote(ESYS_CONTEXT *ectx) {
         &ctx.qualification_data, &ctx.pcr_selections, &ctx.quoted,
         &ctx.signature, NULL, ctx.parameter_hash_algorithm);
 }
-/* 
+ 
 static tool_rc write_output_files(void) {
 
     bool is_file_op_success = true;
@@ -113,34 +113,49 @@ static tool_rc write_output_files(void) {
 
     return is_file_op_success ? tool_rc_success : tool_rc_general_error;
 }
- */
+
+
+TPM2B_ATTEST * get_quoted(void){
+    TPM2B_ATTEST * quoted = malloc(sizeof(TPM2B_ATTEST));
+    if(quoted != NULL){
+        memcpy(quoted, ctx.quoted, sizeof(TPM2B_ATTEST));
+    }
+    return quoted;
+}
+
+void print_tpm2b(TPM2B_ATTEST * quoted){
+    tpm2_util_print_tpm2b(quoted);
+    printf("\n");
+}
+
+BYTE * get_signature(UINT16* size){
+    BYTE *sig = tpm2_convert_sig(size, ctx.signature);
+    if (!sig) {
+        printf("tpm2_convert_sig error\n");
+        return NULL;
+    }
+    tpm2_util_hexdump(sig, *size);
+    printf("\n");
+    return sig;
+}
+
+
+
 static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
     UNUSED(ectx);
-    /*
-     * 1. Outputs that do not require TPM2_CC_<command> dispatch
-     */
+
     bool is_file_op_success = true;
-/*     if (ctx.cp_hash_path) {
-        is_file_op_success = files_save_digest(&ctx.cp_hash, ctx.cp_hash_path);
 
-        if (!is_file_op_success) {
-            return tool_rc_general_error;
-        }
-    }
- */
     tool_rc rc = tool_rc_success;
-    if (!ctx.is_command_dispatch) {
-        return rc;
-    }
 
     /*
-     * 2. Outputs generated after TPM2_CC_<command> dispatch
+     * Outputs generated after TPM2_Quote
      */
-    tpm2_tool_output("quoted: ");
+    printf("quoted: ");
     tpm2_util_print_tpm2b(ctx.quoted);
-    tpm2_tool_output("\nsignature:\n");
-    tpm2_tool_output("  alg: %s\n", tpm2_alg_util_algtostr(
+    printf("\nsignature:\n");
+    printf("  alg: %s\n", tpm2_alg_util_algtostr(
         ctx.signature->sigAlg, tpm2_alg_util_flags_sig));
 
     UINT16 size;
@@ -205,7 +220,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
     }
 
     // Write everything out
-   // return write_output_files();
+    return write_output_files();
 }
 
 static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
@@ -275,24 +290,6 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     return rc;
 }
 
-/* static tool_rc check_options(ESYS_CONTEXT *ectx) {
-
-    UNUSED(ectx);
-
-    // TODO this whole file needs to be re-done, especially the option validation /
-    if (!ctx.pcr_selections.count) {
-        LOG_ERR("Expected -l to be specified.");
-        return tool_rc_option_error;
-    }
-
-    if (ctx.cp_hash_path && (ctx.signature_path || ctx.message_path)) {
-        LOG_ERR("Cannot produce output when calculating cpHash");
-        return tool_rc_option_error;
-    }
-
-    return tool_rc_success;
-} */
-
 bool set_option(char key, char *value) {
 
     bool result = true;
@@ -314,11 +311,11 @@ bool set_option(char key, char *value) {
     case 'q'://nonce
         //ctx.qualification_data.size = sizeof(ctx.qualification_data.buffer);
         ctx.qualification_data.size = TPM2_SHA256_DIGEST_SIZE;
-        printf("%d\n", ctx.qualification_data.size);
+        //printf("%d\n", ctx.qualification_data.size);
         memcpy(ctx.qualification_data.buffer, value, ctx.qualification_data.size);
         
-        //return tpm2_util_bin_from_hex_or_file(value,
-            //&ctx.qualification_data.size, ctx.qualification_data.buffer);
+       // return tpm2_util_bin_from_hex_or_file(value,
+       //     &ctx.qualification_data.size, ctx.qualification_data.buffer);
         break;
     case 's'://Signature output file NULL
         ctx.signature_path = value;

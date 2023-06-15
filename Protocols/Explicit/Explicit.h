@@ -18,12 +18,6 @@ typedef struct {
 } Nonce;
 
 typedef struct {
-  //uint8_t tag; // 1
-  uint16_t size;
-  uint8_t *buffer;
-} Signature;
-
-typedef struct {
     //u_int8_t pcr10_sha1[SHA_DIGEST_LENGTH];
     u_int8_t pcr_sha256[15][SHA256_DIGEST_LENGTH];
 } Pcr_list;
@@ -34,14 +28,18 @@ typedef struct {
 
 typedef struct {
     Nonce nonce_blob;
-    Signature sig_blob;
+    UINT16 sig_size;
+    BYTE *sig;
     Pcr_list pcrs;
+    TPM2B_ATTEST *quoted;
     //IMA
     //AK?
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
 int  create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
+
+void free_data (Ex_challenge_reply *rply);
 // soft binding
 //sofbinding verify
 // quote verify

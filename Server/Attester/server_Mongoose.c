@@ -46,6 +46,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         c->is_closing = 1;
         Continue = false;
       }
+      TPA_free(&rpl);
       break;
     case RA_TYPE_DAA:
 
