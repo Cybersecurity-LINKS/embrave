@@ -3,7 +3,7 @@
 
 #include "./lib/tpm2.h"
 
-tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx);
+int tpm2_quote_start(ESYS_CONTEXT *ectx);
 tool_rc tpm2_quote_free(ESYS_CONTEXT *ectx);
 bool set_option(char key, char *value);
 TPM2B_ATTEST * get_quoted(void);

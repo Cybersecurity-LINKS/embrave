@@ -364,23 +364,10 @@ bool set_option(char key, char *value) {
     return true;
 }
 
-tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx) {
-
-    //https://github.com/tpm2-software/tpm2-tools/blob/6e484f59bc65b01ec5b1f81b5bf0897c53a1ff4b/tools/tpm2_tool.c#L68
-    //ctx.ectx = ctx_init(tcti);
-    //if (!ctx.ectx) {
-    //        exit(tool_rc_tcti_error);
-    //}
-    /*
-     * 1. Process options
-     */
-/*     tool_rc rc = check_options(ectx);
-    if (rc != tool_rc_success) {
-        return rc;
-    } */
+int tpm2_quote_start(ESYS_CONTEXT *ectx) {
 
     /*
-     * 2. Process inputs
+     *  Process inputs
      */
     tool_rc rc = process_inputs(ectx);
     if (rc != tool_rc_success) {
@@ -388,7 +375,7 @@ tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx) {
     }
 
     /*
-     * 3. TPM2_CC_<command> call
+     * TPM2_quote call
      */
     rc = quote(ectx);
     if (rc != tool_rc_success) {
@@ -396,7 +383,7 @@ tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx) {
     }
 
     /*
-     * 4. Process outputs
+     * Process outputs
      */
     
     return process_output(ectx);
@@ -427,8 +414,3 @@ tool_rc tpm2_quote_free(ESYS_CONTEXT *ectx) {
 
     return rc;
 }
-
-/* // Register this tool with tpm2_tool.c
-TPM2_TOOL_REGISTER("quote", tpm2_tool_onstart, tpm2_tool_onrun,
-    tpm2_tool_onstop, 0)
- */
