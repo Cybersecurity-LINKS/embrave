@@ -1,3 +1,4 @@
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #ifndef LIB_OBJECT_H_
 #define LIB_OBJECT_H_
 

@@ -1,3 +1,4 @@
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #include "log.h"
 #include "tpm2.h"
 #include "tpm2_auth_util.h"

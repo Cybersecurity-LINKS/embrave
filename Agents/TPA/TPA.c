@@ -22,7 +22,7 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   uint16_t ak_handle[HANDLE_SIZE];
-  
+  int ret;
   snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
   tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
@@ -37,7 +37,7 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
     return -1;
   }
   
-  
+  ret = create_quote(chl, rpl, esys_context);
 
 
   Esys_Finalize(&esys_context);

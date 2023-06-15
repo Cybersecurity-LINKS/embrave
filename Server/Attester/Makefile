@@ -3,8 +3,8 @@ CC = gcc
 CFLAGS = -g
 
 # define the C source files
-SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Protocols/Explicit/Explicit.c\
-../../Protocols/common.c ../../Protocols/tpm_tools/tpm2_quote.c\
+SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Protocols/tpm_tools/tpm2_quote.c ../../Protocols/Explicit/Explicit.c\
+../../Protocols/common.c \
 ../../Protocols/tpm_tools/lib/files.c ../../Protocols/tpm_tools/lib/log.c ../../Protocols/tpm_tools/lib/object.c ../../Protocols/tpm_tools/lib/pcr.c\
 ../../Protocols/tpm_tools/lib/tpm2.c ../../Protocols/tpm_tools/lib/tpm2_util.c ../../Protocols/tpm_tools/lib/tpm2_tool.c ../../Protocols/tpm_tools/lib/tool_rc.c\
 ../../Protocols/tpm_tools/lib/tpm2_alg_util.c ../../Protocols/tpm_tools/lib/tpm2_attr_util.c ../../Protocols/tpm_tools/lib/tpm2_auth_util.c\

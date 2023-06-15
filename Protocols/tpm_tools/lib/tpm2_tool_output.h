@@ -1,3 +1,4 @@
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #ifndef TPM2_TOOL_OUTPUT_H
 #define TPM2_TOOL_OUTPUT_H
 

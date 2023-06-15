@@ -14,11 +14,10 @@
 #include "./lib/tpm2_openssl.h"
 #include "./lib/tpm2_systemdeps.h"
 #include "./lib/tpm2_tool.h" 
-
 //#include "tpm2_utils.h" 
-
+#include "tpm2_quote.h"
 #define MAX_SESSIONS 3
-static tool_rc tpm2_quote_stop(ESYS_CONTEXT *ectx);
+
 typedef struct tpm_quote_ctx tpm_quote_ctx;
 struct tpm_quote_ctx {
     /*
@@ -206,7 +205,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
     }
 
     // Write everything out
-    //return write_output_files();
+   // return write_output_files();
 }
 
 static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
@@ -276,11 +275,11 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
     return rc;
 }
 
-static tool_rc check_options(ESYS_CONTEXT *ectx) {
+/* static tool_rc check_options(ESYS_CONTEXT *ectx) {
 
     UNUSED(ectx);
 
-    /* TODO this whole file needs to be re-done, especially the option validation */
+    // TODO this whole file needs to be re-done, especially the option validation /
     if (!ctx.pcr_selections.count) {
         LOG_ERR("Expected -l to be specified.");
         return tool_rc_option_error;
@@ -292,53 +291,58 @@ static tool_rc check_options(ESYS_CONTEXT *ectx) {
     }
 
     return tool_rc_success;
-}
+} */
 
-static bool on_option(char key, char *value) {
+bool set_option(char key, char *value) {
 
     bool result = true;
+
     switch (key) {
-    case 'c':
+    case 'c'://key handle
         ctx.key.ctx_path = value;
         break;
-    case 'p':
+    case 'p'://auth key handle
         ctx.key.auth_str = value;
         break;
-    case 'l':
+    case 'l': //pcr list -> sha256:all
         result = pcr_parse_selections(value, &ctx.pcr_selections);
         if (!result) {
             LOG_ERR("Could not parse pcr selections, got: \"%s\"", value);
             return false;
         }
         break;
-    case 'q':
-        ctx.qualification_data.size = sizeof(ctx.qualification_data.buffer);
-        return tpm2_util_bin_from_hex_or_file(value,
-            &ctx.qualification_data.size, ctx.qualification_data.buffer);
+    case 'q'://nonce
+        //ctx.qualification_data.size = sizeof(ctx.qualification_data.buffer);
+        ctx.qualification_data.size = TPM2_SHA256_DIGEST_SIZE;
+        printf("%d\n", ctx.qualification_data.size);
+        memcpy(ctx.qualification_data.buffer, value, ctx.qualification_data.size);
+        
+        //return tpm2_util_bin_from_hex_or_file(value,
+            //&ctx.qualification_data.size, ctx.qualification_data.buffer);
         break;
-    case 's':
+    case 's'://Signature output file NULL
         ctx.signature_path = value;
         break;
-    case 'm':
+    case 'm'://Message output file NULL
         ctx.message_path = value;
         break;
-    case 'o':
+    case 'o'://PCR output file NULL
         ctx.pcr_path = value;
         break;
-    case 'F':
+    case 'F'://pcr format NULL
         ctx.pcrs_format = tpm2_convert_pcrs_output_fmt_from_optarg(value);
         if (ctx.pcrs_format == pcrs_output_format_err) {
             return false;
         }
         break;
-    case 'f':
+    case 'f'://signature format default tss
         ctx.sig_format = tpm2_convert_sig_fmt_from_optarg(value);
 
         if (ctx.sig_format == signature_format_err) {
             return false;
         }
         break;
-    case 'g':
+    case 'g'://Hash algorithm for signature. Defaults: sha256.
         ctx.sig_hash_algorithm = tpm2_alg_util_from_optarg(value,
                 tpm2_alg_util_flags_hash);
         if (ctx.sig_hash_algorithm == TPM2_ALG_ERROR) {
@@ -347,7 +351,7 @@ static bool on_option(char key, char *value) {
             return false;
         }
         break;
-    case 0:
+    case 0://hash of the command parameters NULL
         ctx.cp_hash_path = value;
         break;
     case 1:
@@ -363,7 +367,7 @@ static bool on_option(char key, char *value) {
     return true;
 }
 
-static tool_rc tpm2_tool_onrun(ESYS_CONTEXT *ectx) {
+tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx) {
 
     //https://github.com/tpm2-software/tpm2-tools/blob/6e484f59bc65b01ec5b1f81b5bf0897c53a1ff4b/tools/tpm2_tool.c#L68
     //ctx.ectx = ctx_init(tcti);
@@ -373,15 +377,15 @@ static tool_rc tpm2_tool_onrun(ESYS_CONTEXT *ectx) {
     /*
      * 1. Process options
      */
-    tool_rc rc = check_options(ectx);
+/*     tool_rc rc = check_options(ectx);
     if (rc != tool_rc_success) {
         return rc;
-    }
+    } */
 
     /*
      * 2. Process inputs
      */
-    rc = process_inputs(ectx);
+    tool_rc rc = process_inputs(ectx);
     if (rc != tool_rc_success) {
         return rc;
     }
@@ -397,11 +401,11 @@ static tool_rc tpm2_tool_onrun(ESYS_CONTEXT *ectx) {
     /*
      * 4. Process outputs
      */
-    process_output(ectx);
-    return tpm2_quote_stop(ectx);
+    
+    return process_output(ectx);
 }
 
-static tool_rc tpm2_quote_stop(ESYS_CONTEXT *ectx) {
+tool_rc tpm2_quote_free(ESYS_CONTEXT *ectx) {
 
     UNUSED(ectx);
 

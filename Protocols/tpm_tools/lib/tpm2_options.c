@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -22,7 +22,7 @@
 #include "tpm2_options.h"
 
 #ifndef VERSION
-  #warning "VERSION Not known at compile time, not embedding..."
+  //#warning "VERSION Not known at compile time, not embedding..."
   #define VERSION "UNKNOWN"
 #endif
 

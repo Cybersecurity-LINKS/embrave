@@ -41,7 +41,7 @@ typedef struct {
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
-int  create_quote (Ex_challenge *chl, Ex_challenge_reply *rply);
+int  create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
 // soft binding
 //sofbinding verify
 // quote verify

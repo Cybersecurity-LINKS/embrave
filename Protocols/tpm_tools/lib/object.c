@@ -1,4 +1,4 @@
-
+//This code is based on tpm2-tools <github.com/tpm2-software/tpm2-tools>
 #include <stdio.h>
 
 #include "files.h"

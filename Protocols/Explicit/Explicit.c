@@ -15,7 +15,26 @@ int nonce_create(Nonce *nonce_blob)
     return 0;
 }
 
-int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply)
+int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
+    char key[11] = "0x81000004";
+    char pcrs[10] ="sha256:all";
+    char hash[7] ="sha256";
+    if (ectx == NULL) {
+        return -1;
+    }
+    //AK handle
+    set_option('c', key);
+    //pcr select all
+    set_option('l', pcrs);
+    //hash
+    set_option('g', hash);
+    //nonce
+    set_option('q', chl->nonce_blob.buffer);
+
+    tpm2_quote_start(ectx);
+    //free used data 
+    tpm2_quote_free(ectx);
+
     return 0;
 }

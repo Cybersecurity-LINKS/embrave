@@ -3,7 +3,7 @@
 
 #include "./lib/tpm2.h"
 
-static tool_rc tpm2_tool_quote(ESYS_CONTEXT *ectx);
-static tool_rc tpm2_tool_onrun(ESYS_CONTEXT *ectx);
-
+tool_rc tpm2_quote_start(ESYS_CONTEXT *ectx);
+tool_rc tpm2_quote_free(ESYS_CONTEXT *ectx);
+bool set_option(char key, char *value);
 #endif

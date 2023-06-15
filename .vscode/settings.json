@@ -29,6 +29,7 @@
         "tpm2_attr_util.h": "c",
         "stdint.h": "c",
         "endian.h": "c",
-        "inttypes.h": "c"
+        "inttypes.h": "c",
+        "errno.h": "c"
     }
 }
