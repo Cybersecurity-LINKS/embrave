@@ -26,18 +26,25 @@ typedef struct {
     Nonce nonce_blob;
 } Ex_challenge;
 
+/* typedef struct tpm2_pcrs tpm2_pcrs;
+struct tpm2_pcrs {
+    size_t count;
+    TPML_DIGEST pcr_values[TPM2_MAX_PCRS];
+}; */
+
 typedef struct {
     Nonce nonce_blob;
     UINT16 sig_size;
     BYTE *sig;
-    Pcr_list pcrs;
+    tpm2_pcrs pcrs;
+    //char *pcr_selections;
     TPM2B_ATTEST *quoted;
     //IMA
     //AK?
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
-int  create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
+int create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
 
 void free_data (Ex_challenge_reply *rply);
 // soft binding

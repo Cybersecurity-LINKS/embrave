@@ -1,6 +1,6 @@
 #include "Explicit.h"
 
-int get_quote_parameters(Ex_challenge_reply *rply);
+int get_quote_parameters(ESYS_CONTEXT *ectx, Ex_challenge_reply *rply);
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -40,7 +40,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
     //fill challenge reply structure
-    if(get_quote_parameters(rply) != 0){
+    if(get_quote_parameters(ectx, rply) != 0){
         printf("get_quote_parameters error\n");
         return -1;
     }
@@ -53,7 +53,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     return 0;
 }
 
-int get_quote_parameters(Ex_challenge_reply *rply){
+int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
     //get quoted data
     rply->quoted = get_quoted();
     if(rply->quoted == NULL) return -1;
@@ -69,7 +69,10 @@ int get_quote_parameters(Ex_challenge_reply *rply){
     printf("\n\n");
 
     //get pcr list
-
+    if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
+        return -1;
+    }
+    pcr_print_(&(rply->pcrs));
     return 0;
 }
 
