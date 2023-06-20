@@ -23,15 +23,19 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     MG_INFO(("SERVER initialized TLS"));
 #endif
   } else if (ev == MG_EV_READ) {
+    //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
     int tag;
     memcpy(&tag, r->buf, sizeof(int));
-    mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
+    //remove tag from buffer
+    mg_iobuf_del(r,0,sizeof(int)); 
     switch (tag){
     case RA_TYPE_EXPLICIT:
       Ex_challenge chl;
       Ex_challenge_reply rpl;
+      //load challenge data from socket
       load_challenge_request(c,r,&chl);
+      //Compute the challenge
       if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
         //TODO
         printf("ERRORE\n");
@@ -39,7 +43,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         Continue = false;
         break;
       }
-
+      //Send the challenge reply
       if (send_challenge_reply(c, r, &rpl) != 0){
         //TODO
         printf("ERRORE\n");
