@@ -48,6 +48,8 @@ int nonce_create(Nonce *nonce_blob);
 int create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
 void print_quoted(TPM2B_ATTEST * quoted);
 void free_data (Ex_challenge_reply *rply);
+BYTE * copy_signature(UINT16* size);
+void print_signature(UINT16* size, BYTE *sig);
 // soft binding
 //sofbinding verify
 // quote verify

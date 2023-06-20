@@ -83,34 +83,36 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
 
-    //Get signature type based on the ker
+    //Get signature type based on the key
     rc = tpm2_alg_util_get_signature_scheme(ectx, key.object.tr_handle,
         &sig_hash_algorithm, sig_scheme, &in_scheme);
     if (rc != tool_rc_success) {
         return -1;
     }
-     printf("Quiiiii111111\n");
-    // ret = tpm2_quote_start(ectx);
-    rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select, &rply->quoted,&signature, NULL, TPM2_ALG_ERROR);
+
+    rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select, &rply->quoted, &signature, NULL, TPM2_ALG_ERROR);
     if(rc != 0){
         printf("tpm2 quote error %d\n", rc);
         return -1;
     }
 
-     printf("Quiiiii\n");
+    print_quoted(rply->quoted);
 
-    //fill challenge reply structure
-/*     if(get_quote_parameters(ectx, rply) != 0){
-        printf("get_quote_parameters error\n");
-        return -1;
-    } */
+    rply->sig = copy_signature(&(rply->sig_size));
+    if(rply->sig == NULL) return -1;
+    print_signature(&(rply->sig_size), rply->sig);
+
+    //Get PCR List
+   // if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
+    //    return -1;
+    //}
+    //pcr_print_(&(rply->pcrs));
     //free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
-    printf("Quiiiii33333\n");
     return 0;
 }
 
@@ -143,7 +145,7 @@ tool_rc tpm2_quote_free(void) {
         fclose(ctx.pcr_output);
     } */
     //free(ctx.quoted);
-    //free(ctx.signature);
+    free(signature);
 
     //Close authorization sessions
     tool_rc rc = tpm2_session_close(&key.object.session);
@@ -164,6 +166,22 @@ void free_data (Ex_challenge_reply *rply){
 }
 
 void print_quoted(TPM2B_ATTEST * quoted){
+    printf("Quoted: ");
     tpm2_util_print_tpm2b(quoted);
     printf("\n");
+}
+
+void print_signature(UINT16* size, BYTE *sig){
+    printf("Signature: ");
+    tpm2_util_hexdump(sig, *size);
+    printf("\n");
+}
+
+BYTE * copy_signature(UINT16* size){
+    BYTE *sig = tpm2_convert_sig(size, signature);
+    if (!sig) {
+        printf("tpm2_convert_sig error\n");
+        return NULL;
+    }
+    return sig;
 }

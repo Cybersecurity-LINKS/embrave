@@ -76,60 +76,14 @@ static tool_rc quote(ESYS_CONTEXT *ectx) {
         &ctx.signature, NULL, ctx.parameter_hash_algorithm);
 }
  
-static tool_rc write_output_files(void) {
-
-    bool is_file_op_success = true;
-    bool result = true;
-    if (ctx.signature_path) {
-        result = tpm2_convert_sig_save(ctx.signature, ctx.sig_format,
-            ctx.signature_path);
-        if (!result) {
-            is_file_op_success = result;
-        }
-    }
-
-    if (ctx.message_path) {
-        result = files_save_bytes_to_file(ctx.message_path,
-            (UINT8*) &ctx.quoted->attestationData, ctx.quoted->size);
-        if (!result) {
-            is_file_op_success = result;
-        }
-    }
-
-    if (ctx.pcr_output) {
-        if (ctx.pcrs_format == pcrs_output_format_serialized) {
-            result = pcr_fwrite_serialized(&ctx.pcr_selections, &ctx.pcrs,
-                ctx.pcr_output);
-            if (!result) {
-                is_file_op_success = result;
-            }
-        } else if (ctx.pcrs_format == pcrs_output_format_values) {
-            result = pcr_fwrite_values(&ctx.pcr_selections, &ctx.pcrs,
-                ctx.pcr_output);
-            if (!result) {
-                is_file_op_success = result;
-            }
-        }
-    }
-
-    return is_file_op_success ? tool_rc_success : tool_rc_general_error;
-}
 
 
-TPM2B_ATTEST * get_quoted(void){
-    TPM2B_ATTEST * quoted = malloc(sizeof(TPM2B_ATTEST));
-    if(quoted != NULL){
-        memcpy(quoted, ctx.quoted, sizeof(TPM2B_ATTEST));
-    }
-    return quoted;
-}
-
-void print_tpm2b(TPM2B_ATTEST * quoted){
+void print_quoted(TPM2B_ATTEST * quoted){
     tpm2_util_print_tpm2b(quoted);
     printf("\n");
 }
 
-BYTE * get_signature(UINT16* size){
+BYTE * copy_signature(UINT16* size){
     BYTE *sig = tpm2_convert_sig(size, ctx.signature);
     if (!sig) {
         printf("tpm2_convert_sig error\n");
