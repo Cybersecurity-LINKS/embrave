@@ -72,7 +72,7 @@ int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
     if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
         return -1;
     }
-    pcr_print_(&(rply->pcrs));
+    //pcr_print_(&(rply->pcrs));
     return 0;
 }
 

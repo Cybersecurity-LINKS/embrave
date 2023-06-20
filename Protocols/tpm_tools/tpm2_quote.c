@@ -9,14 +9,14 @@
 
 //#include "tpm2_utils.h" 
 #include "tpm2_quote.h"
-#include "./lib/files.h"
-#include "./lib/log.h"
-#include "./lib/tpm2.h"
-#include "./lib/tpm2_alg_util.h"
-#include "./lib/tpm2_convert.h"
-#include "./lib/tpm2_openssl.h"
-#include "./lib/tpm2_systemdeps.h"
-#include "./lib/tpm2_tool.h" 
+#include "../../tpm2-tools/lib/files.h"
+#include "../../tpm2-tools/lib/log.h"
+#include "../../tpm2-tools/lib/tpm2.h"
+#include "../../tpm2-tools/lib/tpm2_alg_util.h"
+#include "../../tpm2-tools/lib/tpm2_convert.h"
+#include "../../tpm2-tools/lib/tpm2_openssl.h"
+#include "../../tpm2-tools/lib/tpm2_systemdeps.h"
+#include "../../tpm2-tools/tools/tpm2_tool.h" 
 #define MAX_SESSIONS 3
 
 typedef struct tpm_quote_ctx tpm_quote_ctx;
@@ -168,7 +168,7 @@ int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
 
 //void pcr_print_(TPML_PCR_SELECTION *pcrSelect, tpm2_pcrs *pcrs){
 void pcr_print_(tpm2_pcrs *pcrs){
-    pcr_print_pcr_struct(&ctx.pcrSelect, pcrs);
+    pcr_print_pcr_struct(&ctx.pcr_selections, pcrs);
 }
 
 static tool_rc process_output(ESYS_CONTEXT *ectx) {
