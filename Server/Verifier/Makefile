@@ -7,7 +7,7 @@ CFLAGS = -g
  createek_util.c createak_util.c PCR9Extend.c PEMconvertPub.c ../IMA/ima_read_writeOut_binary.c all_util.c
 
 SRCS = client.c ../Mongoose/mongoose.c ../../Agents/Remote_Attestor/RA.c ../../Protocols/Explicit/Explicit.c\
-../../Protocols/common.c ../../Protocols/tpm_tools/tpm2_quote.c\
+../../Protocols/common.c \
 
 
 #tpm2tools lib

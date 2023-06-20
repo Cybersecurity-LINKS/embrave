@@ -4,7 +4,7 @@ CFLAGS = -g  -Wall -fPIC
 
 
 # define the C source files
-SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Protocols/tpm_tools/tpm2_quote.c ../../Protocols/Explicit/Explicit.c\
+SRCS = server_Mongoose.c ../Mongoose/mongoose.c ../../Agents/TPA/TPA.c ../../Protocols/Explicit/Explicit.c\
 ../../Protocols/common.c  \
 #tpm2tools lib
 SRCS +=  ../../tpm2-tools/tools/tpm2_tool.c $(wildcard ../../tpm2-tools/lib/*.c) 

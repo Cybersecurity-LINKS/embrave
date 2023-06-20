@@ -30,6 +30,7 @@
         "stdint.h": "c",
         "endian.h": "c",
         "inttypes.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "rand.h": "c"
     }
 }

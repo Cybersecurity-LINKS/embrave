@@ -8,7 +8,8 @@ bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle) {
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
-  int persistent_handles = 0, n, i;
+  int persistent_handles = 0;
+  //int n, i;
 
   tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   //tss_r = Tss2_TctiLdr_Initialize("swtpm", &tcti_context);
