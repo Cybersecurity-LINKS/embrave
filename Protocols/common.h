@@ -9,8 +9,6 @@
 #include <tss2/tss2_mu.h>
 #include <tss2/tss2_tctildr.h>
 
-#include "./tpm_tools/tpm2_quote.h"
-
 #define HANDLE_EK 0x81000003
 #define HANDLE_AK 0x81000004 
 
