@@ -95,30 +95,7 @@ BYTE * copy_signature(UINT16* size){
 }
 
 //int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_selections){
-int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
-    if( ectx == NULL || pcrs == NULL) return -1;
-    // Gather PCR values from the TPM (the quote doesn't have them!)
-    if (!pcr_check_pcr_selection(&ctx.cap_data, &ctx.pcr_selections)) {
-        LOG_ERR("Failed to filter unavailable PCR values for quote!");
-        return tool_rc_general_error;
-    }
 
-    tool_rc rc = pcr_read_pcr_values(ectx, &ctx.pcr_selections, pcrs,
-        NULL, TPM2_ALG_ERROR);
-    if (rc != tool_rc_success) {
-        LOG_ERR("Failed to retrieve PCR values related to quote!");
-        return -1;
-    }
-
-/*     bool is_pcr_print_successful = pcr_print_pcr_struct(&ctx.pcr_selections,
-    &ctx.pcrs);
-    if (!is_pcr_print_successful) {
-        LOG_ERR("Failed to print PCR values related to quote!");
-        return -1;
-    } */
-
-    return 0;
-}
 
 //void pcr_print_(TPML_PCR_SELECTION *pcrSelect, tpm2_pcrs *pcrs){
 void pcr_print_(tpm2_pcrs *pcrs){

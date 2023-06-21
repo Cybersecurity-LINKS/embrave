@@ -50,6 +50,7 @@ void print_quoted(TPM2B_ATTEST * quoted);
 void free_data (Ex_challenge_reply *rply);
 BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
+void pcr_print_(tpm2_pcrs *pcrs);
 // soft binding
 //sofbinding verify
 // quote verify

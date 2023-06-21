@@ -23,6 +23,8 @@ struct {
 
 //int get_quote_parameters(ESYS_CONTEXT *ectx, Ex_challenge_reply *rply);
 tool_rc tpm2_quote_free(void);
+int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
+
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -46,7 +48,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     int ret;
     tpm2_algorithm algs;
    // char hash[7] ="sha256";
-    if (ectx == NULL) {
+    if (ectx == NULL || rply == NULL || chl == NULL) {
         return -1;
     }
     sig_hash_algorithm = TPM2_ALG_NULL;
@@ -103,17 +105,74 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     print_signature(&(rply->sig_size), rply->sig);
 
     //Get PCR List
-   // if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
-    //    return -1;
-    //}
-    //pcr_print_(&(rply->pcrs));
+    if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
+        return -1;
+    }
+    //
     //free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
+    pcr_print_(&(rply->pcrs));
+
+
     return 0;
+}
+
+int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
+    if( ectx == NULL || pcrs == NULL) return -1;
+
+    // Filter out invalid/unavailable PCR selections
+    if (!pcr_check_pcr_selection(&cap_data, &pcr_select)) {
+        printf("Failed to filter unavailable PCR values for quote!\n");
+        return -1;
+    }
+
+    // Read PCR values from the TPM because the quote doesn't have them!
+    tool_rc rc = pcr_read_pcr_values(ectx, &pcr_select, pcrs, NULL, TPM2_ALG_ERROR);
+    if (rc != tool_rc_success) {
+        printf("Failed to retrieve PCR values related to quote!\n");
+        return -1;
+    }
+
+/*        //Check if computed digest 
+    // Grab the digest from the quote
+    rc = files_tpm2b_attest_to_tpms_attest(ctx.quoted, &ctx.attest);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+
+    // Calculate the digest from our selected PCR values (to ensure correctness)
+    TPM2B_DIGEST pcr_digest = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+    bool is_pcr_hashing_success = tpm2_openssl_hash_pcr_banks(
+        ctx.sig_hash_algorithm, &ctx.pcr_selections, &ctx.pcrs,
+        &pcr_digest);
+    if (!is_pcr_hashing_success) {
+        LOG_ERR("Failed to hash PCR values related to quote!");
+        return tool_rc_general_error;
+    }
+    tpm2_tool_output("calcDigest: ");
+    tpm2_util_hexdump(pcr_digest.buffer, pcr_digest.size);
+    tpm2_tool_output("\n");
+
+    // Make sure digest from quote matches calculated PCR digest
+    bool is_pcr_digests_equal = tpm2_util_verify_digests(
+        &ctx.attest.attested.quote.pcrDigest, &pcr_digest);
+    if (!is_pcr_digests_equal) {
+        LOG_ERR("Error validating calculated PCR composite with quote");
+        return tool_rc_general_error;
+    } */
+
+
+
+    return 0;
+}
+
+void pcr_print_(tpm2_pcrs *pcrs){
+    pcr_print_pcr_struct(&pcr_select, pcrs);
 }
 
 /* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
