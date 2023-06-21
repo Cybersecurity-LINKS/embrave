@@ -14,6 +14,7 @@ static bool Continue = true;
 static bool end = false;
 //dati statici ima log from to
 //int challenge_create(struct mg_connection *c);
+int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
 
 static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   int *i = &((struct c_res_s *) fn_data)->i;
@@ -28,26 +29,22 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
 #endif
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
+    printf("Client received data\n");
     int n = 0;
-   // AK_PUB_BLOB ak_pub;
+    Ex_challenge_reply rpl;
+    // AK_PUB_BLOB ak_pub;
     //read TPA challenge reply
     struct mg_iobuf *r = &c->recv;
-    //MG_INFO(("CLIENT got data: %.*s", sizeof(size_t), r->buf));
-    //printf("%ld\n",r->len);
-    //printf("%ld\n",sizeof(size_t));
-
-   // n = load_ak(r,&ak_pub);
-    if(n < 0){
+    if(load_challenge_reply(r, &rpl) < 0){
       //TODO ERRORI
+    }
 
+    if(RA_explicit_challenge_verify(&rpl) < 0){
+      //TODO ERRORI
     }
    // MG_INFO(("CLIENT got AK PUB PEM of size %ld\n: %s", ak_pub.size, ak_pub.ak_pem));
    // TO_SEND *TpaData = (TO_SEND*) r->buf;
    // n = verify(TpaData, &data, &ak_pub);
-    if(n < 0){
-      //TODO ERRORI
-
-    }
 
     //TODO FREE AK
     r->len = 0;
@@ -101,5 +98,22 @@ int main(void) {
   //Or explict RA with TLS and softbindigs
   while (Continue) mg_mgr_poll(&mgr, 1000); 
 
+  return 0;
+}
+
+int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
+{
+  if(r == NULL) return -1;
+  memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
+  mg_iobuf_del(r,0,sizeof(UINT16));
+
+  //if(rpl->sig_size == NULL) return -1;
+
+  memcpy(rpl->sig, r->buf, rpl->sig_size);
+  mg_iobuf_del(r,0, rpl->sig_size);
+
+  if(rpl->sig == NULL) return -1;
+
+  printf("Signature (size %d) received:\n", rpl->sig_size);
   return 0;
 }

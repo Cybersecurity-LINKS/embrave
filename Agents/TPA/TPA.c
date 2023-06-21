@@ -39,9 +39,10 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   
   ret = create_quote(chl, rpl, esys_context);
 
-
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
+  if(ret != 0)
+    return -1;
   return 0;
 }
 

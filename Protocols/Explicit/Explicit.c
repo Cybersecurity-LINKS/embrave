@@ -51,12 +51,12 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     if (ectx == NULL || rply == NULL || chl == NULL) {
         return -1;
     }
+    //set default values    
     sig_hash_algorithm = TPM2_ALG_NULL;
-    //qualification_data = TPM2B_EMPTY_INIT;
     pcrs_format = pcrs_output_format_serialized;
     in_scheme.scheme = TPM2_ALG_NULL;
     sig_scheme = TPM2_ALG_NULL;
-    //set default values
+
 
     //Set AK handle
     key.handle=handle;
@@ -64,7 +64,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     //load AK aut (NULL)
     tool_rc rc = tpm2_util_object_load_auth(ectx, key.handle,key.auth_str, &(key.object), false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
-        printf("Invalid key authorization");
+        printf("Invalid key authorization\n");
         return -1;
     }     
 
@@ -73,7 +73,6 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         printf("pcr_parse_selections failed\n");
         return -1;
     }
-
 
     //Set nonce
     qualification_data.size = TPM2_SHA256_DIGEST_SIZE;
@@ -116,7 +115,6 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
     pcr_print_(&(rply->pcrs));
-
 
     return 0;
 }
