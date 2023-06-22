@@ -176,6 +176,23 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
     pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
+int verify_quote(Ex_challenge_reply *rply)
+{
+    EVP_PKEY_CTX *pkey_ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    //tpm2_public_load_pkey
+    
+
+    
+    
+    
+    
+    
+    
+    return 0;
+}
+
 /* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
     //get quoted data
     rply->quoted = get_quoted();
@@ -223,6 +240,7 @@ void free_data (Ex_challenge_reply *rply){
         printf("sig alredy freed\n");
     else
         free(rply->sig);
+    OPENSSL_free(rply->ak_pem);
 }
 
 void print_quoted(TPM2B_ATTEST * quoted){

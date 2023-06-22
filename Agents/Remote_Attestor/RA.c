@@ -34,17 +34,34 @@ int challenge_create (struct mg_connection *c) {
 
 int RA_explicit_challenge_create(Ex_challenge *chl)
 {
-    return nonce_create(&(chl->nonce_blob));
+  return nonce_create(&(chl->nonce_blob));
 }
 
 int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
 {
-    return 0;
+  int ret;
+  if(rpl == NULL) return -1;
+  //verify pcr value
+
+  //verify quote
+  ret = verify_quote(rpl);
+  //verify IMA log
+
+  return 0;
 }
 
 int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
 {
-    return 0;
+  int ret;
+  //verify pcr value
+  
+  //verfy soft binding
+
+  //verify quote
+  ret = verify_quote(rpl);
+  //verify IMA log
+  
+  return 0;
 }
 
 void RA_free(Ex_challenge_reply *rpl){

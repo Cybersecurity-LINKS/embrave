@@ -43,8 +43,10 @@ typedef struct {
     tpm2_pcrs pcrs;
     //char *pcr_selections;
     TPM2B_ATTEST *quoted;
+    unsigned char * ak_pem;
+    long  ak_size;
     //IMA
-    //AK?
+    
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
@@ -54,6 +56,8 @@ void free_data (Ex_challenge_reply *rply);
 BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
+
+int verify_quote(Ex_challenge_reply *rply);
 // soft binding
 //sofbinding verify
 // quote verify

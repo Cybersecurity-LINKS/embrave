@@ -141,12 +141,24 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 
   //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
   rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
+  if(rpl->quoted == NULL) return -1;
   memcpy(&rpl->quoted->size, r->buf, sizeof(UINT16));
   mg_iobuf_del(r,0, sizeof(UINT16));
   memcpy(&rpl->quoted->attestationData, r->buf, rpl->quoted->size);
   mg_iobuf_del(r,0, rpl->quoted->size);
   //printf("Received signature size %d\n", rpl->quoted->size);
   print_quoted(rpl->quoted);
+
+
+  memcpy(&rpl->ak_size, r->buf, sizeof(long));
+  mg_iobuf_del(r,0, sizeof(long));
+  rpl->ak_pem = malloc(rpl->ak_size);
+  if(rpl->ak_pem == NULL) return -1;
+  memcpy(rpl->ak_pem, r->buf, rpl->ak_size);
+  mg_iobuf_del(r,0, rpl->ak_size);
+  printf("AK PEM file recived:\n");
+  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
+  printf("\n");
 
   return 0;
 }

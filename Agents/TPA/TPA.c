@@ -1,7 +1,7 @@
 #include "TPA.h"
 
 
-
+int load_ak(Ex_challenge_reply *rpl);
 
 int TPA_init(void) {
   uint16_t ek_handle[HANDLE_SIZE];
@@ -39,6 +39,10 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   
   ret = create_quote(chl, rpl, esys_context);
 
+  //load AK pem
+  ret = load_ak(rpl);
+
+
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
   if(ret != 0)
@@ -53,4 +57,25 @@ int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl){
 void TPA_free(Ex_challenge_reply *rpl)
 {
   free_data (rpl);
+}
+
+int load_ak(Ex_challenge_reply *rpl){
+  char * name, *header;
+  FILE *ak_pub = fopen("/etc/tc/ak.pub.pem", "r");
+  if(ak_pub == NULL){
+    printf("Could not open AK PEM file\n");
+    return false;
+  }
+
+  if (PEM_read(ak_pub, &name, &header, &rpl->ak_pem, &rpl->ak_size)  != 1) {
+    printf("Failed to open AK public key output file \n");
+    return -1;
+  }
+  printf("AK PEM file sent:\n");
+  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
+  printf("\n");
+
+  OPENSSL_free(name);
+  OPENSSL_free(header);
+  return 0;
 }

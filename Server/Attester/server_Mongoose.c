@@ -105,12 +105,13 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
   mg_send(c, &rpl->quoted->size, sizeof(UINT16));
   mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
-  printf("nonce size %d\n", rpl->quoted->size);
-  //TODO IMA
-
+  
   //TODO AK PEM
-
-
+  mg_send(c, &rpl->ak_size, sizeof(long));
+  mg_send(c, rpl->ak_pem, rpl->ak_size);
+  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
+ // printf("AK PEM file recived: %ld\n", rpl->ak_size);
+  //TODO IMA
   return 0;
 }
 
