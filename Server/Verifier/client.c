@@ -50,7 +50,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     r->len = 0;
     //c->is_closing = 1;
     end = true;
-   
+    RA_free(&rpl);
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("CLIENT disconnected"));
 
@@ -62,6 +62,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {
+    //CHALLENGE CREATE
     int n;
     int tag = 0;
     //Send Explict tag
@@ -103,17 +104,49 @@ int main(void) {
 
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 {
+  char pcrs[10] = "sha256:all";
   if(r == NULL) return -1;
+
+  //Signature size
   memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
   mg_iobuf_del(r,0,sizeof(UINT16));
-
-  //if(rpl->sig_size == NULL) return -1;
-
+  //Signature
+  rpl->sig = malloc(rpl->sig_size);
+  if(rpl->sig == NULL) return -1;
   memcpy(rpl->sig, r->buf, rpl->sig_size);
   mg_iobuf_del(r,0, rpl->sig_size);
+  printf("Received signature size %d\n", rpl->sig_size);
+  print_signature(&rpl->sig_size, rpl->sig);
 
-  if(rpl->sig == NULL) return -1;
+  //Nonce
+ // memcpy(&rpl->nonce_blob.size, r->buf, sizeof(uint16_t));
+ // mg_iobuf_del(r,0, sizeof(uint16_t));
+  memcpy(&rpl->nonce_blob, r->buf, sizeof(Nonce));
+  mg_iobuf_del(r,0, sizeof(Nonce));
+  printf("NONCE Received:");
+  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
+    printf("%02X", rpl->nonce_blob.buffer[i]);
+  printf("\n");
 
-  printf("Signature (size %d) received:\n", rpl->sig_size);
+  //pcrs
+  memcpy(&rpl->pcrs, r->buf, sizeof(tpm2_pcrs));
+  mg_iobuf_del(r,0, sizeof(tpm2_pcrs));
+  //Only to print pcr to quote 
+  TPML_PCR_SELECTION pcr_select;
+  if (!pcr_parse_selections(pcrs, &pcr_select)) {
+    printf("pcr_parse_selections failed\n");
+    return -1;
+  }
+  pcr_print_(&pcr_select, &(rpl->pcrs));
+
+  //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
+  rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
+  memcpy(&rpl->quoted->size, r->buf, sizeof(UINT16));
+  mg_iobuf_del(r,0, sizeof(UINT16));
+  memcpy(&rpl->quoted->attestationData, r->buf, rpl->quoted->size);
+  mg_iobuf_del(r,0, rpl->quoted->size);
+  //printf("Received signature size %d\n", rpl->quoted->size);
+  print_quoted(rpl->quoted);
+
   return 0;
 }

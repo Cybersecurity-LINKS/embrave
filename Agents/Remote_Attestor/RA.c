@@ -46,3 +46,8 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
 {
     return 0;
 }
+
+void RA_free(Ex_challenge_reply *rpl){
+  free(rpl->sig);
+  free(rpl->quoted);
+}

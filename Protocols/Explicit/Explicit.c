@@ -114,7 +114,10 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
-    pcr_print_(&(rply->pcrs));
+    pcr_print_(&pcr_select, &(rply->pcrs));
+    //Copy nonce
+    rply->nonce_blob.size = chl->nonce_blob.size;
+    memcpy(&rply->nonce_blob.buffer, &chl->nonce_blob.buffer, rply->nonce_blob.size);
 
     return 0;
 }
@@ -169,8 +172,8 @@ int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
     return 0;
 }
 
-void pcr_print_(tpm2_pcrs *pcrs){
-    pcr_print_pcr_struct(&pcr_select, pcrs);
+void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
+    pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
 /* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){

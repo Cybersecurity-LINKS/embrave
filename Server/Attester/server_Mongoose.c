@@ -35,6 +35,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       Ex_challenge_reply rpl;
       //load challenge data from socket
       load_challenge_request(c,r,&chl);
+      
       //Compute the challenge
       if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
@@ -91,14 +92,20 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //Signature is dynamic memory=> cant send all structure in one time
   //Signature size
   mg_send(c, &rpl->sig_size, sizeof(UINT16));
+  //printf("Signature (size %d) received:\n", rpl->sig_size);
   //Signature
-  mg_send(c, rpl->sig, sizeof(Ex_challenge));
+  mg_send(c, rpl->sig, rpl->sig_size);
   //Nonce
   mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
+ // mg_send(c, &rpl->nonce_blob.size, sizeof(uint16_t));
+ // 
   //Pcr
   mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
   //Data quoted
-  mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
+  //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
+  mg_send(c, &rpl->quoted->size, sizeof(UINT16));
+  mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
+  printf("nonce size %d\n", rpl->quoted->size);
   //TODO IMA
 
   //TODO AK PEM
