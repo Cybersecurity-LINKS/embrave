@@ -180,16 +180,84 @@ int verify_quote(Ex_challenge_reply *rply)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
+    BIO *bio = NULL;
+    TPMS_ATTEST attest;
+    TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+    if( rply == NULL || rply->ak_pem == NULL) return -1;
+    
+    bio = BIO_new(BIO_s_mem());
+    if (!bio) {
+        printf("Failed to allocate memory bio\n");
+        return -1;
+    }
+    //Create BIO from the buffer
+    PEM_write_bio(bio, "PUBLIC KEY", "", rply->ak_pem, rply->ak_size);
+    //Load AK pub key from BIO
+    pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+    if (!pkey) {
+        printf("Failed to convert public key from PEM\n");
+        return -1;
+    }
 
-    //tpm2_public_load_pkey
+    pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
+    if (!pkey_ctx) {
+        printf("EVP_PKEY_CTX_new failed\n");
+        return -1;
+    }
+
+    if(!EVP_PKEY_public_check(pkey_ctx)){
+        printf("check key failed\n");
+       // ret = 0;
+        return -1;
+    }
+
+    const EVP_MD *md = EVP_sha256();
+
+    int rc = EVP_PKEY_verify_init(pkey_ctx);
+    if (!rc) {
+        printf("EVP_PKEY_verify_init failed \n");
+        return -1;
+    }
+
+    rc = EVP_PKEY_CTX_set_signature_md(pkey_ctx, md);
+    if (!rc) {
+        printf("EVP_PKEY_CTX_set_signature_md failed \n");
+        return -1;
+    }
+
     
+    //Convert from TPM2B to TPMS formto validate nonce and pcr digest
+    tool_rc tmp_rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
+    if (tmp_rc != tool_rc_success) {
+        printf("files_tpm2b_attest_to_tpms_attest failed \n");
+        return -1;
+    }
+
+    //Hash the quoted data
+    rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
+    if (!rc) {
+        printf("Compute message hash failed!\n");
+        return -1;
+    }
+
+    rc = EVP_PKEY_verify(pkey_ctx, rply->sig, rply->sig_size, msg_hash.buffer, msg_hash.size);
+    if (rc != 1) {
+        if (rc == 0) {
+          //  LOG_ERR("Error validating signed message with public key provided");
+        } else {
+            //LOG_ERR("Error %s", ERR_error_string(ERR_get_error(), NULL));
+        }
+        //goto err;
+    }
+
+    printf("%d \n", rc);
 
     
     
     
     
     
-    
+    OPENSSL_free(bio);
     return 0;
 }
 

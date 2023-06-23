@@ -8,7 +8,8 @@
 #include <string.h>
 
 #include "../common.h"
-//#include "../tpm_tools/tpm2_quote.h"
+#include "../../tpm2-tools/lib/tpm2_openssl.h"
+#include "../../tpm2-tools/lib/files.h"
 #include "../../tpm2-tools/lib/tpm2_convert.h"
 #include "../../tpm2-tools/lib/tpm2_util.h"
 #include "../../tpm2-tools/lib/tpm2_alg_util.h"

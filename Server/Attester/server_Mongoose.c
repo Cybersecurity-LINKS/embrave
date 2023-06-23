@@ -97,7 +97,6 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   mg_send(c, rpl->sig, rpl->sig_size);
   //Nonce
   mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
- // mg_send(c, &rpl->nonce_blob.size, sizeof(uint16_t));
  // 
   //Pcr
   mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
@@ -109,83 +108,11 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //TODO AK PEM
   mg_send(c, &rpl->ak_size, sizeof(long));
   mg_send(c, rpl->ak_pem, rpl->ak_size);
-  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
+
  // printf("AK PEM file recived: %ld\n", rpl->ak_size);
   //TODO IMA
   return 0;
 }
-
-/* 
-//load challenge data
-void ex_challenge_request(struct mg_connection *c, struct mg_iobuf *r){
-  CHALLENGE_BLOB *challenge = (CHALLENGE_BLOB *) r->buf;
-  MG_INFO(("NONCE :"));
-  for(int i= 0; i< (int) challenge->nonce_blob.size; i++)
-    printf("%02X", challenge->nonce_blob.buffer[i]);
-  printf("\n");
- //MG_INFO(("PCRS :%d\n", challenge->PCR));
-  r->len = 0;  
-}
-
-//
-int ex_challenge_reply(struct mg_connection *c, struct mg_iobuf *r){
-  TSS2_RC tss_r;
-  ESYS_CONTEXT *esys_context = NULL;
-  TSS2_TCTI_CONTEXT *tcti_context = NULL;
-  ssize_t imaLogBytesSize = 0;
-  CHALLENGE_BLOB *challenge = (CHALLENGE_BLOB *) r->buf;
-  uint16_t ak_handle[HANDLE_SIZE];
-
-  TO_SEND TpaData;
-  TpaData.nonce_blob.size = NONCE_SIZE;
-  memcpy(TpaData.nonce_blob.buffer, challenge->nonce_blob.buffer, TpaData.nonce_blob.size);
-  snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
-
-  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
-  if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize tcti context\n");
-    return -1;
-  }
-  tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
-  if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize esys context\n");
-    return -1;
-  }
-  //Bind AK cert by extendind the PCR9
-  if (pcr_check_if_zeros(esys_context)) {
-    tss_r = ExtendPCR9(esys_context, "sha256"); 
-    if (tss_r != TSS2_RC_SUCCESS) return -1;
-    MG_INFO(("PCR9 sha256 extended\n"));
-  }
-  
-  //TODO copy pcr 0-15 
-
-  tss_r = tpm2_quote(esys_context, &TpaData, imaLogBytesSize, ak_handle, challenge);
-  if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Error while computing quote!\n");
-    return -1;
-  }
-  
-  Esys_Finalize(&esys_context);
-  Tss2_TctiLdr_Finalize (&tcti_context);
-  MG_INFO(("Sending challenge reply %ld\n", sizeof(TO_SEND)));
-  //TODO send AK
-  if(!send_AK(c, &TpaData)) {
-    fprintf(stdout, "Could not send AK pub on tangle\n");
-    return -1;
-  }
-  
-  mg_send(c, &TpaData, sizeof(TO_SEND));
-   
-  
-
- // free(TpaData.ak_digest_blob.buffer);
-
-  return 0;
-}
-
- */
-
 
 int main(void) {
   struct mg_mgr mgr;  // Event manager

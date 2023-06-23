@@ -42,7 +42,6 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   //load AK pem
   ret = load_ak(rpl);
 
-
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
   if(ret != 0)
