@@ -279,7 +279,6 @@ int verify_quote(Ex_challenge_reply *rply)
 
     // Verify that the digest from quote matches PCR digest
     if (!tpm2_util_verify_digests(&attest.attested.quote.pcrDigest, &pcr_hash)) {
-        printf("Error validating PCR digest\n");
         goto err;
     }
 
