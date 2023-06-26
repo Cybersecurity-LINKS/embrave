@@ -40,6 +40,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     }
 
     if(RA_explicit_challenge_verify(&rpl) < 0){
+      
       //TODO ERRORI
     }
    // MG_INFO(("CLIENT got AK PUB PEM of size %ld\n: %s", ak_pub.size, ak_pub.ak_pem));
@@ -148,7 +149,8 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   mg_iobuf_del(r,0, rpl->quoted->size);
   //printf("Received signature size %d\n", rpl->quoted->size);
   print_quoted(rpl->quoted);
-
+//
+//
 
   memcpy(&rpl->ak_size, r->buf, sizeof(long));
   mg_iobuf_del(r,0, sizeof(long));

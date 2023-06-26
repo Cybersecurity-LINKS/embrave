@@ -91,7 +91,8 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
 
-    rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select, &rply->quoted, &signature, NULL, TPM2_ALG_ERROR);
+    rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select,
+        &rply->quoted, &signature, NULL, TPM2_ALG_ERROR);
     if(rc != 0){
         printf("tpm2 quote error %d\n", rc);
         return -1;
@@ -183,6 +184,8 @@ int verify_quote(Ex_challenge_reply *rply)
     BIO *bio = NULL;
     TPMS_ATTEST attest;
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+    TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+    char pcrs_select[10] = "sha256:all";
     if( rply == NULL || rply->ak_pem == NULL) return -1;
     
     bio = BIO_new(BIO_s_mem());
@@ -190,25 +193,30 @@ int verify_quote(Ex_challenge_reply *rply)
         printf("Failed to allocate memory bio\n");
         return -1;
     }
-    //Create BIO from the buffer
+
+    //Create BIO from the AK PEM buffer
     PEM_write_bio(bio, "PUBLIC KEY", "", rply->ak_pem, rply->ak_size);
+
     //Load AK pub key from BIO
     pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
     if (!pkey) {
         printf("Failed to convert public key from PEM\n");
+        OPENSSL_free(bio);
         return -1;
     }
 
     pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
     if (!pkey_ctx) {
         printf("EVP_PKEY_CTX_new failed\n");
+        OPENSSL_free(bio);
+        EVP_PKEY_free(pkey);
         return -1;
     }
 
+    //Check if the key is a valid public key
     if(!EVP_PKEY_public_check(pkey_ctx)){
         printf("check key failed\n");
-       // ret = 0;
-        return -1;
+        goto err;
     }
 
     const EVP_MD *md = EVP_sha256();
@@ -216,49 +224,74 @@ int verify_quote(Ex_challenge_reply *rply)
     int rc = EVP_PKEY_verify_init(pkey_ctx);
     if (!rc) {
         printf("EVP_PKEY_verify_init failed \n");
-        return -1;
+        goto err;
     }
 
     rc = EVP_PKEY_CTX_set_signature_md(pkey_ctx, md);
     if (!rc) {
         printf("EVP_PKEY_CTX_set_signature_md failed \n");
-        return -1;
+        goto err;
     }
 
-    
-    //Convert from TPM2B to TPMS formto validate nonce and pcr digest
+    //Convert from TPM2B to TPMS format to validate nonce and pcr digest
     tool_rc tmp_rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
     if (tmp_rc != tool_rc_success) {
         printf("files_tpm2b_attest_to_tpms_attest failed \n");
-        return -1;
+        goto err;
     }
 
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
         printf("Compute message hash failed!\n");
-        return -1;
+        goto err;
     }
 
+    //1 verify OK 0 verify failed -rc ohter errors
     rc = EVP_PKEY_verify(pkey_ctx, rply->sig, rply->sig_size, msg_hash.buffer, msg_hash.size);
     if (rc != 1) {
         if (rc == 0) {
-          //  LOG_ERR("Error validating signed message with public key provided");
+            printf("Quote signature verification failed\n");
         } else {
-            //LOG_ERR("Error %s", ERR_error_string(ERR_get_error(), NULL));
+            printf("Error %s\n", ERR_error_string(ERR_get_error(), NULL));
         }
-        //goto err;
+        goto err;
     }
 
-    printf("%d \n", rc);
+    // Verify the nonce
+    if (attest.extraData.size != rply->nonce_blob.size || 
+        memcmp(attest.extraData.buffer, rply->nonce_blob.buffer, attest.extraData.size) != 0) {
+        printf("Error validating nonce\n");
+        goto err;
+    }
 
-    
-    
-    
-    
-    
+    // Deine the pcr selection
+    if (!pcr_parse_selections(pcrs_select, &pcr_select)) {
+        printf("pcr_parse_selections failed\n");
+        goto err;
+    } 
+
+    //Create the pcr digest with the received pcrs
+    if (!tpm2_openssl_hash_pcr_banks_le(TPM2_ALG_SHA256, &pcr_select, &rply->pcrs, &pcr_hash)) {
+        printf("Failed to hash PCR values\n");
+        goto err;
+    }
+
+    // Verify that the digest from quote matches PCR digest
+    if (!tpm2_util_verify_digests(&attest.attested.quote.pcrDigest, &pcr_hash)) {
+        printf("Error validating PCR digest\n");
+        goto err;
+    }
+
     OPENSSL_free(bio);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(pkey_ctx);
     return 0;
+err:
+    OPENSSL_free(bio);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(pkey_ctx);
+    return -1;
 }
 
 /* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
