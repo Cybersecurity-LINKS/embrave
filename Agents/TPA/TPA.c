@@ -1,7 +1,9 @@
 #include "TPA.h"
 
 
+static long ima_byte_sent = 0;
 int load_ak(Ex_challenge_reply *rpl);
+int load_ima_log(const char *path, Ex_challenge_reply *rpl);
 
 int TPA_init(void) {
   uint16_t ek_handle[HANDLE_SIZE];
@@ -38,10 +40,17 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   }
   
   ret = create_quote(chl, rpl, esys_context);
-
+  if(ret != 0) goto end;
   //load AK pem
   ret = load_ak(rpl);
-
+  if(ret != 0) goto end;
+  //load IMA log
+  //Real path
+  //ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);
+  //dev path
+  printf("WARNING: IMA LOG DEV PATH\n");
+  ret = load_ima_log("/home/ale/Scrivania/TPA/ascii_runtime_measurements", rpl);
+end: 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
   if(ret != 0)
@@ -76,5 +85,55 @@ int load_ak(Ex_challenge_reply *rpl){
 
   OPENSSL_free(name);
   OPENSSL_free(header);
+  return 0;
+}
+
+
+/* 
+  Read the IMA log and send it all, starting from position ima_byte_sent byte
+ */
+
+
+int load_ima_log(const char *path, Ex_challenge_reply *rpl)
+{
+  FILE *fp;
+  long rc;
+  fp = fopen(path, "rb");
+	if (!fp) {
+	  printf("Unable to open IMA file\n");
+		return -1;
+	}
+  
+  rc = fseek(fp, 0, SEEK_END);
+  if(rc == -1){
+    printf("fseek error\n");
+    fclose(fp);
+    return -1;
+  }
+
+  rc = ftell(fp);
+  if(rc == -1){
+    printf("ftell error\n");
+    fclose(fp);
+    return -1;
+  }
+  
+  rpl->ima_log_size = (rc - ima_byte_sent);
+
+  rc = fseek(fp, 0, SEEK_SET);
+  if(rc == -1){
+    printf("fseek error\n");
+    fclose(fp);
+    return -1;
+  }
+
+  printf("%ld\n", rpl->ima_log_size);
+  rpl->ima_log = malloc(rpl->ima_log_size +1);
+  rpl->ima_log[rpl->ima_log_size] = '\n';
+
+  fread(rpl->ima_log, rpl->ima_log_size, 1, fp);
+
+  printf("%s\n", rpl->ima_log);
+  fclose(fp);
   return 0;
 }

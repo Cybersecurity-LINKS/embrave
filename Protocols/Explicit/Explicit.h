@@ -28,11 +28,6 @@ typedef struct {
     uint8_t buffer[NONCE_SIZE];
 } Nonce;
 
-/* typedef struct {
-    //u_int8_t pcr10_sha1[SHA_DIGEST_LENGTH];
-    u_int8_t pcr_sha256[15][SHA256_DIGEST_LENGTH];
-} Pcr_list; */
-
 typedef struct {
     Nonce nonce_blob;
 } Ex_challenge;
@@ -47,7 +42,8 @@ typedef struct {
     unsigned char * ak_pem;
     long  ak_size;
     //IMA
-    
+    unsigned char * ima_log;
+    long ima_log_size;
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
@@ -61,5 +57,5 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 int verify_quote(Ex_challenge_reply *rply);
 // soft binding
 //sofbinding verify
-// quote verify
+
 #endif
