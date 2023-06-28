@@ -332,15 +332,17 @@ tool_rc tpm2_quote_free(void) {
 
 
 void free_data (Ex_challenge_reply *rply){
-    if(rply->quoted == NULL)
-        printf("quoted alredy freed\n");
-    else
+    if(rply->quoted != NULL)
         free(rply->quoted);
-    if(rply->sig == NULL)
-        printf("sig alredy freed\n");
-    else
+
+    if(rply->sig != NULL)
         free(rply->sig);
-    OPENSSL_free(rply->ak_pem);
+
+    if(rply->ak_pem != NULL)
+        OPENSSL_free(rply->ak_pem);
+
+    if(rply->ima_log != NULL)
+        free(rply->ima_log);
 }
 
 void print_quoted(TPM2B_ATTEST * quoted){

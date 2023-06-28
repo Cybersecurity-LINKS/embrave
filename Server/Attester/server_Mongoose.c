@@ -41,6 +41,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
+        TPA_free(&rpl);
         break;
       }
       //Send the challenge reply
@@ -50,6 +51,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         c->is_closing = 1;
         Continue = false;
       }
+
       TPA_free(&rpl);
       break;
     case RA_TYPE_DAA:
@@ -88,29 +90,36 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challe
 
 int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl)
 {
-  //rpl->nonce_blob ha senso mandarlo?
   //Signature is dynamic memory=> cant send all structure in one time
   //Signature size
+
+  size_t sz = sizeof(tpm2_pcrs);
+  printf("AK PEM file recived: %ld\n", sz);
   mg_send(c, &rpl->sig_size, sizeof(UINT16));
   //printf("Signature (size %d) received:\n", rpl->sig_size);
   //Signature
   mg_send(c, rpl->sig, rpl->sig_size);
+
   //Nonce
   mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
- // 
+  
   //Pcr
   mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
+
   //Data quoted
   //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
   mg_send(c, &rpl->quoted->size, sizeof(UINT16));
   mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
   
-  //TODO AK PEM
+  //AK PEM
   mg_send(c, &rpl->ak_size, sizeof(long));
   mg_send(c, rpl->ak_pem, rpl->ak_size);
 
  // printf("AK PEM file recived: %ld\n", rpl->ak_size);
   //TODO IMA
+  //mg_send(c, &rpl->ima_log_size, sizeof(long));
+  //bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
+  //printf("AK PEM file recived: %d\n", res);
   return 0;
 }
 

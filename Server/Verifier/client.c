@@ -11,8 +11,11 @@ static struct c_res_s {
 } c_res;
 
 static bool Continue = true;
+static bool end_of_reading_data = false;
 static bool end = false;
-//dati statici ima log from to
+static char* tpm_buff = NULL;
+static int last_rcv = -1;
+static Ex_challenge_reply rpl;
 //int challenge_create(struct mg_connection *c);
 int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
 
@@ -31,9 +34,8 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
   } else if (ev == MG_EV_READ) {
     printf("Client received data\n");
     int n = 0;
-    Ex_challenge_reply rpl;
-    // AK_PUB_BLOB ak_pub;
-    //read TPA challenge reply
+    
+
     struct mg_iobuf *r = &c->recv;
     if(load_challenge_reply(r, &rpl) < 0){
       //TODO ERRORI
@@ -108,6 +110,55 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   char pcrs[10] = "sha256:all";
   if(r == NULL) return -1;
 
+  printf("Received %ld data from socket\n", r->len);
+  
+  while(r->len > 0) {
+    switch (last_rcv)
+    {
+    case 0: 
+      //Signature size
+      memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
+      mg_iobuf_del(r,0,sizeof(UINT16));
+      last_rcv = 1;
+    break;
+    case 1:
+      //Signature
+      rpl->sig = malloc(rpl->sig_size);
+      if(rpl->sig == NULL) return -1;
+      memcpy(rpl->sig, r->buf, rpl->sig_size);
+      mg_iobuf_del(r,0, rpl->sig_size);
+      last_rcv = 2;
+    break;
+    case 2:
+      //Nonce
+      memcpy(&rpl->nonce_blob, r->buf, sizeof(Nonce));
+      mg_iobuf_del(r,0, sizeof(Nonce));
+      last_rcv = 3;
+    break;
+    case 3:
+
+      last_rcv = 4;
+    break;
+    case 4:
+
+      last_rcv = 5;
+      break;
+    case 5:
+
+      last_rcv = 6;
+    break;
+    default:
+      break;
+    }
+
+  }
+
+  printf("NONCE Received:");
+  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
+    printf("%02X", rpl->nonce_blob.buffer[i]);
+  printf("\n");
+
+ /*  
   //Signature size
   memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
   mg_iobuf_del(r,0,sizeof(UINT16));
@@ -129,7 +180,9 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
     printf("%02X", rpl->nonce_blob.buffer[i]);
   printf("\n");
 
-  //pcrs
+  //PCRs
+  //This could be huge over the socket size so may need a tmp buffer 
+  if (r->len >= sizeof(tpm2_pcrs))
   memcpy(&rpl->pcrs, r->buf, sizeof(tpm2_pcrs));
   mg_iobuf_del(r,0, sizeof(tpm2_pcrs));
   //Only to print pcr to quote 
@@ -160,7 +213,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   mg_iobuf_del(r,0, rpl->ak_size);
   printf("AK PEM file recived:\n");
   PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
-  printf("\n");
+  printf("\n"); */
 
   return 0;
 }

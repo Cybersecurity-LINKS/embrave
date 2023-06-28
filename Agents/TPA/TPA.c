@@ -27,11 +27,18 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   int ret;
   snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
+  //Set NULL pointers for safety
+  rpl->ak_pem = NULL;
+  rpl->ima_log = NULL;
+  rpl->sig = NULL;
+  rpl->quoted = NULL;
+
   tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     printf("Could not initialize tcti context\n");
     return -1;
   }
+
   tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
   if (tss_r != TSS2_RC_SUCCESS) {
     printf("Could not initialize esys context\n");
@@ -41,10 +48,12 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   
   ret = create_quote(chl, rpl, esys_context);
   if(ret != 0) goto end;
-  //load AK pem
+
+  //Load AK pem
   ret = load_ak(rpl);
   if(ret != 0) goto end;
-  //load IMA log
+
+  //Load IMA log
   //Real path
   //ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);
   //dev path
@@ -129,11 +138,11 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
 
   printf("%ld\n", rpl->ima_log_size);
   rpl->ima_log = malloc(rpl->ima_log_size +1);
-  rpl->ima_log[rpl->ima_log_size] = '\n';
+  //rpl->ima_log[rpl->ima_log_size] = '\n';
 
   fread(rpl->ima_log, rpl->ima_log_size, 1, fp);
 
-  printf("%s\n", rpl->ima_log);
+  
   fclose(fp);
   return 0;
 }
