@@ -11,13 +11,16 @@ static struct c_res_s {
 } c_res;
 
 static bool Continue = true;
-static bool end_of_reading_data = false;
+static size_t last_read = 0;
+static size_t to_read = 0;
 static bool end = false;
-static char* tpm_buff = NULL;
-static int last_rcv = -1;
+static char* temp_buff = NULL;
+static int last_rcv = 0;
 static Ex_challenge_reply rpl;
 //int challenge_create(struct mg_connection *c);
 int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
+int try_read(struct mg_iobuf *r, size_t size, void * dst);
+
 
 static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   int *i = &((struct c_res_s *) fn_data)->i;
@@ -35,12 +38,13 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     printf("Client received data\n");
     int n = 0;
     
-
     struct mg_iobuf *r = &c->recv;
-    if(load_challenge_reply(r, &rpl) < 0){
+    n = load_challenge_reply(r, &rpl);
+    if(n < 0){
       //TODO ERRORI
-    }
-
+    } //waitng for more data from TPA
+    else if(n == 1) return;
+  
     if(RA_explicit_challenge_verify(&rpl) < 0){
       
       //TODO ERRORI
@@ -108,44 +112,74 @@ int main(void) {
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 {
   char pcrs[10] = "sha256:all";
+  int ret;
   if(r == NULL) return -1;
 
   printf("Received %ld data from socket\n", r->len);
   
   while(r->len > 0) {
+    printf("buffer len %ld case %d\n", r->len, last_rcv);
     switch (last_rcv)
     {
     case 0: 
       //Signature size
-      memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
-      mg_iobuf_del(r,0,sizeof(UINT16));
-      last_rcv = 1;
-    break;
-    case 1:
+      try_read(r, sizeof(UINT16),  &rpl->sig_size);
       //Signature
       rpl->sig = malloc(rpl->sig_size);
       if(rpl->sig == NULL) return -1;
-      memcpy(rpl->sig, r->buf, rpl->sig_size);
-      mg_iobuf_del(r,0, rpl->sig_size);
-      last_rcv = 2;
+      ret = try_read(r, rpl->sig_size,  rpl->sig);
+      if(ret == 0) last_rcv = 1;
+      else return 1;
+    break;
+    case 1:
+      //Nonce
+      ret = try_read(r, sizeof(Nonce), &rpl->nonce_blob);
+      if(ret == 0) last_rcv = 2;
+      else return 1;
     break;
     case 2:
-      //Nonce
-      memcpy(&rpl->nonce_blob, r->buf, sizeof(Nonce));
-      mg_iobuf_del(r,0, sizeof(Nonce));
-      last_rcv = 3;
+      //Quoted data size
+      if(rpl->quoted == NULL) rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
+      //if(rpl->quoted == NULL) return -1;
+      ret = try_read(r, sizeof(UINT16), &rpl->quoted->size);
+      if(ret == 0) last_rcv = 3;
+      else return 1;
     break;
     case 3:
-
-      last_rcv = 4;
+      //Quoted data
+      ret = try_read(r, rpl->quoted->size, &rpl->quoted->attestationData);
+      if(ret == 0) last_rcv = 4;
+      else return 1;
     break;
     case 4:
-
-      last_rcv = 5;
-      break;
+      //PCRs
+      ret = try_read(r, sizeof(tpm2_pcrs), &rpl->pcrs);  
+      if(ret == 0) last_rcv = 5;
+      else return 1;
+    break;
     case 5:
-
-      last_rcv = 6;
+      //Ak PEM size
+      ret = try_read(r, sizeof(long), &rpl->ak_size);
+      if(ret == 0) last_rcv = 6;
+      else return 1;
+    break;
+    case 6:
+      //Ak PEM
+      if(rpl->ak_pem == NULL) rpl->ak_pem = malloc(rpl->ak_size);
+      ret = try_read(r, rpl->ak_size, rpl->ak_pem);
+      if(ret == 0) last_rcv = 7;
+      else return 1;
+    break;
+    case 7:
+      //IMA log size
+      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
+      if(ret == 0) last_rcv = 8;
+      else return 1;
+    break;
+    case 8:
+      if(rpl->ima_log == NULL) rpl->ima_log = malloc(rpl->ima_log_size);
+      ret = try_read(r, rpl->ima_log_size, rpl->ima_log);
+      if(ret != 0) return 1;
     break;
     default:
       break;
@@ -153,39 +187,14 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 
   }
 
+  last_rcv = 0;
+
+  //Print received data
   printf("NONCE Received:");
   for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
     printf("%02X", rpl->nonce_blob.buffer[i]);
   printf("\n");
 
- /*  
-  //Signature size
-  memcpy(&rpl->sig_size, r->buf, sizeof(UINT16));
-  mg_iobuf_del(r,0,sizeof(UINT16));
-  //Signature
-  rpl->sig = malloc(rpl->sig_size);
-  if(rpl->sig == NULL) return -1;
-  memcpy(rpl->sig, r->buf, rpl->sig_size);
-  mg_iobuf_del(r,0, rpl->sig_size);
-  printf("Received signature size %d\n", rpl->sig_size);
-  print_signature(&rpl->sig_size, rpl->sig);
-
-  //Nonce
- // memcpy(&rpl->nonce_blob.size, r->buf, sizeof(uint16_t));
- // mg_iobuf_del(r,0, sizeof(uint16_t));
-  memcpy(&rpl->nonce_blob, r->buf, sizeof(Nonce));
-  mg_iobuf_del(r,0, sizeof(Nonce));
-  printf("NONCE Received:");
-  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
-    printf("%02X", rpl->nonce_blob.buffer[i]);
-  printf("\n");
-
-  //PCRs
-  //This could be huge over the socket size so may need a tmp buffer 
-  if (r->len >= sizeof(tpm2_pcrs))
-  memcpy(&rpl->pcrs, r->buf, sizeof(tpm2_pcrs));
-  mg_iobuf_del(r,0, sizeof(tpm2_pcrs));
-  //Only to print pcr to quote 
   TPML_PCR_SELECTION pcr_select;
   if (!pcr_parse_selections(pcrs, &pcr_select)) {
     printf("pcr_parse_selections failed\n");
@@ -193,27 +202,66 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   }
   pcr_print_(&pcr_select, &(rpl->pcrs));
 
-  //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
-  rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
-  if(rpl->quoted == NULL) return -1;
-  memcpy(&rpl->quoted->size, r->buf, sizeof(UINT16));
-  mg_iobuf_del(r,0, sizeof(UINT16));
-  memcpy(&rpl->quoted->attestationData, r->buf, rpl->quoted->size);
-  mg_iobuf_del(r,0, rpl->quoted->size);
-  //printf("Received signature size %d\n", rpl->quoted->size);
-  print_quoted(rpl->quoted);
-//
-//
+  print_signature(&rpl->sig_size, rpl->sig);
+  
 
-  memcpy(&rpl->ak_size, r->buf, sizeof(long));
-  mg_iobuf_del(r,0, sizeof(long));
-  rpl->ak_pem = malloc(rpl->ak_size);
-  if(rpl->ak_pem == NULL) return -1;
-  memcpy(rpl->ak_pem, r->buf, rpl->ak_size);
-  mg_iobuf_del(r,0, rpl->ak_size);
+  print_quoted(rpl->quoted);
+
   printf("AK PEM file recived:\n");
   PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
-  printf("\n"); */
+  printf("\n");
 
+/*   printf("IMA log recived:\n");
+  rpl->ima_log[rpl->ima_log_size] = '\n';
+  printf("%s\n", rpl->ima_log); */
+  
+  return 0;
+}
+
+  /* Try reading data from the received data buffer. 
+  If the buffer does not contain all of it, it saves the data in
+  a temporary buffer and on the next read cycle reads the remaining 
+  0 full read 1 remaining data to wait -1 error*/
+int try_read(struct mg_iobuf *r, size_t size, void * dst)
+{
+  printf("size to read %ld, to_read %ld last read %ld r->len %ld\n",size, to_read, last_read, r->len);
+  if(to_read == 0){
+    if(r->len >= size){
+        //no segmentation
+        memcpy(dst, r->buf, size);
+        mg_iobuf_del(r,0, size);
+        return 0;
+    }
+    else{
+      //alloc the buffer if needed
+      if(temp_buff == NULL){
+        temp_buff = malloc(size);
+      }
+      //read the available data and save in the buffer
+      to_read = (size - r->len);
+      last_read = r->len;
+      memcpy(temp_buff, r->buf, r->len);
+      mg_iobuf_del(r,0, r->len);
+      return 1;
+    }
+  }
+  //in the buffere there is the remaining data
+  if(to_read <= r->len){
+    memcpy(dst, temp_buff, last_read);
+    memcpy(dst + last_read,  r->buf, to_read);
+    mg_iobuf_del(r,0, to_read);
+    to_read = 0;
+    last_read = 0;
+    free(temp_buff);
+    temp_buff = NULL;
+    return 0;
+  } else{
+    memcpy(temp_buff + last_read, r->buf, r->len);
+    to_read = (to_read - r->len);
+    last_read = last_read + r->len;
+    mg_iobuf_del(r,0, r->len);
+    return 1;
+  }
+  
   return 0;
 }

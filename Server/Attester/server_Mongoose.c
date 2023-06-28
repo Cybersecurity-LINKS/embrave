@@ -103,22 +103,22 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //Nonce
   mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
   
-  //Pcr
-  mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
-
   //Data quoted
   //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
   mg_send(c, &rpl->quoted->size, sizeof(UINT16));
   mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
-  
+
+  //Pcr
+  mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
+
   //AK PEM
   mg_send(c, &rpl->ak_size, sizeof(long));
   mg_send(c, rpl->ak_pem, rpl->ak_size);
 
  // printf("AK PEM file recived: %ld\n", rpl->ak_size);
   //TODO IMA
-  //mg_send(c, &rpl->ima_log_size, sizeof(long));
-  //bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
+  mg_send(c, &rpl->ima_log_size, sizeof(long));
+  bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
   //printf("AK PEM file recived: %d\n", res);
   return 0;
 }
