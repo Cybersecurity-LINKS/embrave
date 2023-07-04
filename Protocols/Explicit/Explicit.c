@@ -294,19 +294,20 @@ int read_template_data(Ex_challenge_reply *rply, size_t *total_read, uint8_t * h
 
     
     uint32_t pcr;
+    printf("%ld\n ", *total_read);
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
     printf("%d\n ", pcr);
     *total_read += sizeof(uint32_t);
-printf("%ld\n ", *total_read);
+    printf("%ld\n ", *total_read);
     memcpy(hash_ima, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
+    tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n ");
     
-   // tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    
-    total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
 
     uint32_t template_len;
     memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
-    total_read += sizeof(uint32_t);
+    *total_read += sizeof(uint32_t);
 
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     memcpy(event_name, rply ->ima_log + *total_read, template_len);
