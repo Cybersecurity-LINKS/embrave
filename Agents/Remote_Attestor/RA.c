@@ -11,7 +11,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
 {
   int ret;
   sqlite3 *db;
-  char * pem_file_name, * db_file_name;
+  char * pem_file_name, db_file_name[250];
   if(rpl == NULL) return -1;
 
   //FAIL TEST commented
@@ -29,9 +29,9 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
     printf("AK loading faled\n");
     return -1;
   }
-        printf("QUIIIIII \n");
+/*         printf("QUIIIIII \n");
         printf("QUIIIIII %s\n", db_file_name);
-    printf("QUIIIIII \n");
+    printf("QUIIIIII \n"); */
   //verify quote
   ret = verify_quote(rpl, pem_file_name);
   if (ret == -1){
@@ -87,6 +87,7 @@ char *load_ak_bind(char * db_file_name){
   FILE*fp;
   char *a = NULL;
   char *b = NULL;
+  //char *c = NULL;
   size_t sz, ret;
   fp = fopen("../../Agents/Remote_Attestor/DB/ak_bind.txt", "r");
   char *buff;
@@ -100,16 +101,19 @@ char *load_ak_bind(char * db_file_name){
     if(strcmp(buff, "tcp://localhost:8765") == 0){
       b = strtok(NULL, " ");
       if(b == NULL) return NULL;
-      db_file_name = malloc(strlen(b));
-      if(db_file_name == NULL) return NULL;
-      
-      strcpy(db_file_name, b);
-      printf("%s\n", db_file_name);
+     // db_file_name = malloc(strlen(b)+1);
+     // if(db_file_name == NULL) return NULL;
+      memcpy(db_file_name, b, strlen(b)+1);
+      //printf("%s\n", db_file_name);
+      //c = strtok(NULL, " ");
+     // printf("%s\n", db_file_name);
+     // printf("%s\n", c);
       //db_file_name = strtok(NULL, " ");
       return strtok(NULL, " ");
     }
       
-  }  
+  } 
+  
   free(a);
   return NULL;
 }
