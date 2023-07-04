@@ -54,7 +54,7 @@ void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 
 int verify_quote(Ex_challenge_reply *rply, char* pem_file_name);
-int verify_ima_log(Ex_challenge_reply *rply);
+int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db);
 // soft binding
 //sofbinding verify
 

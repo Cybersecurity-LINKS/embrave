@@ -290,56 +290,40 @@ err:
     return -1;
 }
 
-int verify_ima_log(Ex_challenge_reply *rply)
+int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db)
 {
-    sqlite3 *db;
+    
     sqlite3_stmt *res;
-   // char *sql = "SELECT * FROM golden_values WHERE name = '/home/pi/linux/arch/sparc/include/asm/asm.h'";
-    char *sql = "SELECT count (name, hash) FROM golden_values ";
+    char *sql = "SELECT COUNT(*) FROM golden_values WHERE name = 'ggg/home/pi/linux/arch/sparc/include/asm/asm.h' and hash = 'e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab'";
+    //char *sql = "SELECT COUNT(*) FROM golden_values ";
     char *err_msg = 0;
     
     //int rc = sqlite3_open16("TEEEEEST.db", &db);
-    //Open the goldenvalues DB
-    int rc = sqlite3_open_v2("file:../../Protocols/Explicit/goldenvalues.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
+
+    if (sqlite3_exec(db, sql, callback, 0, &err_msg) != SQLITE_OK ) {
+        printf("Failed to select data. SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
         sqlite3_close(db);
         return -1;
     }
 
-    
-    
-    if (sqlite3_exec(db, sql, callback, 0, &err_msg) != SQLITE_OK ) {
-        
-        fprintf(stderr, "Failed to select data\n");
-        fprintf(stderr, "SQL error: %s\n", err_msg);
+    printf("QUIIIIIIi sql\n");
 
-        sqlite3_free(err_msg);
-        sqlite3_close(db);
-        
-        return 1;
-    }
-
-    printf("QUIIIIIIi\n");
-
-
-
-    sqlite3_close(db);
     return 0;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
     
-    NotUsed = 0;
-    
-    for (int i = 0; i < argc; i++) {
+    //NotUsed = 0;
+
+/*     for (int i = 0; i < argc; i++) {
 
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    }
-    
-    printf("\n");
-    
-    return 0;
+    } */
+    if(argv[0] > 0)
+        return 0;
+    else
+        return 1;
 }
 
 
