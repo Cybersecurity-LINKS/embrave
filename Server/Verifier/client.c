@@ -52,8 +52,6 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
    // MG_INFO(("CLIENT got AK PUB PEM of size %ld\n: %s", ak_pub.size, ak_pub.ak_pem));
    // TO_SEND *TpaData = (TO_SEND*) r->buf;
    // n = verify(TpaData, &data, &ak_pub);
-
-    //TODO FREE AK
     r->len = 0;
     //c->is_closing = 1;
     end = true;
@@ -158,25 +156,12 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
       else return 1;
     break;
     case 5:
-      //Ak PEM size
-      ret = try_read(r, sizeof(long), &rpl->ak_size);
+      //IMA log size
+      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
       if(ret == 0) last_rcv = 6;
       else return 1;
     break;
     case 6:
-      //Ak PEM
-      if(rpl->ak_pem == NULL) rpl->ak_pem = malloc(rpl->ak_size);
-      ret = try_read(r, rpl->ak_size, rpl->ak_pem);
-      if(ret == 0) last_rcv = 7;
-      else return 1;
-    break;
-    case 7:
-      //IMA log size
-      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
-      if(ret == 0) last_rcv = 8;
-      else return 1;
-    break;
-    case 8:
       if(rpl->ima_log == NULL) rpl->ima_log = malloc(rpl->ima_log_size);
       ret = try_read(r, rpl->ima_log_size, rpl->ima_log);
       if(ret != 0) return 1;
@@ -207,13 +192,9 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 
   print_quoted(rpl->quoted);
 
-  printf("AK PEM file recived:\n");
-  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
-  printf("\n");
-
-/*   printf("IMA log recived:\n");
+/*    printf("IMA log recived:\n");
   rpl->ima_log[rpl->ima_log_size] = '\n';
-  printf("%s\n", rpl->ima_log); */
+  printf("%s\n", rpl->ima_log);  */
   
   return 0;
 }

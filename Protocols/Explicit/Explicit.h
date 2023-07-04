@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sqlite3.h>
 
 #include "../common.h"
 #include "../../tpm2-tools/lib/tpm2_openssl.h"
@@ -39,8 +40,6 @@ typedef struct {
     tpm2_pcrs pcrs;
     //char *pcr_selections;
     TPM2B_ATTEST *quoted;
-    unsigned char * ak_pem;
-    long  ak_size;
     //IMA
     unsigned char * ima_log;
     long ima_log_size;
@@ -54,7 +53,8 @@ BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 
-int verify_quote(Ex_challenge_reply *rply);
+int verify_quote(Ex_challenge_reply *rply, char* pem_file_name);
+int verify_ima_log(Ex_challenge_reply *rply);
 // soft binding
 //sofbinding verify
 

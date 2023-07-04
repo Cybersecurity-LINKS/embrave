@@ -24,7 +24,7 @@ struct {
 //int get_quote_parameters(ESYS_CONTEXT *ectx, Ex_challenge_reply *rply);
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
-
+int callback(void *NotUsed, int argc, char **argv, char **azColName);
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -177,7 +177,7 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
     pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
-int verify_quote(Ex_challenge_reply *rply)
+int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -186,16 +186,13 @@ int verify_quote(Ex_challenge_reply *rply)
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     char pcrs_select[10] = "sha256:all";
-    if( rply == NULL || rply->ak_pem == NULL) return -1;
+    if( rply == NULL || pem_file_name == NULL) return -1;
     
-    bio = BIO_new(BIO_s_mem());
+    bio = BIO_new_file(pem_file_name, "rb");
     if (!bio) {
-        printf("Failed to allocate memory bio\n");
+        printf("Failed to open AK public key file '%s': %s\n", pem_file_name, ERR_error_string(ERR_get_error(), NULL));
         return -1;
     }
-
-    //Create BIO from the AK PEM buffer
-    PEM_write_bio(bio, "PUBLIC KEY", "", rply->ak_pem, rply->ak_size);
 
     //Load AK pub key from BIO
     pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
@@ -293,6 +290,59 @@ err:
     return -1;
 }
 
+int verify_ima_log(Ex_challenge_reply *rply)
+{
+    sqlite3 *db;
+    sqlite3_stmt *res;
+   // char *sql = "SELECT * FROM golden_values WHERE name = '/home/pi/linux/arch/sparc/include/asm/asm.h'";
+    char *sql = "SELECT count (name, hash) FROM golden_values ";
+    char *err_msg = 0;
+    
+    //int rc = sqlite3_open16("TEEEEEST.db", &db);
+    //Open the goldenvalues DB
+    int rc = sqlite3_open_v2("file:../../Protocols/Explicit/goldenvalues.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+    if ( rc != SQLITE_OK) {
+        printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    
+    
+    if (sqlite3_exec(db, sql, callback, 0, &err_msg) != SQLITE_OK ) {
+        
+        fprintf(stderr, "Failed to select data\n");
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+
+        sqlite3_free(err_msg);
+        sqlite3_close(db);
+        
+        return 1;
+    }
+
+    printf("QUIIIIIIi\n");
+
+
+
+    sqlite3_close(db);
+    return 0;
+}
+
+int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+    
+    NotUsed = 0;
+    
+    for (int i = 0; i < argc; i++) {
+
+        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+    
+    printf("\n");
+    
+    return 0;
+}
+
+
 /* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
     //get quoted data
     rply->quoted = get_quoted();
@@ -337,9 +387,6 @@ void free_data (Ex_challenge_reply *rply){
 
     if(rply->sig != NULL)
         free(rply->sig);
-
-    if(rply->ak_pem != NULL)
-        OPENSSL_free(rply->ak_pem);
 
     if(rply->ima_log != NULL)
         free(rply->ima_log);

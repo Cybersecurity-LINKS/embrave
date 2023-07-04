@@ -21,7 +21,7 @@ SRCS +=  ../../tpm2-tools/tools/tpm2_tool.c $(wildcard ../../tpm2-tools/lib/*.c)
 # define any library to link into executable:
 #  if I want to link libraries (libx.so or libx.a) I use the -llibname option
 FLAGS =\
--ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto 
+-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -lsqlite3
 
 LDFLAGS+= -I../../tpm2-tools/tools/ -I../../tpm2-tools/lib/\
 

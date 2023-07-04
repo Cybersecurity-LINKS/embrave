@@ -48,7 +48,7 @@ def add_row(conn, row):
 
 
 def main():
-    database = r"../Protocols/goldenvalues.db"
+    database = r"./Protocols/Explicit/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS golden_values (
                                         name text NOT NULL,
                                         hash text NOT NULL,
@@ -56,20 +56,20 @@ def main():
                                     ); """
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
-    cur = conn.cursor()
-    cur.execute(''' ALTER TABLE golden_values ORDER BY name asc; ''')
-    conn.commit()
 
-    conn.close
-
-"""     file1 = open('whitelist', 'r')
+    file1 = open('./Whitelist_generator/whitelist', 'r')
     Lines = file1.readlines()
     for line in Lines:
         x = line.split()
         row_1 = (x[2], x[0])
         add_row(conn, row_1)
         print(row_1)
- """
+    conn.close
+"""     cur = conn.cursor()
+    cur.execute(''' CREATE INDEX index_name ON golden_values (name, hash); ''')
+    conn.commit() """
+    
+
 """     cur = conn.cursor()
     cur.execute(''' ALTER TABLE golden_values ORDER BY name asc; ''')
     conn.commit()

@@ -2,7 +2,7 @@
 
 
 static long ima_byte_sent = 0;
-int load_ak(Ex_challenge_reply *rpl);
+
 int load_ima_log(const char *path, Ex_challenge_reply *rpl);
 
 int TPA_init(void) {
@@ -28,7 +28,6 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
   //Set NULL pointers for safety
-  rpl->ak_pem = NULL;
   rpl->ima_log = NULL;
   rpl->sig = NULL;
   rpl->quoted = NULL;
@@ -50,8 +49,8 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   if(ret != 0) goto end;
 
   //Load AK pem
-  ret = load_ak(rpl);
-  if(ret != 0) goto end;
+/*   ret = load_ak(rpl);
+  if(ret != 0) goto end; */
 
   //Load IMA log
   //Real path
@@ -76,26 +75,6 @@ void TPA_free(Ex_challenge_reply *rpl)
   free_data (rpl);
 }
 
-int load_ak(Ex_challenge_reply *rpl){
-  char * name, *header;
-  FILE *ak_pub = fopen("/etc/tc/ak.pub.pem", "r");
-  if(ak_pub == NULL){
-    printf("Could not open AK PEM file\n");
-    return false;
-  }
-
-  if (PEM_read(ak_pub, &name, &header, &rpl->ak_pem, &rpl->ak_size)  != 1) {
-    printf("Failed to open AK public key output file \n");
-    return -1;
-  }
-  printf("AK PEM file sent:\n");
-  PEM_write(stdout, "PUBLIC KEY", "",rpl->ak_pem ,rpl->ak_size);
-  printf("\n");
-
-  OPENSSL_free(name);
-  OPENSSL_free(header);
-  return 0;
-}
 
 
 /* 

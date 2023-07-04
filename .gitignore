@@ -52,3 +52,6 @@ Mkfile.old
 dkms.conf
 Server/Attester/TPA
 Server/Verifier/client
+Agents/Remote_Attestor/AKs/ak.pub.pem
+Protocols/Explicit/goldenvalues.db
+Protocols/Explicit/TEEEEEST.db

@@ -111,11 +111,6 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //Pcr
   mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
 
-  //AK PEM
-  mg_send(c, &rpl->ak_size, sizeof(long));
-  mg_send(c, rpl->ak_pem, rpl->ak_size);
-
- // printf("AK PEM file recived: %ld\n", rpl->ak_size);
   //TODO IMA
   mg_send(c, &rpl->ima_log_size, sizeof(long));
   bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
