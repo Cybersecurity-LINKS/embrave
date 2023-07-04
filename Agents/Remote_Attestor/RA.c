@@ -1,5 +1,7 @@
 #include "RA.h"
 
+char *load_ak_bind(void);
+
 int RA_explicit_challenge_create(Ex_challenge *chl)
 {
   return nonce_create(&(chl->nonce_blob));
@@ -8,7 +10,7 @@ int RA_explicit_challenge_create(Ex_challenge *chl)
 int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
 {
   int ret;
-
+  char * pem_file_name;
   if(rpl == NULL) return -1;
 
   //FAIL TEST commented
@@ -26,11 +28,16 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
     printf("Untrusted TPA\n");
     return -1;
   }  */
-
-  //verify pcr value
-  
+  //TODO better version
+  //load ak bind
+  pem_file_name = load_ak_bind();
+  if(pem_file_name == NULL){
+    printf("AK loading faled\n");
+    return -1;
+  }
+  printf("%s\n",pem_file_name);
   //verify quote
-  ret = verify_quote(rpl, "../../Agents/Remote_Attestor/AKs/ak.pub.pem");
+  ret = verify_quote(rpl, pem_file_name);
   if (ret == -1){
     printf("Untrusted TPA\n");
     goto end;
@@ -49,7 +56,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
 
 
 end:
-  //free(ak_pem);
+  //free(pem_file_name);
   if (ret == 0)
     return 0;
   else
@@ -68,6 +75,26 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
   //verify IMA log
   
   return 0;
+}
+
+char *load_ak_bind(void){
+  FILE*fp;
+  char *a = NULL;
+  size_t sz, ret;
+  fp = fopen("../../Agents/Remote_Attestor/DB/ak_bind.txt", "r");
+  char *buff;
+
+  if(fp == NULL) return NULL;
+  //The getline function uses the realloc function 
+  //to automatically increase the memory block as required
+  while(getline(&a, &sz, fp) != -1){
+    buff = strtok(a, " ");
+    //TODO dinamic ip 
+    if(strcmp(buff, "tcp://localhost:8765") == 0)
+      return strtok(NULL, " ");
+  }  
+  free(a);
+  return NULL;
 }
 
 void RA_free(Ex_challenge_reply *rpl){

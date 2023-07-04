@@ -5,6 +5,7 @@
 #include <stdint.h>    /* for uint32_t */
 #include <stdint.h> 
 #include <stdio.h>
+#include <string.h>
 
 #include "../../Protocols/Explicit/Explicit.h"
 
