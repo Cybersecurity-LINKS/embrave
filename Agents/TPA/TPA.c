@@ -57,7 +57,7 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   //ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);
   //dev path
   printf("WARNING: IMA LOG DEV PATH\n");
-  ret = load_ima_log("/home/ale/Scrivania/TPA/ascii_runtime_measurements", rpl);
+  ret = load_ima_log("/home/ale/Scrivania/TPA/binary_runtime_measurements", rpl);
 end: 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);

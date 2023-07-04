@@ -290,24 +290,95 @@ err:
     return -1;
 }
 
+int read_template_data(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, uint8_t * hash_name, char * name){
+
+    
+    uint32_t pcr;
+    memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
+    printf("%d\n ", pcr);
+    *total_read += sizeof(uint32_t);
+printf("%ld\n ", *total_read);
+    memcpy(hash_ima, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    
+   // tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    
+    total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
+
+    uint32_t template_len;
+    memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+    total_read += sizeof(uint32_t);
+
+    char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
+    memcpy(event_name, rply ->ima_log + *total_read, template_len);
+    printf("%s\n", event_name);
+    total_read += template_len;
+}
+
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db)
 {
     
     sqlite3_stmt *res;
-    char *sql = "SELECT COUNT(*) FROM golden_values WHERE name = 'ggg/home/pi/linux/arch/sparc/include/asm/asm.h' and hash = 'e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab'";
+    int idx, idx2;
+    char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
+    uint8_t hash_name[SHA256_DIGEST_LENGTH];
+    uint8_t hash_ima[SHA_DIGEST_LENGTH];
+    char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     //char *sql = "SELECT COUNT(*) FROM golden_values ";
     char *err_msg = 0;
-    
-    //int rc = sqlite3_open16("TEEEEEST.db", &db);
+    size_t total_read = 0;
+    uint32_t template_len;
 
-    if (sqlite3_exec(db, sql, callback, 0, &err_msg) != SQLITE_OK ) {
-        printf("Failed to select data. SQL error: %s\n", err_msg);
-        sqlite3_free(err_msg);
-        sqlite3_close(db);
+    //verify IMA template 
+    //TRY ima_ng: PCR SHA1 TEMPLATE LEN TEMPLATE
+    total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(u_int8_t);
+    memcpy(&template_len, rply ->ima_log + total_read, sizeof(uint32_t));
+    total_read += sizeof(uint32_t);
+    memcpy(event_name, rply ->ima_log + total_read, template_len);
+    total_read = 0;
+    printf("%s\n", event_name);
+    //int ret = strcmp(event_name, "ima-ng") ;
+    //printf("%d\n", ret);
+    if(strcmp(event_name, "ima-ng") != 0){
+        //other template here
+        printf("Unknown IMA template\n");
         return -1;
     }
 
-    printf("QUIIIIIIi sql\n");
+    read_template_data(rply, &total_read,hash_ima, hash_name, event_name);
+
+
+    int  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        idx = sqlite3_bind_parameter_index(res, "@name");
+        char* value = "/home/pi/linux/arch/sparc/include/asm/asm.h";
+        sqlite3_bind_text(res, idx, value, strlen(value), NULL);
+        idx2 = sqlite3_bind_parameter_index(res, "@hash");
+        char* value2 = "e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab";
+        sqlite3_bind_text(res, idx2, value2, strlen(value2), NULL);
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+
+    //printf("QUIIIIIIi 111\n");
+
+    int step = sqlite3_step(res);
+   // printf("QUIIIIIIi 111\n");
+
+    if (step == SQLITE_ROW) {
+        
+        printf("%s: ", sqlite3_column_text(res, 0));
+        printf("%s\n", sqlite3_column_text(res, 1));
+        
+    } 
+
+   //printf("QUIIIIIIi 2222\n");
+
+    sqlite3_finalize(res);
+
+
+
+
+  //  printf("QUIIIIIIi sql\n");
 
     return 0;
 }
