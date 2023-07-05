@@ -25,6 +25,8 @@ struct {
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name);
+
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -290,43 +292,52 @@ err:
     return -1;
 }
 
+void printf_hash(char *buff, const BYTE *data, size_t len){
 
+    size_t i;
+    for (i = 0; i < len; i++) {
+        sprintf(buff+i, "%02x", data[i]);
+    }
+    buff[i] = '\0';
+
+}
 //read one row of the IMA Log
-int read_template_data(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, uint8_t * hash_name, char * name){
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name){
 
     
     uint32_t pcr;
+    uint32_t field_len;
+	uint32_t field_path_len;
+	uint8_t alg_field[8];
+    uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
+
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
-    printf("%d ", pcr);
     *total_read += sizeof(uint32_t);
+    //printf("%d ", pcr);
     //printf("%ld\n ", *total_read);
     
     memcpy(hash_ima, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
-    tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n ");
+    //tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+   // printf("\n ");
     
 
     uint32_t template_name_len;
     memcpy(&template_name_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
-    printf("%d ", template_name_len);
+    //printf("%d ", template_name_len);
 
     char template_type[TCG_EVENT_NAME_LEN_MAX + 1];
     memcpy(template_type, rply ->ima_log + *total_read, template_name_len);
-    printf("%s\n", template_type);
     *total_read += template_name_len * sizeof(char);
+    //printf("%s\n", template_type);
+    
 
     uint32_t template_len;
     memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
     //printf("%d ", template_len);
 
-    uint32_t field_len;
-	uint32_t field_path_len;
-	uint8_t alg_field[8]; /* sha256:\0 */
-	//u_int8_t alg_sha1_field[6]; /* sha1:\0 */
-	//u_int8_t *path_field;
 
     memcpy(&field_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
@@ -334,43 +345,80 @@ int read_template_data(Ex_challenge_reply *rply, size_t *total_read, uint8_t * h
 
     memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
     *total_read += 8 * sizeof(uint8_t);
-    printf("%s", alg_field);
+    //printf("%s", alg_field);
 
-    memcpy(hash_name, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-    tpm2_util_hexdump(hash_name, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\n");
+    printf_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\nbuff %s", hash_name);
 
     memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
 
-    //maalloc
+    //
+    *path_name = malloc(sizeof(char) * field_path_len);
+    memcpy(*path_name, rply ->ima_log + *total_read, sizeof(char) * field_path_len);
+    *total_read += sizeof(char) * field_path_len;
+    //printf(" %s\n", *path_name);
+   
 
+    return 0;
+}
 
+int check_goldenvalue(sqlite3 *db, uint8_t * hash_name, char * path_name){
+    sqlite3_stmt *res;
+    char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
+    //char *sql = "SELECT * FROM golden_values WHERE name = @name ";
+    int idx, idx2;
+    char *err_msg = 0;
+
+    int  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        idx = sqlite3_bind_parameter_index(res, "@name");
+        //char* value = "/home/pi/linux/arch/sparc/include/asm/asm.h";
+        sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
+        //printf("QUIIIIIIi \n");
+        idx2 = sqlite3_bind_parameter_index(res, "@hash");
+        //char* value2 = "e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab";
+        sqlite3_bind_text(res, idx2, hash_name, SHA256_DIGEST_LENGTH * sizeof(char), NULL);
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+
+    int step = sqlite3_step(res);
+    if (step == SQLITE_ROW) {
+        
+        printf("%s: ", sqlite3_column_text(res, 0));
+        printf("%s\n", sqlite3_column_text(res, 1));
+        
+    } 
+
+    sqlite3_finalize(res);
 
 }
 
-int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db)
-{
+int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
-    sqlite3_stmt *res;
-    int idx, idx2;
-    char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
-    uint8_t hash_name[SHA256_DIGEST_LENGTH];
+    
+    
+    char hash_name[SHA256_DIGEST_LENGTH];
     uint8_t hash_ima[SHA_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
-    //char *sql = "SELECT COUNT(*) FROM golden_values ";
-    char *err_msg = 0;
+    char *path_name = NULL;
+    
     size_t total_read = 0;
     uint32_t template_len;
 
-    //verify IMA template 
-    //TRY ima_ng: PCR SHA1 TEMPLATE LEN TEMPLATE
+    //verify the correct IMA log template 
+    //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
     total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(u_int8_t);
     memcpy(&template_len, rply ->ima_log + total_read, sizeof(uint32_t));
     total_read += sizeof(uint32_t);
     memcpy(event_name, rply ->ima_log + total_read, template_len);
     total_read = 0;
-    printf("%s\n", event_name);
+    
     //int ret = strcmp(event_name, "ima-ng") ;
     //printf("%d\n", ret);
     if(strcmp(event_name, "ima-ng") != 0){
@@ -379,36 +427,38 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db)
         return -1;
     }
 
-    read_template_data(rply, &total_read,hash_ima, hash_name, event_name);
+    //Read the first IMA log line  
+    //TODO check is is incremental ima log
+    read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
+    //TODO check the boot aggregate
 
 
-    int  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        idx = sqlite3_bind_parameter_index(res, "@name");
-        char* value = "/home/pi/linux/arch/sparc/include/asm/asm.h";
-        sqlite3_bind_text(res, idx, value, strlen(value), NULL);
-        idx2 = sqlite3_bind_parameter_index(res, "@hash");
-        char* value2 = "e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab";
-        sqlite3_bind_text(res, idx2, value2, strlen(value2), NULL);
-    } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    while(rply->ima_log_size != total_read){
+        read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
+        
+        //1 verify hash => golden value
+        check_goldenvalue(db, hash_name,path_name);
+
+
+        //Compute PCR10
+        
+        
+        
+        free(path_name);
     }
+   // printf("%d\n", total_read);
+    
+
+
+
+
+    
+
+
 
     //printf("QUIIIIIIi 111\n");
 
-    int step = sqlite3_step(res);
-   // printf("QUIIIIIIi 111\n");
 
-    if (step == SQLITE_ROW) {
-        
-        printf("%s: ", sqlite3_column_text(res, 0));
-        printf("%s\n", sqlite3_column_text(res, 1));
-        
-    } 
-
-   //printf("QUIIIIIIi 2222\n");
-
-    sqlite3_finalize(res);
 
 
 
