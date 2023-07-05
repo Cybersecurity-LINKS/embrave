@@ -290,29 +290,63 @@ err:
     return -1;
 }
 
+
+//read one row of the IMA Log
 int read_template_data(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, uint8_t * hash_name, char * name){
 
     
     uint32_t pcr;
-    printf("%ld\n ", *total_read);
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
-    printf("%d\n ", pcr);
+    printf("%d ", pcr);
     *total_read += sizeof(uint32_t);
-    printf("%ld\n ", *total_read);
+    //printf("%ld\n ", *total_read);
+    
     memcpy(hash_ima, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
     tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     printf("\n ");
     
 
+    uint32_t template_name_len;
+    memcpy(&template_name_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+    *total_read += sizeof(uint32_t);
+    printf("%d ", template_name_len);
+
+    char template_type[TCG_EVENT_NAME_LEN_MAX + 1];
+    memcpy(template_type, rply ->ima_log + *total_read, template_name_len);
+    printf("%s\n", template_type);
+    *total_read += template_name_len * sizeof(char);
+
     uint32_t template_len;
     memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
+    //printf("%d ", template_len);
 
-    char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
-    memcpy(event_name, rply ->ima_log + *total_read, template_len);
-    printf("%s\n", event_name);
-    total_read += template_len;
+    uint32_t field_len;
+	uint32_t field_path_len;
+	uint8_t alg_field[8]; /* sha256:\0 */
+	//u_int8_t alg_sha1_field[6]; /* sha1:\0 */
+	//u_int8_t *path_field;
+
+    memcpy(&field_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+    *total_read += sizeof(uint32_t);
+    //printf("%d\n", field_len);
+
+    memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
+    *total_read += 8 * sizeof(uint8_t);
+    printf("%s", alg_field);
+
+    memcpy(hash_name, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
+    tpm2_util_hexdump(hash_name, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+
+    memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+    *total_read += sizeof(uint32_t);
+
+    //maalloc
+
+
+
 }
 
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db)
