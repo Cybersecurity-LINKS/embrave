@@ -292,13 +292,30 @@ err:
     return -1;
 }
 
-void printf_hash(char *buff, const BYTE *data, size_t len){
+
+//dest buff, input data, len of data
+void bin_2_hash(char *buff, BYTE *data, size_t len){
 
     size_t i;
     for (i = 0; i < len; i++) {
-        sprintf(buff+i, "%02x", data[i]);
+    /* "sprintf" converts each byte in the "buf" array into a 2 hex string
+     * characters appended with a null byte, for example 10 => "0A\0".
+     *
+     * This string would then be added to the output array starting from the
+     * position pointed at by "ptr". For example if "ptr" is pointing at the 0
+     * index then "0A\0" would be written as output[0] = '0', output[1] = 'A' and
+     * output[2] = '\0'.
+     *
+     * "sprintf" returns the number of chars in its output excluding the null
+     * byte, in our case this would be 2. So we move the "ptr" location two
+     * steps ahead so that the next hex string would be written at the new
+     * location, overriding the null byte from the previous hex string.
+     *
+     * We don't need to add a terminating null byte because it's been already 
+     * added for us from the last hex string. */  
+        buff += sprintf(buff, "%02x", data[i]);
     }
-    buff[i] = '\0';
+   // buff[i] = '\0';
 
 }
 //read one row of the IMA Log
@@ -349,10 +366,10 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * has
 
     memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-    tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
-    printf_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\nbuff %s", hash_name);
+    //tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+   // printf("\n");
+    bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    //printf("buff %s\n", hash_name);
 
     memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
@@ -367,22 +384,24 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * has
     return 0;
 }
 
-int check_goldenvalue(sqlite3 *db, uint8_t * hash_name, char * path_name){
+int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     sqlite3_stmt *res;
     char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
     //char *sql = "SELECT * FROM golden_values WHERE name = @name ";
     int idx, idx2;
     char *err_msg = 0;
 
+
+    //printf("%s\n", hash_name);
+    //convert the sql statament 
     int  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
+        //Set the parametrized input
         idx = sqlite3_bind_parameter_index(res, "@name");
-        //char* value = "/home/pi/linux/arch/sparc/include/asm/asm.h";
         sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
-        //printf("QUIIIIIIi \n");
+        
         idx2 = sqlite3_bind_parameter_index(res, "@hash");
-        //char* value2 = "e1a520a0aeae8130b165eb338274a8ac11ff78f8722f1d05d9d2994214d0f0ab";
-        sqlite3_bind_text(res, idx2, hash_name, SHA256_DIGEST_LENGTH * sizeof(char), NULL);
+        sqlite3_bind_text(res, idx2, hash_name, strlen(hash_name), NULL);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
@@ -403,7 +422,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
     
     
-    char hash_name[SHA256_DIGEST_LENGTH];
+    char hash_name[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t hash_ima[SHA_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     char *path_name = NULL;
@@ -437,7 +456,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
         read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
         
         //1 verify hash => golden value
-        check_goldenvalue(db, hash_name,path_name);
+        check_goldenvalue(db, hash_name, path_name);
 
 
         //Compute PCR10
