@@ -387,9 +387,9 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * has
 int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     sqlite3_stmt *res;
     char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
-    //char *sql = "SELECT * FROM golden_values WHERE name = @name ";
     int idx, idx2;
     char *err_msg = 0;
+    int step;
 
 
     //printf("%s\n", hash_name);
@@ -406,16 +406,19 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
 
-    int step = sqlite3_step(res);
+    //Execute the sql query
+    step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
-        
-        printf("%s: ", sqlite3_column_text(res, 0));
-        printf("%s\n", sqlite3_column_text(res, 1));
+        //Golden value found, IMA row OK
+        //printf("%s: ", sqlite3_column_text(res, 0));
+        //printf("%s\n", sqlite3_column_text(res, 1));
+        sqlite3_finalize(res);
+        return 0;
         
     } 
-
+    //IMA row not found in golden values db
     sqlite3_finalize(res);
-
+    return -1;
 }
 
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
@@ -446,18 +449,18 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
         return -1;
     }
 
-    //Read the first IMA log line  
     //TODO check is is incremental ima log
-    read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
-    //TODO check the boot aggregate
-
 
     while(rply->ima_log_size != total_read){
+        //Read a row from IMA log
         read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
-        
-        //1 verify hash => golden value
-        check_goldenvalue(db, hash_name, path_name);
-
+    
+        //verify that (name,hash) present in in golden values db
+        if(check_goldenvalue(db, hash_name, path_name) != 0){
+            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, hash_name);
+            free(path_name);
+            return -1;
+        }
 
         //Compute PCR10
         
