@@ -25,7 +25,7 @@ struct {
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name);
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
 
 
 int nonce_create(Nonce *nonce_blob)
@@ -319,14 +319,14 @@ void bin_2_hash(char *buff, BYTE *data, size_t len){
 
 }
 //read one row of the IMA Log
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name){
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * hash_ima, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
 
     
     uint32_t pcr;
     uint32_t field_len;
 	uint32_t field_path_len;
 	uint8_t alg_field[8];
-    uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
+    //uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
 
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
@@ -421,6 +421,29 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     return -1;
 }
 
+
+int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *hash_ima, uint8_t *hash_name_byte){
+
+    //memcpy()
+    //SHA256
+    memcpy(sha256_concatenated, pcr10_sha256, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(sha256_concatenated + SHA256_DIGEST_LENGTH *sizeof(uint8_t), hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    //SHA1
+    memcpy(sha1_concatenated, pcr10_sha1, SHA_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(sha1_concatenated + SHA_DIGEST_LENGTH *sizeof(uint8_t), hash_ima, SHA_DIGEST_LENGTH *sizeof(uint8_t));
+
+
+    char hash_ima_ascii[(SHA256_DIGEST_LENGTH * 2 + 1) * 2];
+    bin_2_hash(hash_ima_ascii, sha256_concatenated, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH * 2 ));
+    printf("Event sha: %s\n", hash_ima_ascii);
+
+    //digest
+
+    //swap pcr10
+
+    return 0;
+}
+
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
     
@@ -428,10 +451,16 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     char hash_name[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t hash_ima[SHA_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
+    uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
     
     size_t total_read = 0;
     uint32_t template_len;
+
+    uint8_t * pcr10_sha1 = NULL;
+    uint8_t * pcr10_sha256 = NULL;
+    uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
+    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
 
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
@@ -449,45 +478,57 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
         return -1;
     }
 
-    //TODO check is is incremental ima log
+    //TODO incremental ima log
+    //No incremental ima => PCR10s = 0x00
+    pcr10_sha1 = calloc(SHA_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
+    pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
+
+    sha256_concatenated[SHA256_DIGEST_LENGTH * 2] = '\0';
+    sha1_concatenated[SHA_DIGEST_LENGTH * 2] = '\0';
+    pcr10_sha256[SHA256_DIGEST_LENGTH] = '\0';
+    pcr10_sha1[SHA_DIGEST_LENGTH] = '\0';
+
+
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
-        read_ima_log_row(rply, &total_read,hash_ima, hash_name, &path_name);
+        read_ima_log_row(rply, &total_read, hash_ima, hash_name, &path_name, hash_name_byte);
     
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, hash_name, path_name) != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, hash_name);
-            free(path_name);
-            return -1;
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, hash_name);
+            //free(path_name);
+            //goto error;
         }
 
+       // char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
+       // bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+       // printf("Event sha1: %s\n", hash_ima_ascii);
         //Compute PCR10
+        if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, hash_ima,hash_name_byte) != 0){
+            printf("pcr10 digest error\n");
+            free(path_name);
+            goto error;
+        }
         
-        
-        
+
         free(path_name);
     }
    // printf("%d\n", total_read);
-    
+    //Check PCR10
 
 
-
-
-    
-
-
-
-    //printf("QUIIIIIIi 111\n");
-
-
-
-
-
-
-  //  printf("QUIIIIIIi sql\n");
-
+    free(pcr10_sha1);
+    free(pcr10_sha256);
+    free(sha1_concatenated);
+    free(sha256_concatenated);
     return 0;
+error:
+    free(pcr10_sha1);
+    free(pcr10_sha256);
+    free(sha1_concatenated);
+    free(sha256_concatenated);
+    return -1;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
