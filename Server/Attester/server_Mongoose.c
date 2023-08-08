@@ -1,6 +1,6 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/TPA/TPA.h"
-static const char *s_lsn = "tcp://localhost:8765";   // Listening address
+static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
 static bool Continue = true;
 
 
@@ -94,7 +94,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //Signature size
 
   size_t sz = sizeof(tpm2_pcrs);
-  printf("AK PEM file recived: %ld\n", sz);
+  //printf("AK PEM file recived: %ld\n", sz);
   mg_send(c, &rpl->sig_size, sizeof(UINT16));
   //printf("Signature (size %d) received:\n", rpl->sig_size);
   //Signature
@@ -114,7 +114,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //TODO IMA
   mg_send(c, &rpl->ima_log_size, sizeof(long));
   bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
-  //printf("AK PEM file recived: %d\n", res);
+  printf("IMA log file sent sz: %d\n", rpl->ima_log_size);
   return 0;
 }
 

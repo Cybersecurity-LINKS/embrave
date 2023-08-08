@@ -435,7 +435,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 
     char hash_ima_ascii[(SHA256_DIGEST_LENGTH * 2 + 1) * 2];
     bin_2_hash(hash_ima_ascii, sha256_concatenated, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH * 2 ));
-    printf("Event sha: %s\n", hash_ima_ascii);
+   // printf("Event sha: %s\n", hash_ima_ascii);
 
     //digest
 
@@ -466,10 +466,11 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
     total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(u_int8_t);
     memcpy(&template_len, rply ->ima_log + total_read, sizeof(uint32_t));
+
     total_read += sizeof(uint32_t);
     memcpy(event_name, rply ->ima_log + total_read, template_len);
     total_read = 0;
-    
+
     //int ret = strcmp(event_name, "ima-ng") ;
     //printf("%d\n", ret);
     if(strcmp(event_name, "ima-ng") != 0){
@@ -488,8 +489,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     pcr10_sha256[SHA256_DIGEST_LENGTH] = '\0';
     pcr10_sha1[SHA_DIGEST_LENGTH] = '\0';
 
-
-
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
         read_ima_log_row(rply, &total_read, hash_ima, hash_name, &path_name, hash_name_byte);
@@ -500,22 +499,23 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
             //free(path_name);
             //goto error;
         }
-
-       // char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
-       // bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-       // printf("Event sha1: %s\n", hash_ima_ascii);
+        free(path_name);
+        char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
+        bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("Event sha1: %s\n", hash_ima_ascii);
         //Compute PCR10
         if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, hash_ima,hash_name_byte) != 0){
             printf("pcr10 digest error\n");
-            free(path_name);
+            //free(path_name);
             goto error;
         }
         
 
-        free(path_name);
+        
     }
    // printf("%d\n", total_read);
     //Check PCR10
+    printf("QUIIIIIII\n");
 
 
     free(pcr10_sha1);

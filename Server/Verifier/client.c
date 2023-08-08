@@ -3,8 +3,8 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/Remote_Attestor/RA.h"
 
-static const char *s_conn = "tcp://localhost:8765";  // Connect to address
-//static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
+//static const char *s_conn = "tcp://localhost:8765";  // Connect to address
+static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
 // client resources
 static struct c_res_s {
   int i;
@@ -196,7 +196,8 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 /*    printf("IMA log recived:\n");
   rpl->ima_log[rpl->ima_log_size] = '\n';
   printf("%s\n", rpl->ima_log);  */
-  
+
+
   return 0;
 }
 
