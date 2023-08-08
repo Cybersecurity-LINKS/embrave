@@ -26,13 +26,13 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
     int tag;
+    Ex_challenge chl;
+    Ex_challenge_reply rpl;
     memcpy(&tag, r->buf, sizeof(int));
     //remove tag from buffer
     mg_iobuf_del(r,0,sizeof(int)); 
     switch (tag){
     case RA_TYPE_EXPLICIT:
-      Ex_challenge chl;
-      Ex_challenge_reply rpl;
       //load challenge data from socket
       load_challenge_request(c,r,&chl);
       
