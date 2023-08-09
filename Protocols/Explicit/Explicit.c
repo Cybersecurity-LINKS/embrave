@@ -337,7 +337,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * has
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
     //tpm2_util_hexdump(hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
    // printf("\n ");
-    
+    printf("QUIIIIIIIII2\n");
 
     uint32_t template_name_len;
     memcpy(&template_name_len, rply ->ima_log + *total_read, sizeof(uint32_t));
@@ -354,11 +354,23 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * has
     memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
     //printf("%d ", template_len);
-
+printf("QUIIIIIIIII3\n");
 
     memcpy(&field_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
     //printf("%d\n", field_len);
+
+    if(field_len != 0x28){
+        //the next field must be "sha256:" so if it is "sha1:" means that there was an error during the IMA log creation => skip row
+        //EX: 10 204004cc472d826c599a7d5517284df006d6ac5c ima-ng sha256:a6ef4c60f89141ea82ebf851fa2f92f1d27520764c902570fbf7a77ee80295e6 /var/lib/logrotate/status
+        //10 0000000000000000000000000000000000000000 ima-ng sha1:0000000000000000000000000000000000000000 /var/lib/logrotate/status
+        *total_read += 6 * sizeof(uint8_t);
+        *total_read += SHA_DIGEST_LENGTH * sizeof(uint8_t);
+        memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+        *total_read += sizeof(uint32_t);
+        *total_read += sizeof(char) * field_path_len;
+        return 1;
+    }
 
     memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
     *total_read += 8 * sizeof(uint8_t);
@@ -435,7 +447,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 
     char hash_ima_ascii[(SHA256_DIGEST_LENGTH * 2 + 1) * 2];
     bin_2_hash(hash_ima_ascii, sha256_concatenated, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH * 2 ));
-   // printf("Event sha: %s\n", hash_ima_ascii);
+    printf("Event sha: %s\n", hash_ima_ascii);
 
     //digest
 
@@ -446,14 +458,12 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
-    
-    
     char hash_name[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t hash_ima[SHA_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
-    
+    int ret;
     size_t total_read = 0;
     uint32_t template_len;
 
@@ -491,18 +501,21 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
-        read_ima_log_row(rply, &total_read, hash_ima, hash_name, &path_name, hash_name_byte);
-    
+        printf("QUIIIIIIIII\n");
+        ret = read_ima_log_row(rply, &total_read, hash_ima, hash_name, &path_name, hash_name_byte);
+        if (ret == 1) continue;
+        
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, hash_name, path_name) != 0){
             //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, hash_name);
             //free(path_name);
             //goto error;
         }
+        
         free(path_name);
-        char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
-        bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("Event sha1: %s\n", hash_ima_ascii);
+       // char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
+       // bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+       // printf("Event sha1: %s\n", hash_ima_ascii);
         //Compute PCR10
         if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, hash_ima,hash_name_byte) != 0){
             printf("pcr10 digest error\n");
@@ -515,7 +528,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     }
    // printf("%d\n", total_read);
     //Check PCR10
-    printf("QUIIIIIII\n");
+    printf("QUIIIIIII5\n");
 
 
     free(pcr10_sha1);
