@@ -382,7 +382,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     //sha256 len = 0x28
     if(field_len != 0x28){
-        printf("IMA LOG ERROR ROW\n");
+        //printf("IMA LOG ERROR ROW\n");
         //the next field must be "sha256:" so if it is "sha1:" means that there was an error during the IMA log creation => skip row
         //EX: 10 204004cc472d826c599a7d5517284df006d6ac5c ima-ng sha256:a6ef4c60f89141ea82ebf851fa2f92f1d27520764c902570fbf7a77ee80295e6 /var/lib/logrotate/status
         //10 0000000000000000000000000000000000000000 ima-ng sha1:0000000000000000000000000000000000000000 /var/lib/logrotate/status
@@ -451,9 +451,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         return -1;
     }
 
-    //bin_2_hash(xxx, calculated_template_hash, SHA_DIGEST_LENGTH);
-    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
+ //   tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+  //  printf("\n");
 
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
@@ -467,23 +466,20 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         //printf("\n\n\n");
     } 
 
-    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
+   // tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+ //   printf("\n");
 
-    //Compute the template digest SHA256
+     //Compute the template digest SHA256
     if (digest_message(entry_aggregate, template_len, 0, template_hash_sha256, &sz) != 0){
         printf("Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return -1;
-    } 
+    }
 
-    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
+   // tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    //printf("\n");
 
-    printf("\n");
-    printf("\n");
-    printf("\n");
 
     free(calculated_template_hash);
     free(entry_aggregate);
@@ -551,22 +547,14 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
         return -1;
     }
 
-   // char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
-  //  bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
-  //  printf(" %s\n", hash_ima_ascii);
-
-  //  char hash_ima_ascii2[SHA_DIGEST_LENGTH  * 2+1];
- //   bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
-  //  printf(" %s\n", hash_ima_ascii2);
-
     return 0;
 }
 
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
-    uint8_t template_hash[SHA_DIGEST_LENGTH ];
-    uint8_t template_hash_sha256[SHA_DIGEST_LENGTH];
+    uint8_t template_hash[SHA_DIGEST_LENGTH];
+    uint8_t template_hash_sha256[SHA256_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
@@ -640,7 +628,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     }
 
-/*      char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
+    char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
     bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
     printf("%s\n", hash_ima_ascii);
 
@@ -648,7 +636,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
     printf("%s\n", hash_ima_ascii2);
 
-    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH); */
+
 
 
    // printf("%d\n", total_read);
