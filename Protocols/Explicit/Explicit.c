@@ -25,8 +25,8 @@ struct {
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
-
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
+int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -324,7 +324,7 @@ void bin_2_hash(char *buff, BYTE *data, size_t len){
 //pcr|template_hash|template_name_length|template_name|template_data_lenght|template_data
 //template_data = hash_length|hash_name(null terminated string)|filedata_hash|filename_length|filename(null terminated string)
 //template_hash = sha1(template_data)
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
+int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
 
     
     uint32_t pcr;
@@ -394,8 +394,11 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         
         *total_read += SHA_DIGEST_LENGTH * sizeof(uint8_t);
         //Ploceholder
-        memset(entry_aggregate + acc, 0xff, SHA_DIGEST_LENGTH); 
-        acc += SHA_DIGEST_LENGTH;
+        //memset(entry_aggregate + acc, 0xff, SHA_DIGEST_LENGTH); 
+        //acc += SHA_DIGEST_LENGTH;
+
+        memset(template_hash, 0xff, SHA_DIGEST_LENGTH);
+        memset(template_hash_sha256, 0xff, SHA256_DIGEST_LENGTH); 
 
         memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
         *total_read += sizeof(uint32_t);
@@ -431,7 +434,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     memcpy(*path_name, rply ->ima_log + *total_read, sizeof(char) * field_path_len);
     *total_read += sizeof(char) * field_path_len;
-    printf("%ld %s\n",field_path_len, *path_name);
+   // printf("%ld %s\n",field_path_len, *path_name);
 
     memcpy(entry_aggregate + acc, *path_name, sizeof(uint8_t) * field_path_len);
     acc += sizeof(char) * field_path_len;
@@ -441,12 +444,19 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     calculated_template_hash = malloc(SHA_DIGEST_LENGTH *sizeof(unsigned char));
     
     //char xxx[SHA_DIGEST_LENGTH+1];
-    digest_message(entry_aggregate, template_len, 1, calculated_template_hash, &sz);
+    if (digest_message(entry_aggregate, template_len, 1, calculated_template_hash, &sz) != 0){
+        printf("Digest creation error\n");
+        free(calculated_template_hash);
+        free(entry_aggregate);
+        return -1;
+    }
 
     //bin_2_hash(xxx, calculated_template_hash, SHA_DIGEST_LENGTH);
+    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");
 
     //Compare the read SHA1 template hash agaist his calculation
-    if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *  SHA_DIGEST_LENGTH) != 0) {
+    if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
         printf("Mismatch template hash agaist calculated one\n");
         free(calculated_template_hash);
         free(entry_aggregate);
@@ -457,6 +467,23 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         //printf("\n\n\n");
     } 
 
+    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");
+
+    //Compute the template digest SHA256
+    if (digest_message(entry_aggregate, template_len, 0, template_hash_sha256, &sz) != 0){
+        printf("Digest creation error\n");
+        free(calculated_template_hash);
+        free(entry_aggregate);
+        return -1;
+    } 
+
+    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");
+
+    printf("\n");
+    printf("\n");
+    printf("\n");
 
     free(calculated_template_hash);
     free(entry_aggregate);
@@ -499,35 +526,38 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
 }
 
 
-int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *hash_ima, uint8_t *hash_name_byte){
+int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256){
 
-    
-/*      char hash_ima_ascii[(SHA_DIGEST_LENGTH ) ];
-    bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * (SHA_DIGEST_LENGTH  ));
-    printf("Event sha: %s\n", hash_ima_ascii); */
-    
-   // printf("1\n");
+    int sz;
+    //PCR concatenation
     //SHA256
-//    memcpy(sha256_concatenated, pcr10_sha256, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
- //   memcpy(sha256_concatenated + SHA256_DIGEST_LENGTH *sizeof(uint8_t), hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(sha256_concatenated, pcr10_sha256, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(sha256_concatenated + (SHA256_DIGEST_LENGTH *sizeof(uint8_t)), template_hash_sha256, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
    
     //SHA1
-//    memcpy(sha1_concatenated, pcr10_sha1, SHA_DIGEST_LENGTH *sizeof(uint8_t));
-   // printf("2\n");
-//    memcpy(sha1_concatenated + SHA_DIGEST_LENGTH *sizeof(uint8_t), hash_ima, SHA_DIGEST_LENGTH *sizeof(uint8_t));
-
-
-   // char hash_ima_ascii[(SHA256_DIGEST_LENGTH * 2 + 1) * 2];
-   // bin_2_hash(hash_ima_ascii, sha256_concatenated, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH * 2 ));
-   // printf("Event sha: %s\n", hash_ima_ascii);
+    memcpy(sha1_concatenated, pcr10_sha1, SHA_DIGEST_LENGTH *sizeof(uint8_t));
+    memcpy(sha1_concatenated +(SHA_DIGEST_LENGTH *sizeof(uint8_t)), template_hash, SHA_DIGEST_LENGTH *sizeof(uint8_t));
 
     //digest
+    //SHA256
+    if (digest_message(sha256_concatenated, (SHA256_DIGEST_LENGTH *2 * sizeof(uint8_t)), 0, pcr10_sha256, &sz) != 0){
+        printf("Digest creation error\n");
+        return -1;
+    }
 
+    //SHA1
+    if (digest_message(sha1_concatenated, (SHA_DIGEST_LENGTH *2 * sizeof(uint8_t)), 1, pcr10_sha1, &sz) != 0){
+        printf("Digest creation error\n");
+        return -1;
+    }
 
+   // char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
+  //  bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
+  //  printf(" %s\n", hash_ima_ascii);
 
-
-
-    //swap pcr10
+  //  char hash_ima_ascii2[SHA_DIGEST_LENGTH  * 2+1];
+ //   bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
+  //  printf(" %s\n", hash_ima_ascii2);
 
     return 0;
 }
@@ -535,7 +565,8 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
-    uint8_t template_hash[SHA_DIGEST_LENGTH];
+    uint8_t template_hash[SHA_DIGEST_LENGTH ];
+    uint8_t template_hash_sha256[SHA_DIGEST_LENGTH];
     char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
     uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
@@ -544,8 +575,8 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     uint32_t template_len;
     uint8_t * pcr10_sha1 = NULL;
     uint8_t * pcr10_sha256 = NULL;
-    uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
-    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
+    uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(u_int8_t));
+    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
 
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
@@ -564,20 +595,29 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     //TODO incremental ima log
     //No incremental ima => PCR10s = 0x00
-  //  pcr10_sha1 = calloc(SHA_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
-  //  pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH * 2 + 1, sizeof(u_int8_t));
+    pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(u_int8_t));
+    pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(u_int8_t));
 
-  //  sha256_concatenated[SHA256_DIGEST_LENGTH * 2] = '\0';
-  //  sha1_concatenated[SHA_DIGEST_LENGTH * 2] = '\0';
+   // sha256_concatenated[SHA256_DIGEST_LENGTH * 2] = '\0';
+   // sha1_concatenated[SHA_DIGEST_LENGTH * 2] = '\0';
   //  pcr10_sha256[SHA256_DIGEST_LENGTH] = '\0';
   //  pcr10_sha1[SHA_DIGEST_LENGTH] = '\0';
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
-        ret = read_ima_log_row(rply, &total_read, template_hash, file_hash, &path_name, hash_name_byte);
+        ret = read_ima_log_row(rply, &total_read, template_hash, template_hash_sha256, file_hash, &path_name, hash_name_byte);
         if (ret == 1){
+            //Error in the IMA log so skip the golden value verification
+            if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
+                printf("pcr10 digest error\n");
+                goto error;
+            }
             continue;
-        } 
+        } else if(ret == -1){
+            free(path_name);
+            printf("Error during read_ima_log_row\n");
+            goto error;
+        }
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
@@ -585,31 +625,40 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
             //free(path_name);
             //goto error;
         }
-
         free(path_name);
-    //    printf("9999999999999999\n");
+
        // char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
        // bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
        // printf("Event sha1: %s\n", hash_ima_ascii);
+
         //Compute PCR10
-       // if(compute_pcr10(pcr10_sha1, pcr10_sha256, entry_aggregate, sha256_concatenated, hash_ima,hash_name_byte) != 0){
-        //    printf("pcr10 digest error\n");
-            //free(path_name);
-       //     goto error;
-       // }
+        if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
+            printf("pcr10 digest error\n");
+            free(path_name);
+            goto error;
+        }
 
-
-        
     }
+
+/*      char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
+    bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
+    printf("%s\n", hash_ima_ascii);
+
+    char hash_ima_ascii2[SHA_DIGEST_LENGTH  * 2+1];
+    bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
+    printf("%s\n", hash_ima_ascii2);
+
+    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH); */
+
+
    // printf("%d\n", total_read);
     //Check PCR10
    printf("END\n");
 
-
-   // free(pcr10_sha1);
-   // free(pcr10_sha256);
-   // free(sha1_concatenated);
-   // free(sha256_concatenated);
+    free(pcr10_sha1);
+    free(pcr10_sha256);
+    free(sha1_concatenated);
+    free(sha256_concatenated);
     return 0;
 error:
     free(pcr10_sha1);

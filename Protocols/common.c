@@ -123,7 +123,7 @@ int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsi
   if(1 != EVP_DigestUpdate(mdctx, message, message_len))
 		return -1;
 
-  if(1 != EVP_DigestFinal_ex(mdctx, digest,(unsigned int *) digest_len))
+  if(1 != EVP_DigestFinal_ex(mdctx, digest,NULL))
 		return -1;
 
   EVP_MD_CTX_free(mdctx);
