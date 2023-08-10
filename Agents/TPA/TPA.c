@@ -48,16 +48,11 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   ret = create_quote(chl, rpl, esys_context);
   if(ret != 0) goto end;
 
-  //Load AK pem
-/*   ret = load_ak(rpl);
-  if(ret != 0) goto end; */
-
   //Load IMA log
-  //Real path
-  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);
-  //dev path
+  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);//Real path
+  
   //printf("WARNING: IMA LOG DEV PATH\n");
-  //ret = load_ima_log("/home/pi/TPA/binary_runtime_measurements", rpl);
+  //ret = load_ima_log("/home/pi/tpa/binary_runtime_measurements", rpl); //Dev path
 end: 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
@@ -75,62 +70,32 @@ void TPA_free(Ex_challenge_reply *rpl)
   free_data (rpl);
 }
 
-
-
 /* 
   Read the IMA log and send it all, starting from position ima_byte_sent byte
  */
 
-
 int load_ima_log(const char *path, Ex_challenge_reply *rpl)
 {
   FILE *fp;
-  long rc;
+  size_t read_bytes, buff_sz;
   fp = fopen(path, "rb");
 	if (!fp) {
 	  printf("Unable to open IMA file\n");
 		return -1;
 	}
   
-/*   rc = fseek(fp, 0, SEEK_END);
-  if(rc == -1){
-    printf("fseek error\n");
-    fclose(fp);
-    return -1;
-  }
-
-  rc = ftell(fp);
-  if(rc == -1){
-    printf("ftell error\n");
-    fclose(fp);
-    return -1;
-  }
-  
-  rpl->ima_log_size = (rc - ima_byte_sent);
-  printf("%ld\n", rpl->ima_log_size);
-  rc = fseek(fp, 0, SEEK_SET);
-  if(rc == -1){
-    printf("fseek error\n");
-    fclose(fp);
-    return -1;
-  }
-
-  printf("%ld\n", rpl->ima_log_size);
-  rpl->ima_log = malloc(rpl->ima_log_size +1);
-  //rpl->ima_log[rpl->ima_log_size] = '\n';
-
-  fread(rpl->ima_log, rpl->ima_log_size, 1, fp); */
-
-  size_t read_bytes;
   rpl->ima_log_size = 0;
+  buff_sz = 2048;
+  rpl->ima_log = (unsigned char *)malloc(buff_sz);
+
   while (1) {
     char block[2048];
     read_bytes = fread(block, 1, sizeof(block), fp);
 
         if (read_bytes == 0) {
-            // Fine del file o errore di lettura
+            // Eof or error
             if (feof(fp)) {
-                break; // Fine del file, usciamo dal ciclo
+                break; // EOF
             } else {
                 printf("Error reading the IMA log\n");
                 free(rpl->ima_log);
@@ -139,12 +104,23 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
             }
         }
 
-        // Espandi il buffer per includere i dati letti
+/*         // Espandi il buffer per includere i dati letti
         rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, rpl->ima_log_size + read_bytes);
         if (rpl->ima_log == NULL) {
             printf("Error realloc the IMA log buffer\n");
             fclose(fp);
             return -1;
+        } */
+
+        //Realloc buffer if needed
+        if(buff_sz < rpl->ima_log_size + read_bytes){
+          rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, 2 * buff_sz);
+          if (rpl->ima_log == NULL) {
+            printf("Error realloc the IMA log buffer\n");
+            fclose(fp);
+            return -1;
+          }
+          buff_sz = 2 * buff_sz;
         }
 
         // Copia il blocco letto nel buffer espanso

@@ -8,6 +8,7 @@
 #include <tss2/tss2_esys.h>
 #include <tss2/tss2_mu.h>
 #include <tss2/tss2_tctildr.h>
+#include <openssl/evp.h>
 
 #define HANDLE_EK 0x81000003
 #define HANDLE_AK 0x81000004 
@@ -20,5 +21,5 @@
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, uint16_t *ak_handle);
-
+int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsigned char *digest, int *digest_len);
 #endif

@@ -18,7 +18,7 @@
 #include "../../tpm2-tools/lib/object.h"
 #include "../../tpm2-tools/lib/tpm2.h"
 #include <openssl/sha.h>
-#include <openssl/evp.h>
+
 #include <openssl/rand.h>
 
 #define NONCE_SIZE 32

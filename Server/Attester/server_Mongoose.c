@@ -93,7 +93,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //Signature is dynamic memory=> cant send all structure in one time
   //Signature size
 
-  size_t sz = sizeof(tpm2_pcrs);
+  //size_t sz = sizeof(tpm2_pcrs);
   //printf("AK PEM file recived: %ld\n", sz);
   mg_send(c, &rpl->sig_size, sizeof(UINT16));
   //printf("Signature (size %d) received:\n", rpl->sig_size);
@@ -114,7 +114,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //TODO IMA
   mg_send(c, &rpl->ima_log_size, sizeof(long));
   bool res = mg_send(c, rpl->ima_log, rpl->ima_log_size);
-  printf("IMA log file sent sz: %d\n", rpl->ima_log_size);
+  printf("IMA log file sent size: %ld\n", rpl->ima_log_size);
   return 0;
 }
 

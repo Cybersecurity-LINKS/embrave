@@ -1,6 +1,6 @@
 #define the C compiler to use
 CC = gcc
-CFLAGS = -g
+CFLAGS = -g  -Wall -fPIC 
 
 # define the C source files
 #SRCS = PoC_TPA.c ${WAM_DIR}/WAM/WAM.c tpm2_createek.c tpm2_createak.c tpm2_quote.c\
