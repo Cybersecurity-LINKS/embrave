@@ -151,19 +151,24 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
       else return 1;
     break;
     case 4:
-      //PCRs
-      try_read(r, sizeof(size_t),  &rpl->pcrs.count);
-      ret = try_read(r, sizeof(&rpl->pcrs.pcr_values), &rpl->pcrs.pcr_values);  
+      //PCRs count
+      ret = try_read(r, sizeof(size_t),  &rpl->pcrs.count);
       if(ret == 0) last_rcv = 5;
       else return 1;
     break;
     case 5:
-      //IMA log size
-      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
+      //PCRs
+      ret = try_read(r, sizeof(rpl->pcrs.pcr_values), &rpl->pcrs.pcr_values);  
       if(ret == 0) last_rcv = 6;
       else return 1;
     break;
     case 6:
+      //IMA log size
+      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
+      if(ret == 0) last_rcv = 7;
+      else return 1;
+    break;
+    case 7:
       if(rpl->ima_log == NULL) rpl->ima_log = malloc(rpl->ima_log_size);
       ret = try_read(r, rpl->ima_log_size, rpl->ima_log);
       if(ret != 0) return 1;
