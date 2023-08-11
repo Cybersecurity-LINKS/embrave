@@ -152,7 +152,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
     break;
     case 4:
       //PCRs count
-      ret = try_read(r, sizeof(size_t),  &rpl->pcrs.count);
+      ret = try_read(r, sizeof(uint32_t),  &rpl->pcrs.count);
       if(ret == 0) last_rcv = 5;
       else return 1;
     break;
