@@ -109,7 +109,8 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
 
   //Pcr
-  mg_send(c, &rpl->pcrs, sizeof(tpm2_pcrs));
+  mg_send(c, &rpl->pcrs.count, sizeof(size_t));
+  mg_send(c, &rpl->pcrs.pcr_values, sizeof(rpl->pcrs.pcr_values));
 
   //TODO IMA
   mg_send(c, &rpl->ima_log_size, sizeof(long));
