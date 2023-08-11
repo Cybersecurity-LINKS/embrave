@@ -110,7 +110,7 @@ int main(void) {
 
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 {
-  char pcrs[10] = "sha256:all";
+  char pcrs[18] = "sha1:10+sha256:all";
   int ret;
   if(r == NULL) return -1;
 
