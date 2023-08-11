@@ -42,7 +42,7 @@ typedef struct {
     TPM2B_ATTEST *quoted;
     //IMA
     unsigned char * ima_log;
-    long ima_log_size;
+    uint32_t ima_log_size;
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);

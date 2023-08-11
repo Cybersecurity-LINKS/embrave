@@ -1,7 +1,7 @@
 #include "TPA.h"
 
 
-static long ima_byte_sent = 0;
+//static long ima_byte_sent = 0;
 
 int load_ima_log(const char *path, Ex_challenge_reply *rpl);
 

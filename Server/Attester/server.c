@@ -113,9 +113,9 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   mg_send(c, &rpl->pcrs.pcr_values, sizeof(rpl->pcrs.pcr_values));
 
   //IMA Log
-  mg_send(c, &rpl->ima_log_size, sizeof(long));
+  mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
   mg_send(c, rpl->ima_log, rpl->ima_log_size);
-  printf("IMA log file sent size: %ld\n", rpl->ima_log_size);
+  printf("IMA log file sent size: %lld\n", rpl->ima_log_size);
   return 0;
 }
 

@@ -573,6 +573,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     total_read = 0;
 
     if(strcmp(event_name, "ima-ng") != 0){
+        printf("%s\n", event_name);
         //other template here
         printf("Unknown IMA template\n");
         return -1;

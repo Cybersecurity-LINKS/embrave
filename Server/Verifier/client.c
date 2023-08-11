@@ -164,7 +164,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
     break;
     case 6:
       //IMA log size
-      ret = try_read(r, sizeof(long), &rpl->ima_log_size);
+      ret = try_read(r, sizeof(uint32_t), &rpl->ima_log_size);
       if(ret == 0) last_rcv = 7;
       else return 1;
     break;
