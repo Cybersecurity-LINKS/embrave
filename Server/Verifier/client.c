@@ -37,7 +37,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
 #endif
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
-    printf("Client received data\n");
+    //printf("Client received data\n");
     int n = 0;
     
     struct mg_iobuf *r = &c->recv;
@@ -118,10 +118,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   int ret;
   if(r == NULL) return -1;
 
-  printf("Received %d data from socket\n", r->len);
+  //printf("Received %d data from socket\n", r->len);
   
   while(r->len > 0) {
-    printf("buffer len %d case %d\n", r->len, last_rcv);
+    //printf("buffer len %d case %d\n", r->len, last_rcv);
     switch (last_rcv)
     {
     case 0: 
@@ -186,10 +186,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   last_rcv = 0;
 
   //Print received data
-  printf("NONCE Received:");
-  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
-    printf("%02X", rpl->nonce_blob.buffer[i]);
-  printf("\n");
+  //printf("NONCE Received:");
+ // for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
+ //   printf("%02X", rpl->nonce_blob.buffer[i]);
+ // printf("\n");
 
   TPML_PCR_SELECTION pcr_select;
   if (!pcr_parse_selections(pcrs, &pcr_select)) {
@@ -198,10 +198,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   }
   pcr_print_(&pcr_select, &(rpl->pcrs));
 
-  print_signature(&rpl->sig_size, rpl->sig);
+ // print_signature(&rpl->sig_size, rpl->sig);
   
 
-  print_quoted(rpl->quoted);
+ // print_quoted(rpl->quoted);
 
 /*    printf("IMA log recived:\n");
   rpl->ima_log[rpl->ima_log_size] = '\n';
@@ -217,7 +217,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   0 full read 1 remaining data to wait -1 error*/
 int try_read(struct mg_iobuf *r, size_t size, void * dst)
 {
-  printf("size to read %d, to_read %d last read %d r->len %d\n",size, to_read, last_read, r->len);
+  //printf("size to read %d, to_read %d last read %d r->len %d\n",size, to_read, last_read, r->len);
   if(to_read == 0){
     if(r->len >= size){
         //no segmentation
