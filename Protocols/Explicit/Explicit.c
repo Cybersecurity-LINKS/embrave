@@ -583,11 +583,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(u_int8_t));
     pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(u_int8_t));
 
-   // sha256_concatenated[SHA256_DIGEST_LENGTH * 2] = '\0';
-   // sha1_concatenated[SHA_DIGEST_LENGTH * 2] = '\0';
-  //  pcr10_sha256[SHA256_DIGEST_LENGTH] = '\0';
-  //  pcr10_sha1[SHA_DIGEST_LENGTH] = '\0';
-
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
         ret = read_ima_log_row(rply, &total_read, template_hash, template_hash_sha256, file_hash, &path_name, hash_name_byte);
@@ -612,10 +607,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
         }
         free(path_name);
 
-       // char hash_ima_ascii[SHA_DIGEST_LENGTH * 2 + 1];
-       // bin_2_hash(hash_ima_ascii, hash_ima, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-       // printf("Event sha1: %s\n", hash_ima_ascii);
-
         //Compute PCR10
         if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
             printf("pcr10 digest error\n");
@@ -625,7 +616,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     }
     printf("IMA log verification OK\n");
-    //Check PCR10
+    
 /*     char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
     bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
     printf("%s\n", hash_ima_ascii);
@@ -644,7 +635,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     //tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
    // printf("\n");
-
+    //Compare PCR10 with the received one
     if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
         || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
             printf("PCR10 calculation mismatch\n");
