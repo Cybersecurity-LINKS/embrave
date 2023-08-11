@@ -21,6 +21,8 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   //rpl->sig_size = 59; //TEST change the signature size
   //rpl->nonce_blob.buffer[10] = 'a'; //TEST change a bit in the nonce received
   //rpl->pcrs.pcr_values[0].digests[0].buffer[2] = 'a'; //TEST change a bit in one pcr received
+  //rpl->pcrs.pcr_values[0].digests[0].buffer[2] = 'a'; //TEST change a bit in one pcr received
+  //rpl->ima_log_size = 56980; //TEST change ima log size TODO
 
   //TODO better version
   //load ak bind
@@ -34,7 +36,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   ret = verify_quote(rpl, pem_file_name);
   if (ret == -1){
     printf("Untrusted TPA\n");
-    goto end;
+    return -1;
   } else {
     printf("Quote signature verification OK\n");
   }
@@ -67,7 +69,7 @@ end:
 
 int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
 {
-  int ret;
+  //int ret;
   //verify pcr value
   
   //verfy soft binding
@@ -84,7 +86,7 @@ char *load_ak_bind(char * db_file_name){
   char *a = NULL;
   char *b = NULL;
   //char *c = NULL;
-  size_t sz, ret;
+  size_t sz;
   fp = fopen("../../Agents/Remote_Attestor/DB/ak_bind.txt", "r");
   char *buff;
 

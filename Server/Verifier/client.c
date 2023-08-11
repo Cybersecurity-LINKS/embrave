@@ -15,6 +15,7 @@ static bool Continue = true;
 static size_t last_read = 0;
 static size_t to_read = 0;
 static bool end = false;
+static bool error = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
 static Ex_challenge_reply rpl;
@@ -42,19 +43,19 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     struct mg_iobuf *r = &c->recv;
     n = load_challenge_reply(r, &rpl);
     if(n < 0){
-      //TODO ERRORI
+      r->len = 0;
+      end = true;
+      error = true;
+      RA_free(&rpl);
+      return;
     } //waitng for more data from TPA
     else if(n == 1) return;
   
     if(RA_explicit_challenge_verify(&rpl) < 0){
-      
-      //TODO ERRORI
+      error = true;
     }
-   // MG_INFO(("CLIENT got AK PUB PEM of size %ld\n: %s", ak_pub.size, ak_pub.ak_pem));
-   // TO_SEND *TpaData = (TO_SEND*) r->buf;
-   // n = verify(TpaData, &data, &ak_pub);
+
     r->len = 0;
-    //c->is_closing = 1;
     end = true;
     RA_free(&rpl);
   } else if (ev == MG_EV_CLOSE) {
@@ -69,7 +70,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {
     //CHALLENGE CREATE
-    int n;
+    //int n;
     int tag = 0;
     //Send Explict tag
     mg_send(c, &tag, sizeof(int));
@@ -103,9 +104,12 @@ int main(void) {
     return 0;
   }
   //Or explict RA with TLS and softbindigs
-  while (Continue) mg_mgr_poll(&mgr, 1000); 
+  while (Continue) mg_mgr_poll(&mgr, 1000);
 
-  return 0;
+  if(!error)
+    return 0;
+  else
+    return -1;
 }
 
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
@@ -114,10 +118,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   int ret;
   if(r == NULL) return -1;
 
-  printf("Received %ld data from socket\n", r->len);
+  printf("Received %d data from socket\n", r->len);
   
   while(r->len > 0) {
-    printf("buffer len %ld case %d\n", r->len, last_rcv);
+    printf("buffer len %d case %d\n", r->len, last_rcv);
     switch (last_rcv)
     {
     case 0: 
@@ -213,7 +217,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   0 full read 1 remaining data to wait -1 error*/
 int try_read(struct mg_iobuf *r, size_t size, void * dst)
 {
-  printf("size to read %ld, to_read %ld last read %ld r->len %ld\n",size, to_read, last_read, r->len);
+  printf("size to read %d, to_read %d last read %d r->len %d\n",size, to_read, last_read, r->len);
   if(to_read == 0){
     if(r->len >= size){
         //no segmentation

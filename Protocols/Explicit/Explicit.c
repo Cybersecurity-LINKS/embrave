@@ -49,7 +49,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     char pcrs[18] = "sha1:10+sha256:all";
     int ret;
     tpm2_algorithm algs;
-   // char hash[7] ="sha256";
+
     if (ectx == NULL || rply == NULL || chl == NULL) {
         return -1;
     }
@@ -110,7 +110,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
         return -1;
     }
-    //
+
     //free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
@@ -140,37 +140,6 @@ int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
         printf("Failed to retrieve PCR values related to quote!\n");
         return -1;
     }
-
-/*        //Check if computed digest 
-    // Grab the digest from the quote
-    rc = files_tpm2b_attest_to_tpms_attest(ctx.quoted, &ctx.attest);
-    if (rc != tool_rc_success) {
-        return rc;
-    }
-
-
-    // Calculate the digest from our selected PCR values (to ensure correctness)
-    TPM2B_DIGEST pcr_digest = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    bool is_pcr_hashing_success = tpm2_openssl_hash_pcr_banks(
-        ctx.sig_hash_algorithm, &ctx.pcr_selections, &ctx.pcrs,
-        &pcr_digest);
-    if (!is_pcr_hashing_success) {
-        LOG_ERR("Failed to hash PCR values related to quote!");
-        return tool_rc_general_error;
-    }
-    tpm2_tool_output("calcDigest: ");
-    tpm2_util_hexdump(pcr_digest.buffer, pcr_digest.size);
-    tpm2_tool_output("\n");
-
-    // Make sure digest from quote matches calculated PCR digest
-    bool is_pcr_digests_equal = tpm2_util_verify_digests(
-        &ctx.attest.attested.quote.pcrDigest, &pcr_digest);
-    if (!is_pcr_digests_equal) {
-        LOG_ERR("Error validating calculated PCR composite with quote");
-        return tool_rc_general_error;
-    } */
-
-
 
     return 0;
 }
@@ -563,6 +532,11 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(u_int8_t));
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
 
+    if(rply->ima_log == NULL || rply->ima_log_size <=0){
+        printf("verify_ima_log bad input\n");
+        return -1;
+    }
+
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
     total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(u_int8_t);
@@ -573,7 +547,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     total_read = 0;
 
     if(strcmp(event_name, "ima-ng") != 0){
-        printf("%s\n", event_name);
+        //printf("%s\n", event_name);
         //other template here
         printf("Unknown IMA template\n");
         return -1;
@@ -676,30 +650,6 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName) {
     else
         return 1;
 }
-
-
-/* int get_quote_parameters(ESYS_CONTEXT *ectx ,Ex_challenge_reply *rply){
-    //get quoted data
-    rply->quoted = get_quoted();
-    if(rply->quoted == NULL) return -1;
-    printf("\n\n");
-    printf("Quoted: ");
-    print_tpm2b(rply->quoted);
-    printf("\n\n");
-
-    //get signature
-    printf("Signature: ");
-    rply->sig = get_signature(&(rply->sig_size));
-    if(rply->sig == NULL) return -1;
-    printf("\n\n");
-
-    //get pcr list
-    if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
-        return -1;
-    }
-    //pcr_print_(&(rply->pcrs));
-    return 0;
-} */
 
 tool_rc tpm2_quote_free(void) {
 

@@ -115,7 +115,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //IMA Log
   mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
   mg_send(c, rpl->ima_log, rpl->ima_log_size);
-  printf("IMA log file sent size: %lld\n", rpl->ima_log_size);
+  printf("IMA log file sent size: %d\n", rpl->ima_log_size);
   return 0;
 }
 
