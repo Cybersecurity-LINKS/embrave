@@ -153,6 +153,21 @@ def compute_hash(hash_algo, f, file_path, num_files):
     add_row(conn, row_1)
     num_files  = num_files + 1
 
+def bootaggr():
+    file = open('/sys/kernel/security/integrity/ima/ascii_runtime_measurements', 'r')
+
+# Read the first line of the file
+    first_line = file.readline()
+    x = first_line.split()
+    a = x[3];
+# Process the first line (e.g., print it)
+    #print("First line:", a[7:])
+    row_1 = (x[4], a[7:])
+    add_row(conn, row_1)
+
+# Close the file
+    file.close()
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Required the hash algorithm and at least one path as parameters")
@@ -171,7 +186,7 @@ if __name__ == '__main__':
 
     num_files = 0
 
-    database = r"./Protocols/Explicit/TEEEEEST.db"
+    database = r"./Protocols/Explicit/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS golden_values (
                                         name text NOT NULL,
                                         hash text NOT NULL,
@@ -249,7 +264,7 @@ if __name__ == '__main__':
             with open(path, 'rb') as f:
                 compute_hash(hash_algo, f, path, num_files)
                 num_files+=1
-
+    bootaggr()
     conn.close
 
 """     with open('whitelist', 'r+') as whitelist:
