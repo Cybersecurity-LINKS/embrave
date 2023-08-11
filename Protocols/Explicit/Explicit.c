@@ -46,7 +46,7 @@ int nonce_create(Nonce *nonce_blob)
 int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
     char handle[11]= "0x81000004";
-    char pcrs[10] = "sha256:all";
+    char pcrs[18] = "sha1:10+sha256:all";
     int ret;
     tpm2_algorithm algs;
    // char hash[7] ="sha256";
@@ -187,7 +187,7 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
     TPMS_ATTEST attest;
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    char pcrs_select[10] = "sha256:all";
+    char pcrs_select[18] = "sha1:10+sha256:all";
     if( rply == NULL || pem_file_name == NULL) return -1;
     
     bio = BIO_new_file(pem_file_name, "rb");
@@ -389,14 +389,11 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         memcpy(alg_sha1_field, rply ->ima_log + *total_read, 6*sizeof(uint8_t));
         *total_read += 6 * sizeof(uint8_t);
         memcpy(entry_aggregate + acc, alg_sha1_field, sizeof alg_sha1_field);
-       // printf("%s\n", alg_sha1_field);
         acc += sizeof alg_sha1_field;
         
         *total_read += SHA_DIGEST_LENGTH * sizeof(uint8_t);
-        //Ploceholder
-        //memset(entry_aggregate + acc, 0xff, SHA_DIGEST_LENGTH); 
-        //acc += SHA_DIGEST_LENGTH;
 
+        //PCR10 extends FF not 00
         memset(template_hash, 0xff, SHA_DIGEST_LENGTH);
         memset(template_hash_sha256, 0xff, SHA256_DIGEST_LENGTH); 
 
@@ -627,21 +624,39 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
         }
 
     }
-
-    char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
+    printf("IMA log verification OK\n");
+    //Check PCR10
+/*     char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
     bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
     printf("%s\n", hash_ima_ascii);
 
     char hash_ima_ascii2[SHA_DIGEST_LENGTH  * 2+1];
     bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
-    printf("%s\n", hash_ima_ascii2);
+    printf("%s\n", hash_ima_ascii2); */
 
+
+    //pcrs.pcr_values[0].digests->size == 20 == sha1
+    //pcrs.pcr_values[1].digests->size == 32 == sha256
+    //digests[i] i = pcrid mod 8 => 10 mod 8 2
+   // printf("%d\n", rply->pcrs.pcr_values[1].digests->size);
+   // tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+  //  printf("\n");
+
+    //tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+   // printf("\n");
+
+    if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
+        || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
+            printf("PCR10 calculation mismatch\n");
+            goto error;
+        }
+    printf("PCR10 calculation OK\n");
 
 
 
    // printf("%d\n", total_read);
-    //Check PCR10
-   printf("END\n");
+    
+   
 
     free(pcr10_sha1);
     free(pcr10_sha256);

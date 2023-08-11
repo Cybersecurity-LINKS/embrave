@@ -29,9 +29,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
     printf("AK loading faled\n");
     return -1;
   }
-/*         printf("QUIIIIII \n");
-        printf("QUIIIIII %s\n", db_file_name);
-    printf("QUIIIIII \n"); */
+
   //verify quote
   ret = verify_quote(rpl, pem_file_name);
   if (ret == -1){
@@ -56,10 +54,8 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
     printf("Untrusted TPA\n");
     goto end;
   } else {
-    printf("IMA Log verification OK\n");
+    printf("Trusted TPA\n");
   }
-
-
 end:
   //free(pem_file_name);
   sqlite3_close(db);
