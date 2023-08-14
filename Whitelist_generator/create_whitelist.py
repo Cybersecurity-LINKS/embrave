@@ -49,6 +49,12 @@ def main():
                                         name text NOT NULL,
                                         PRIMARY KEY (name)
                                     ); """
+    sql_create_projects_table2 = """ CREATE TABLE IF NOT EXISTS golden_values (
+                                        name text NOT NULL,
+                                        hash text NOT NULL,
+                                        PRIMARY KEY (name,hash)
+                                    ); """
+    
     if len(sys.argv) < 2:
         print("Required the name to add in the whitelist")
         sys.exit(1)
@@ -58,6 +64,7 @@ def main():
 
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
+    #create_table(conn, sql_create_projects_table2)
     add_row(conn, name)
     conn.close
 """     cur = conn.cursor()

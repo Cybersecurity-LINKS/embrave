@@ -242,14 +242,14 @@ if __name__ == '__main__':
                     if fp.is_dir() or fp.is_symlink() or fp.is_block_device() or fp.is_char_device():
                         continue
 
-                    if file_path.endswith('.gz'):
-                        with gzip.open(file_path, 'rb') as f:
-                            try:
-                                compute_hash(hash_algo, f, file_path, num_files)
-                                num_files+=1
+                    #if file_path.endswith('.gz'):
+                        #with gzip.open(file_path, 'rb') as f:
+                        #    try:
+                        #        compute_hash(hash_algo, f, file_path, num_files)
+                        #        num_files+=1
 
-                            except gzip.BadGzipFile:
-                                pass
+                        #    except gzip.BadGzipFile:
+                        #        pass
                     else:
                         a = "/run/"
                         b = "/sys/"
