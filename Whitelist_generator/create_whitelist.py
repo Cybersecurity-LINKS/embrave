@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import sqlite3
 from sqlite3 import Error
+import sys
+
+
 
 def create_connection(db_file):
     """ create a database connection to the SQLite database
@@ -32,15 +35,8 @@ def create_table(conn, create_table_sql):
 
 
 def add_row(conn, row):
-    """
-    Create a new task
-    :param conn:
-    :param task:
-    :return:
-    """
-
-    sql = ''' INSERT INTO golden_values(name,hash)
-              VALUES(?,?) '''
+    sql = ''' INSERT INTO whitelist(name)
+              VALUES(?) '''
     cur = conn.cursor()
     cur.execute(sql, row)
     conn.commit()
@@ -48,22 +44,21 @@ def add_row(conn, row):
 
 
 def main():
-    database = r"./Protocols/Explicit/goldenvalues.db"
-    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS golden_values (
+    database = r"./Protocols/Explicit/whitelist.db"
+    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
                                         name text NOT NULL,
-                                        hash text NOT NULL,
-                                        PRIMARY KEY (name,hash)
+                                        PRIMARY KEY (name)
                                     ); """
+    if len(sys.argv) < 2:
+        print("Required the name to add in the whitelist")
+        sys.exit(1)
+
+    name = sys.argv[1].lower()
+
+
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
-
-    file1 = open('./Whitelist_generator/whitelist', 'r')
-    Lines = file1.readlines()
-    for line in Lines:
-        x = line.split()
-        row_1 = (x[2], x[0])
-        add_row(conn, row_1)
-        print(row_1)
+    add_row(conn, name)
     conn.close
 """     cur = conn.cursor()
     cur.execute(''' CREATE INDEX index_name ON golden_values (name, hash); ''')

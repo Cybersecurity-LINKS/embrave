@@ -455,6 +455,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     sqlite3_stmt *res;
     char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
+    char *sql2 = "SELECT * FROM whitelist WHERE name = substr(@name, 1, length(name)) ";
     int idx, idx2;
     //char *err_msg = 0;
     int step;
@@ -482,8 +483,32 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         return 0;
         
     } 
-    //IMA row not found in golden values db
+    
+    //IMA row not found in golden values db, try the whitelist database
     sqlite3_finalize(res);
+
+    //convert the sql statament 
+    rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        //Set the parametrized input
+        idx = sqlite3_bind_parameter_index(res, "@name");
+        sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+    
+    //Execute the sql query
+    step = sqlite3_step(res);
+    if (step == SQLITE_ROW) {
+        //Path name found in the whitelist, IMA row OK
+        //printf("%s", sqlite3_column_text(res, 0));
+        //printf("%s\n", sqlite3_column_text(res, 1));
+        sqlite3_finalize(res);
+        return 0;
+        
+    } 
+
+    //IMA row not found in the whitelist db 
     return -1;
 }
 
@@ -576,7 +601,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
