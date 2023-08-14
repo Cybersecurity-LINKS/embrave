@@ -1,7 +1,46 @@
 #include "common.h"
 
+static struct timespec start, finish, delta_1, delta_2, delta_3;
 
+void sub_timespec(struct timespec t1, struct timespec t2, struct timespec *td){
 
+    td->tv_nsec = t2.tv_nsec - t1.tv_nsec;
+    td->tv_sec  = t2.tv_sec - t1.tv_sec;
+    if (td->tv_sec > 0 && td->tv_nsec < 0){
+        td->tv_nsec += NS_PER_SECOND;
+        td->tv_sec--;
+    }
+    else if (td->tv_sec < 0 && td->tv_nsec > 0)
+    {
+        td->tv_nsec -= NS_PER_SECOND;
+        td->tv_sec++;
+    }
+}
+
+void get_start_timer(){
+  clock_gettime(CLOCK_REALTIME, &start);
+}
+
+void get_finish_timer(){
+  clock_gettime(CLOCK_REALTIME, &finish);
+}
+
+void print_timer(int n){
+  switch(n){
+    case 1:
+      sub_timespec(start, finish, &delta_1);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_1.tv_sec, delta_1.tv_nsec);
+    break;
+    case 2:
+      sub_timespec(start, finish, &delta_2);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_2.tv_sec, delta_2.tv_nsec);
+    break;
+    case 3:
+      sub_timespec(start, finish, &delta_3);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
+    break;
+  }
+}
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle) {
   // TPM

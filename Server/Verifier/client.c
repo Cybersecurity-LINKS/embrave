@@ -50,6 +50,12 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
       return;
     } //waitng for more data from TPA
     else if(n == 1) return;
+    
+
+    //End timer 1
+    get_finish_timer();
+    print_timer(1);
+
   
     if(RA_explicit_challenge_verify(&rpl) < 0){
       error = true;
@@ -68,19 +74,22 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
     
     Continue = false;
-  } else if (ev == MG_EV_POLL && *i == 1) {
-    //CHALLENGE CREATE
+  } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
     //int n;
     int tag = 0;
-    //Send Explict tag
-    mg_send(c, &tag, sizeof(int));
-    //Create nonce
     Ex_challenge chl;
+
+    //Start Timer 1
+    get_start_timer();
+
+    //Create nonce
     if(RA_explicit_challenge_create(&chl)!= 0){
       Continue = false;
       return;
     }
-    //Send it
+    //Send Explict tag
+    mg_send(c, &tag, sizeof(int));
+    //Send nonce
     mg_send(c, &chl, sizeof(Ex_challenge));
     //printf("CLIENT sent data\n");
     *i= *i+1;
