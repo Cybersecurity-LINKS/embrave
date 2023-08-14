@@ -192,8 +192,14 @@ if __name__ == '__main__':
                                         hash text NOT NULL,
                                         PRIMARY KEY (name,hash)
                                     ); """
+    sql_create_projects_table1 = """ CREATE TABLE IF NOT EXISTS whitelist (
+                                        name text NOT NULL,
+                                        PRIMARY KEY (name)
+                                    ); """
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
+    #create whitelist db
+    create_table(conn, sql_create_projects_table1)
 
     with open('exclude_list', 'w') as f:
         f.write('^')

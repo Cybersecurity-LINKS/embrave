@@ -1,6 +1,7 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/TPA/TPA.h"
 static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
+//static const char *s_lsn = "tcp://10.0.0.1:8765";   // Listening address
 static bool Continue = true;
 
 

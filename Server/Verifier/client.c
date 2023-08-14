@@ -5,6 +5,8 @@
 
 //static const char *s_conn = "tcp://localhost:8765";  // Connect to address
 static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
+//static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
+
 // client resources
 static struct c_res_s {
   int i;
