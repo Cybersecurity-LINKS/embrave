@@ -24,6 +24,9 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   //rpl->pcrs.pcr_values[0].digests[0].buffer[2] = 'a'; //TEST change a bit in one pcr received
   //rpl->ima_log_size = 56980; //TEST change ima log size TODO
 
+  //Start timer 2
+  get_start_timer();
+
   //TODO better version
   //load ak bind
   pem_file_name = load_ak_bind(db_file_name);
@@ -40,6 +43,13 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   } else {
     printf("Quote signature verification OK\n");
   }
+
+  //End timer 2
+  get_finish_timer();
+  print_timer(2);
+
+  //Start timer 3
+  get_start_timer();
 
   //Open the goldenvalues DB
   int rc = sqlite3_open_v2(db_file_name, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
@@ -58,6 +68,10 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   } else {
     printf("Trusted TPA\n");
   }
+
+  //End timer 3
+  get_finish_timer();
+  print_timer(3);
 end:
   //free(pem_file_name);
   sqlite3_close(db);

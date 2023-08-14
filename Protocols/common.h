@@ -28,4 +28,5 @@ int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsi
 void get_start_timer(void);
 void get_finish_timer(void);
 void print_timer(int n);
+
 #endif

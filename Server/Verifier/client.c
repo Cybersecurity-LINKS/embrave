@@ -56,7 +56,6 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     get_finish_timer();
     print_timer(1);
 
-  
     if(RA_explicit_challenge_verify(&rpl) < 0){
       error = true;
     }
@@ -113,7 +112,7 @@ int main(void) {
     return 0;
   }
   //Or explict RA with TLS and softbindigs
-  while (Continue) mg_mgr_poll(&mgr, 1000);
+  while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
   if(!error)
     return 0;

@@ -135,7 +135,7 @@ int main(void) {
   }
   //Or TLS server
   while (Continue)
-    mg_mgr_poll(&mgr, 100);  // Infinite event loop, blocks for upto 100ms
+    mg_mgr_poll(&mgr, 1);  // Infinite event loop, blocks for upto 1ms
                              // unless there is network activity
   mg_mgr_free(&mgr);         // Free resources
   return 0;
