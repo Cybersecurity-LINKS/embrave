@@ -38,13 +38,13 @@ def add_row(conn, row):
     sql = ''' INSERT INTO whitelist(name)
               VALUES(?) '''
     cur = conn.cursor()
-    cur.execute(sql, row)
+    cur.execute(sql, [row])
     conn.commit()
     return cur.lastrowid
 
 
 def main():
-    database = r"./Protocols/Explicit/whitelist.db"
+    database = r"./Protocols/Explicit/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
                                         name text NOT NULL,
                                         PRIMARY KEY (name)
@@ -53,8 +53,8 @@ def main():
         print("Required the name to add in the whitelist")
         sys.exit(1)
 
-    name = sys.argv[1].lower()
-
+    name = sys.argv[1]
+    print(name)
 
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)

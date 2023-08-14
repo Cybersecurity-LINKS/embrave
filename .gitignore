@@ -56,3 +56,4 @@ Agents/Remote_Attestor/AKs/ak.pub.pem
 Protocols/Explicit/goldenvalues.db
 Protocols/Explicit/TEEEEEST.db
 Agents/Remote_Attestor/RA.c
+Agents/Remote_Attestor/AKs/ak.pub.pem.OLD
