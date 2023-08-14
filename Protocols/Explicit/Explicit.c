@@ -36,10 +36,10 @@ int nonce_create(Nonce *nonce_blob)
     }
 
     nonce_blob->size = NONCE_SIZE;
-    printf("NONCE sent:");
+/*     printf("NONCE sent:");
     for(int i= 0; i < NONCE_SIZE; i++)
         printf("%02X", nonce_blob->buffer[i]);
-    printf("\n");
+    printf("\n"); */
     return 0;
 }
 

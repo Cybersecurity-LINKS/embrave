@@ -200,12 +200,12 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
  //   printf("%02X", rpl->nonce_blob.buffer[i]);
  // printf("\n");
 
-  TPML_PCR_SELECTION pcr_select;
+/*   TPML_PCR_SELECTION pcr_select;
   if (!pcr_parse_selections(pcrs, &pcr_select)) {
     printf("pcr_parse_selections failed\n");
     return -1;
   }
-  pcr_print_(&pcr_select, &(rpl->pcrs));
+  pcr_print_(&pcr_select, &(rpl->pcrs)); */
 
  // print_signature(&rpl->sig_size, rpl->sig);
   
