@@ -81,10 +81,10 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challe
     printf("Transmission challenge data error \n");
     return -1;
   }
-  printf("NONCE Received:");
-  for(int i= 0; i< (int) chl->nonce_blob.size; i++)
-    printf("%02X", chl->nonce_blob.buffer[i]);
-  printf("\n");
+  //printf("NONCE Received:");
+  //for(int i= 0; i< (int) chl->nonce_blob.size; i++)
+    //printf("%02X", chl->nonce_blob.buffer[i]);
+  //printf("\n");
   //printf("r buf :%ld\n", r->len);
   return 0;
 }

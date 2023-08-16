@@ -100,11 +100,11 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
 
-    print_quoted(rply->quoted);
+    //print_quoted(rply->quoted);
 
     rply->sig = copy_signature(&(rply->sig_size));
     if(rply->sig == NULL) return -1;
-    print_signature(&(rply->sig_size), rply->sig);
+    //print_signature(&(rply->sig_size), rply->sig);
 
     //Get PCR List
     if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
@@ -117,7 +117,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
-    pcr_print_(&pcr_select, &(rply->pcrs));
+    //pcr_print_(&pcr_select, &(rply->pcrs));
     //Copy nonce
     rply->nonce_blob.size = chl->nonce_blob.size;
     memcpy(&rply->nonce_blob.buffer, &chl->nonce_blob.buffer, rply->nonce_blob.size);
