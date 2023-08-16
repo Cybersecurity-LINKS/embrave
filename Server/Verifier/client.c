@@ -4,8 +4,8 @@
 #include "../../Agents/Remote_Attestor/RA.h"
 
 //static const char *s_conn = "tcp://localhost:8765";  // Connect to address
-static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
-//static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
+//static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
+static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
 
 // client resources
 static struct c_res_s {
@@ -80,9 +80,6 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     int tag = 0;
     Ex_challenge chl;
 
-    //Start Timer 1
-    get_start_timer();
-
     //Create nonce
     if(RA_explicit_challenge_create(&chl)!= 0){
       Continue = false;
@@ -105,6 +102,9 @@ int main(void) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
 
+  //Start Timer 1
+  get_start_timer();
+
   mg_mgr_init(&mgr);
   c_res.i = 0;
   //Explict RA
@@ -124,7 +124,7 @@ int main(void) {
 
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
 {
-  char pcrs[18] = "sha1:10+sha256:all";
+  //char pcrs[18] = "sha1:10+sha256:all";
   int ret;
   if(r == NULL) return -1;
 

@@ -72,6 +72,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   //End timer 3
   get_finish_timer();
   print_timer(3);
+  save_timer();
 end:
   //free(pem_file_name);
   sqlite3_close(db);

@@ -42,6 +42,18 @@ void print_timer(int n){
   }
 }
 
+void save_timer(void){
+  FILE* fp = NULL;
+  fp = fopen("test.txt", "a");
+
+  fprintf(fp,"%d.%.9ld ", (int) delta_1.tv_sec, delta_1.tv_nsec);
+  fprintf(fp,"%d.%.9ld ", (int) delta_2.tv_sec, delta_2.tv_nsec);
+  fprintf(fp,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
+
+  fclose(fp);
+
+}
+
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle) {
   // TPM
   TSS2_RC tss_r;

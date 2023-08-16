@@ -7,3 +7,6 @@ aggiungere al py queste whitelist
     /etc/fake-hwclock.data
     /var/log/journal/
     /var/lib/systemd/random-seed
+    /var/lib/dhcpcd/wlan0-Wind3
+    /var/log/
+    /var/lib/logrotate/status.tmp
