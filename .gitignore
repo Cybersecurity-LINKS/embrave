@@ -57,3 +57,6 @@ Protocols/Explicit/goldenvalues.db
 Protocols/Explicit/TEEEEEST.db
 Agents/Remote_Attestor/RA.c
 Agents/Remote_Attestor/AKs/ak.pub.pem.OLD
+exclude_list
+Protocols/Explicit/whitelist.db
+Server/Verifier/test.txt

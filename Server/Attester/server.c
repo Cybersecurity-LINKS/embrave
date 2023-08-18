@@ -1,7 +1,9 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/TPA/TPA.h"
-//static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
-static const char *s_lsn = "tcp://10.0.0.1:8765";   // Listening address
+static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
+//static const char *s_lsn_tls= "tcp://192.168.1.12:8766";   // Listening address
+static const char *s_lsn_tls= "tcp://localhost:8766";   // Listening address
+//static const char *s_lsn = "tcp://10.0.0.1:8765";   // Listening address
 static bool Continue = true;
 
 
@@ -14,15 +16,6 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     MG_INFO(("SERVER is listening"));
   } else if (ev == MG_EV_ACCEPT) {
     MG_INFO(("SERVER accepted a connection"));
-#if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
-    struct mg_tls_opts opts = {
-        //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
-        .cert = "ss_server.pem",     // Certificate PEM file
-        .certkey = "ss_server.pem",  // This pem contains both cert and key
-    };
-    mg_tls_init(c, &opts);
-    MG_INFO(("SERVER initialized TLS"));
-#endif
   } else if (ev == MG_EV_READ) {
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
@@ -71,6 +64,71 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   }
   (void) fn_data;
 }
+
+// SERVER event handler
+static void sfn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_OPEN && c->is_listening == 1) {
+    MG_INFO(("SERVER is listening"));
+  } else if (ev == MG_EV_ACCEPT) {
+    MG_INFO(("SERVER accepted a connection"));
+//#if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
+    struct mg_tls_opts opts = {
+        //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
+        .cert = "../../server.crt",     // Certificate PEM file
+        .certkey = "../../server.key",  // This pem contains both cert and key
+    };
+    mg_tls_init(c, &opts);
+    MG_INFO(("SERVER initialized TLS"));
+//#endif
+  } else if (ev == MG_EV_READ) {
+    //Challenge Tag arrived to the TPA
+    struct mg_iobuf *r = &c->recv;
+    int tag;
+    Ex_challenge chl;
+    Ex_challenge_reply rpl;
+    memcpy(&tag, r->buf, sizeof(int));
+    //remove tag from buffer
+    mg_iobuf_del(r,0,sizeof(int)); 
+    switch (tag){
+    case RA_TYPE_EXPLICIT:
+      //load challenge data from socket
+      load_challenge_request(c,r,&chl);
+      
+      //Compute the challenge
+      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
+        printf("Explicit challenge error\n");
+        c->is_closing = 1;
+        Continue = false;
+        TPA_free(&rpl);
+        break;
+      }
+      //Send the challenge reply
+      if (send_challenge_reply(c, r, &rpl) != 0){
+        //TODO
+        printf("Send challenge reply error\n");
+        c->is_closing = 1;
+        Continue = false;
+      }
+
+      TPA_free(&rpl);
+      break;
+    case RA_TYPE_DAA:
+
+      break;
+    default:
+    //disconnect
+      break; 
+    }
+    //mg_send(c, r->buf, r->len);  // echo it back
+                     // Tell Mongoose we've consumed data
+  } else if (ev == MG_EV_CLOSE) {
+    MG_INFO(("SERVER disconnected"));
+  } else if (ev == MG_EV_ERROR) {
+    MG_INFO(("SERVER error: %s", (char *) ev_data));
+  }
+  (void) fn_data;
+}
+
 
 int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challenge *chl)
 {
@@ -123,18 +181,24 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
 int main(void) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
+  struct mg_connection *c1;
   int a;
   fprintf(stdout, "Init TPA\n");
   if((a = TPA_init()) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager
-  c = mg_listen(&mgr, s_lsn, sfn, NULL);  // Create server connection
+/*   c = mg_listen(&mgr, s_lsn, sfn, NULL);  // Create server connection
   if (c == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
-  }
+  } */
   //Or TLS server
+  c1 = mg_listen(&mgr, s_lsn_tls, sfn_tls, NULL);  // Create server connection
+  if (c1 == NULL) {
+    MG_INFO(("SERVER cant' open a connection"));
+    return 0;
+  }
   while (Continue)
     mg_mgr_poll(&mgr, 1);  // Infinite event loop, blocks for upto 1ms
                              // unless there is network activity

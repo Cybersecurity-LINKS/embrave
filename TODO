@@ -1,6 +1,5 @@
 IP come paramentro
 ip come paramentro nel ak loading
-aggiungere il boot aggregate dallo scrpit
 fase provisioning ak e creazione del binding
 aggiungere al py queste whitelist
     /home/pi/.vscode-server/

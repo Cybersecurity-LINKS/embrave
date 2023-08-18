@@ -3,9 +3,10 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/Remote_Attestor/RA.h"
 
-//static const char *s_conn = "tcp://localhost:8765";  // Connect to address
+static const char *s_conn = "tcp://localhost:8766";  // Connect to address
 //static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
-static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
+//static const char *s_conn = "tcp://192.168.1.12:8766";  // Connect to address
+//static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
 
 // client resources
 static struct c_res_s {
@@ -33,7 +34,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
   } else if (ev == MG_EV_CONNECT) {
     MG_INFO(("CLIENT connected"));
 #if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
-    struct mg_tls_opts opts = {.ca = "ss_ca.pem"};
+    struct mg_tls_opts opts = {.ca = "../../ca.crt"};
     mg_tls_init(c, &opts);
     MG_INFO(("CLIENT initialized TLS"));
 #endif
