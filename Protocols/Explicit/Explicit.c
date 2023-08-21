@@ -43,6 +43,53 @@ int nonce_create(Nonce *nonce_blob)
     return 0;
 }
 
+int openPEM(const char *path, unsigned char **pem_file) {
+  int len_file = 0;
+  char *data;
+  FILE *fp = fopen(path, "r");
+  if(fp == NULL){
+    printf("Could not open the PEM file %s \n", path);
+    return -1;
+  }
+
+  //get len of file
+  fseek(fp, 0L, SEEK_END);
+  len_file = ftell(fp);
+  fseek(fp, 0L, SEEK_SET);
+
+  // read the data from the file 
+  data = (char*) malloc((len_file + 1)*sizeof(char));
+  if(data == NULL){
+    printf("malloc error\n");
+    return -1;
+  }
+  fread(data, 1, len_file, fp);
+  data[len_file] = '\0';
+
+  *pem_file = data;
+  fclose (fp);
+  return 0;
+}
+
+int PCR9softbindig(Ex_challenge_reply *rply){
+    unsigned char *pem = NULL;
+    unsigned char *digest = NULL;
+
+    //Open the public certificate
+    int ret = openPEM("../certs/server.crt", &pem);
+    if(ret == -1){
+        printf("openPEM error\n");
+        return -1;
+    }
+
+    free(pem);
+    return 0;
+}
+int PCR9softbindig_verify(Ex_challenge_reply *rply)
+{
+    return 0;
+};
+
 int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
     char handle[11]= "0x81000004";
@@ -602,7 +649,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
@@ -617,6 +664,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     }
     printf("IMA log verification OK\n");
+    printf("WARNING check_goldenvalue DEV!\n");
     
 /*     char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
     bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));

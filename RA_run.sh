@@ -7,5 +7,8 @@ for ((i=1; i<=500; i++))
 do
     (cd ./Server/Verifier/ && sudo ./client $1 $2)
     echo $i
-    #sleep 5
+    if [ $? != 0 ]
+        then
+    exit 1
+    fi
 done

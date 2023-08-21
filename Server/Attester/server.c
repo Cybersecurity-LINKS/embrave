@@ -22,9 +22,11 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
     int tag;
     Ex_challenge chl;
     Ex_challenge_reply rpl;
+
+    //Read Tag
     memcpy(&tag, r->buf, sizeof(int));
-    //remove tag from buffer
-    mg_iobuf_del(r,0,sizeof(int)); 
+    mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
+    
     switch (tag){
     case RA_TYPE_EXPLICIT:
       //load challenge data from socket
@@ -71,7 +73,6 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
     MG_INFO(("SERVER is listening"));
   } else if (ev == MG_EV_ACCEPT) {
     MG_INFO(("SERVER accepted a connection"));
-//#if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
     struct mg_tls_opts opts = {
         //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
         .cert = "../certs/server.crt",     // Certificate PEM file
@@ -79,23 +80,24 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
     };
     mg_tls_init(c, &opts);
     MG_INFO(("SERVER initialized TLS"));
-//#endif
   } else if (ev == MG_EV_READ) {
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
     int tag;
     Ex_challenge chl;
     Ex_challenge_reply rpl;
+
+    //Read Tag
     memcpy(&tag, r->buf, sizeof(int));
-    //remove tag from buffer
-    mg_iobuf_del(r,0,sizeof(int)); 
+    mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
+
     switch (tag){
     case RA_TYPE_EXPLICIT:
       //load challenge data from socket
       load_challenge_request(c,r,&chl);
       
       //Compute the challenge
-      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
+      if ((TPA_explicit_challenge_TLS(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
@@ -111,13 +113,16 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
       }
 
       TPA_free(&rpl);
-      break;
+    break;
     case RA_TYPE_DAA:
 
-      break;
+    break;
     default:
-    //disconnect
-      break; 
+    //Unknown tag, disconnect
+      printf("Unknown tag\n");
+      c->is_closing = 1;
+      Continue = false;
+    break; 
     }
     //mg_send(c, r->buf, r->len);  // echo it back
                      // Tell Mongoose we've consumed data
@@ -186,7 +191,6 @@ int main(int argc, char *argv[]) {
   fprintf(stdout, "Init TPA\n");
   if((a = TPA_init()) != 0) return -1;
 
-  //printf("%d\n", argc);
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
     return -1;

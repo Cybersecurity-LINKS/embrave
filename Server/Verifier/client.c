@@ -125,7 +125,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     get_finish_timer();
     print_timer(1);
 
-    if(RA_explicit_challenge_verify(&rpl) < 0){
+    if(RA_explicit_challenge_verify_TLS(&rpl) < 0){
       error = true;
     }
 
