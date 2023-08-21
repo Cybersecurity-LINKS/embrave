@@ -73,6 +73,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     //Set pcr to quote (all sha256) 
     if (!pcr_parse_selections(pcrs, &pcr_select)) {
         printf("pcr_parse_selections failed\n");
+        printf("ERRORE QUI\n");
         return -1;
     }
 

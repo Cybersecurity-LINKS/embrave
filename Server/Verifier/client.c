@@ -3,7 +3,7 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/Remote_Attestor/RA.h"
 
-static const char *s_conn = "tcp://localhost:8766";  // Connect to address
+//static const char *s_conn = "tcp://192.168.1.12:8766";  // Connect to address
 //static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
 //static const char *s_conn = "tcp://192.168.1.12:8766";  // Connect to address
 //static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
@@ -33,11 +33,77 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     MG_INFO(("CLIENT has been initialized"));
   } else if (ev == MG_EV_CONNECT) {
     MG_INFO(("CLIENT connected"));
-#if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
-    struct mg_tls_opts opts = {.ca = "../../ca.crt"};
+    *i= *i+1;  // do something
+  } else if (ev == MG_EV_READ) {
+    //printf("Client received data\n");
+    int n = 0;
+    
+    struct mg_iobuf *r = &c->recv;
+    n = load_challenge_reply(r, &rpl);
+    if(n < 0){
+      r->len = 0;
+      end = true;
+      error = true;
+      RA_free(&rpl);
+      return;
+    } //waitng for more data from TPA
+    else if(n == 1) return;
+    
+
+    //End timer 1
+    get_finish_timer();
+    print_timer(1);
+
+    if(RA_explicit_challenge_verify(&rpl) < 0){
+      error = true;
+    }
+
+    r->len = 0;
+    end = true;
+    RA_free(&rpl);
+  } else if (ev == MG_EV_CLOSE) {
+    MG_INFO(("CLIENT disconnected"));
+
+    // signal we are done
+    //((struct c_res_s *) fn_data)->c = NULL;
+    Continue = false;
+  } else if (ev == MG_EV_ERROR) {
+    MG_INFO(("CLIENT error: %s", (char *) ev_data));
+    
+    Continue = false;
+  } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
+    //int n;
+    int tag = 0;
+    Ex_challenge chl;
+
+    //Create nonce
+    if(RA_explicit_challenge_create(&chl)!= 0){
+      Continue = false;
+      return;
+    }
+    //Send Explict tag
+    mg_send(c, &tag, sizeof(int));
+    //Send nonce
+    mg_send(c, &chl, sizeof(Ex_challenge));
+    //printf("CLIENT sent data\n");
+    *i= *i+1;
+  }else if (end){
+      c->is_draining = 1;
+      Continue = false;
+    }
+}
+
+static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  int *i = &((struct c_res_s *) fn_data)->i;
+  if (ev == MG_EV_OPEN) {
+    MG_INFO(("CLIENT has been initialized"));
+  } else if (ev == MG_EV_CONNECT) {
+    MG_INFO(("CLIENT connected"));
+
+    struct mg_tls_opts opts = {.ca = "../certs/ca.crt"};
     mg_tls_init(c, &opts);
     MG_INFO(("CLIENT initialized TLS"));
-#endif
+
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
     //printf("Client received data\n");
@@ -99,22 +165,47 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
 }
 
 
-int main(void) {
+int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
-
+  char s_conn[250];
+  int n;
   //Start Timer 1
   get_start_timer();
 
+  //printf("%d\n", argc);
+  if(argc != 3){
+    printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
+    return -1;
+  }
+  n = strtol(argv[2], NULL, 10) ;
+  printf("%s\n", argv[2]);
+  if(n == 0)
+    snprintf(s_conn, 250, "tcp://%s:8765", argv[1]);
+  else if(n == 1)
+    snprintf(s_conn, 250, "tcp://%s:8766", argv[1]);
+  else{
+    printf("Error wrong parameters TLS: usage 0 no TLS 1 TLS\n");
+    return -1;
+  }
+  
   mg_mgr_init(&mgr);
   c_res.i = 0;
-  //Explict RA
-  c = mg_connect(&mgr, s_conn, explicit_ra, &c_res);
+
+   if(n == 0){
+    //Explict RA
+    c = mg_connect(&mgr, s_conn, explicit_ra, &c_res);
+   }
+   else {
+    //Explict RA TLS
+    c = mg_connect(&mgr, s_conn, explicit_ra_TLS, &c_res);
+   }
+
   if (c == NULL) {
     MG_INFO(("CLIENT cant' open a connection"));
     return 0;
   }
-  //Or explict RA with TLS and softbindigs
+
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
   if(!error)
