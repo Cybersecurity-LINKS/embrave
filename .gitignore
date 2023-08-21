@@ -60,3 +60,16 @@ Agents/Remote_Attestor/AKs/ak.pub.pem.OLD
 exclude_list
 Protocols/Explicit/whitelist.db
 Server/Verifier/test.txt
+exclude_list
+Protocols/Explicit/whitelist.db
+script/create_certificates.sh
+Server/certs/ca.crt
+Server/certs/client.crt
+Server/certs/client.csr
+Server/certs/client.key
+Server/certs/server.crt
+Server/certs/ca.key
+Server/certs/server.key
+Server/certs/server.csr
+Protocols/Explicit/whitelist.db
+exclude_list

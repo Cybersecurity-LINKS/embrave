@@ -1,8 +1,8 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/TPA/TPA.h"
-static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
+//static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
 //static const char *s_lsn_tls= "tcp://192.168.1.12:8766";   // Listening address
-static const char *s_lsn_tls= "tcp://localhost:8766";   // Listening address
+//static const char *s_lsn_tls= "tcp://localhost:8766";   // Listening address
 //static const char *s_lsn = "tcp://10.0.0.1:8765";   // Listening address
 static bool Continue = true;
 
@@ -11,7 +11,7 @@ int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, Ex_chall
 int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl);
 
 // SERVER event handler
-static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN && c->is_listening == 1) {
     MG_INFO(("SERVER is listening"));
   } else if (ev == MG_EV_ACCEPT) {
@@ -66,7 +66,7 @@ static void sfn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 }
 
 // SERVER event handler
-static void sfn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN && c->is_listening == 1) {
     MG_INFO(("SERVER is listening"));
   } else if (ev == MG_EV_ACCEPT) {
@@ -74,8 +74,8 @@ static void sfn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_dat
 //#if MG_ENABLE_MBEDTLS || MG_ENABLE_OPENSSL
     struct mg_tls_opts opts = {
         //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
-        .cert = "../../server.crt",     // Certificate PEM file
-        .certkey = "../../server.key",  // This pem contains both cert and key
+        .cert = "../certs/server.crt",     // Certificate PEM file
+        .certkey = "../certs/server.key",  // This pem contains both cert and key
     };
     mg_tls_init(c, &opts);
     MG_INFO(("SERVER initialized TLS"));
@@ -178,7 +178,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   return 0;
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   struct mg_connection *c1;
@@ -186,19 +186,29 @@ int main(void) {
   fprintf(stdout, "Init TPA\n");
   if((a = TPA_init()) != 0) return -1;
 
+  //printf("%d\n", argc);
+  if(argc != 3){
+    printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
+    return -1;
+  }
+
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager
-/*   c = mg_listen(&mgr, s_lsn, sfn, NULL);  // Create server connection
+  c = mg_listen(&mgr, argv[1], event_handler, NULL);  // Create server connection
+
   if (c == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
-  } */
+  } 
   //Or TLS server
-  c1 = mg_listen(&mgr, s_lsn_tls, sfn_tls, NULL);  // Create server connection
+  c1 = mg_listen(&mgr, argv[2], event_handler_tls, NULL);  // Create server connection
   if (c1 == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   }
+
+  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", argv[1], argv[2]);
+
   while (Continue)
     mg_mgr_poll(&mgr, 1);  // Infinite event loop, blocks for upto 1ms
                              // unless there is network activity
