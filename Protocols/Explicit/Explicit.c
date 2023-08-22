@@ -2,7 +2,7 @@
 
 
 
-TPML_PCR_SELECTION pcr_select;
+//TPML_PCR_SELECTION pcr_select;
 TPMT_SIG_SCHEME in_scheme;
 TPMI_ALG_SIG_SCHEME sig_scheme;
 tpm2_convert_sig_fmt sig_format;
@@ -23,7 +23,7 @@ struct {
 
 //int get_quote_parameters(ESYS_CONTEXT *ectx, Ex_challenge_reply *rply);
 tool_rc tpm2_quote_free(void);
-int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs);
+int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
@@ -129,6 +129,35 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     free(pem);
     return 0;
 }
+
+//ret value 0: pcr9 =0 1: pcr9!=0 -1: error
+int check_pcr9(ESYS_CONTEXT *esys_context){
+    int ret;
+    TPML_PCR_SELECTION pcr_select;
+    uint8_t pcr_cmp[SHA256_DIGEST_LENGTH];
+    TSS2_RC tss_r;
+    tpm2_pcrs pcrs;
+
+    // PCR9 compare value 00 
+    memset(pcr_cmp, 0, SHA256_DIGEST_LENGTH); 
+
+    if (!pcr_parse_selections("sha256:9", &pcr_select)){
+        printf("PCR9 pcr_parse_selections error\n");
+        return -1;
+    }
+
+    tss_r = pcr_read_pcr_values(esys_context, &pcr_select, &pcrs, NULL, TPM2_ALG_ERROR);
+    if (tss_r != TSS2_RC_SUCCESS) {
+    fprintf(stderr, "Error while reading PCRs from TPM\n");
+    return false;
+    }
+
+    //tpm2_util_hexdump(pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+
+    return memcmp(pcrs.pcr_values[0].digests[0].buffer, pcr_cmp, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+
+}
+
 int PCR9softbindig_verify(Ex_challenge_reply *rply)
 {
     return 0;
@@ -137,7 +166,8 @@ int PCR9softbindig_verify(Ex_challenge_reply *rply)
 int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
     char handle[11]= "0x81000004";
-    char pcrs[18] = "sha1:10+sha256:all";
+    //char pcrs[18] = "sha1:10+sha256:all";
+    TPML_PCR_SELECTION pcr_select;
     int ret;
     tpm2_algorithm algs;
 
@@ -162,7 +192,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     }     
 
     //Set pcr to quote (all sha256) 
-    if (!pcr_parse_selections(pcrs, &pcr_select)) {
+    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
         printf("pcr_parse_selections failed\n");
         printf("ERRORE QUI\n");
         return -1;
@@ -199,7 +229,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     //print_signature(&(rply->sig_size), rply->sig);
 
     //Get PCR List
-    if (get_pcrList(ectx, &(rply->pcrs)) != 0 ){
+    if (get_pcrList(ectx, &(rply->pcrs), &pcr_select) != 0 ){
         return -1;
     }
 
@@ -217,17 +247,17 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     return 0;
 }
 
-int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs){
+int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select){
     if( ectx == NULL || pcrs == NULL) return -1;
 
     // Filter out invalid/unavailable PCR selections
-    if (!pcr_check_pcr_selection(&cap_data, &pcr_select)) {
+    if (!pcr_check_pcr_selection(&cap_data, pcr_select)) {
         printf("Failed to filter unavailable PCR values for quote!\n");
         return -1;
     }
 
     // Read PCR values from the TPM because the quote doesn't have them!
-    tool_rc rc = pcr_read_pcr_values(ectx, &pcr_select, pcrs, NULL, TPM2_ALG_ERROR);
+    tool_rc rc = pcr_read_pcr_values(ectx, pcr_select, pcrs, NULL, TPM2_ALG_ERROR);
     if (rc != tool_rc_success) {
         printf("Failed to retrieve PCR values related to quote!\n");
         return -1;
@@ -248,7 +278,8 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
     TPMS_ATTEST attest;
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-    char pcrs_select[18] = "sha1:10+sha256:all";
+    TPML_PCR_SELECTION pcr_select;
+    //char pcrs_select[18] = "sha1:10+sha256:all";
     if( rply == NULL || pem_file_name == NULL) return -1;
     
     bio = BIO_new_file(pem_file_name, "rb");
@@ -325,8 +356,8 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
         goto err;
     }
 
-    // Deine the pcr selection
-    if (!pcr_parse_selections(pcrs_select, &pcr_select)) {
+    // Define the pcr selection
+    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
         printf("pcr_parse_selections failed\n");
         goto err;
     } 

@@ -12,7 +12,7 @@ int TPA_init(void) {
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   uint16_t ek_handle[HANDLE_SIZE];
   uint16_t ak_handle[HANDLE_SIZE];
-
+  int ret;
   fprintf(stdout, "Init TPA\n");
   //tss_r = Tss2_TctiLdr_Initialize("swtpm", &tcti_context);
   //tss_r = Tss2_TctiLdr_Initialize("NULL", &tcti_context);
@@ -36,8 +36,16 @@ int TPA_init(void) {
     goto error;
   }
 
+  ret = check_pcr9(esys_context);
+  printf("%d\n", ret);
+  //Check if PCR9 is zero
+  if(ret  == 0){
+
+  } else if(ret == -1){
+    goto error;
+  }
   //PCR9 softbinding
-  int ret = PCR9softbindig(esys_context);
+  ret = PCR9softbindig(esys_context);
   if(ret != 0) goto error;
 
 

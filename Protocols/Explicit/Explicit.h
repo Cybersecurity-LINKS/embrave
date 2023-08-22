@@ -57,5 +57,5 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name);
 int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db);
 int PCR9softbindig(ESYS_CONTEXT *esys_context);
 int PCR9softbindig_verify(Ex_challenge_reply *rply);
-
+int check_pcr9(ESYS_CONTEXT *esys_context);
 #endif
