@@ -71,7 +71,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   return 0;
 }
 
-int PCR9softbindig(Ex_challenge_reply *rply){
+int PCR9softbindig(ESYS_CONTEXT *esys_context){
     unsigned char *pem = NULL;
     unsigned char *digest = NULL;
 
@@ -82,7 +82,7 @@ int PCR9softbindig(Ex_challenge_reply *rply){
         return -1;
     }
 
-    //printf("PEM to extend PCR9:\n%s\n", pem);
+    printf("PEM to extend PCR9:\n%s\n", pem);
 
     digest = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
     if(digest == NULL){
@@ -100,7 +100,9 @@ int PCR9softbindig(Ex_challenge_reply *rply){
         return -1;
     }
 
-   // tpm2_util_hexdump(digest, SHA256_DIGEST_LENGTH);
+    tpm2_util_hexdump(digest, SHA256_DIGEST_LENGTH);
+
+   //Extend SHA256 PCR9
 
     free(digest);
     free(pem);

@@ -97,7 +97,7 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
       load_challenge_request(c,r,&chl);
       
       //Compute the challenge
-      if ((TPA_explicit_challenge_TLS(&chl, &rpl)) != 0){
+      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
@@ -188,13 +188,14 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   struct mg_connection *c1;
   int a;
-  fprintf(stdout, "Init TPA\n");
-  if((a = TPA_init()) != 0) return -1;
 
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
     return -1;
   }
+
+  //Check TPM keys and extend PCR9
+  if((a = TPA_init()) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager

@@ -54,39 +54,19 @@ void save_timer(void){
 
 }
 
-bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle) {
-  // TPM
-  TSS2_RC tss_r;
-  ESYS_CONTEXT *esys_context = NULL;
-  TSS2_TCTI_CONTEXT *tcti_context = NULL;
-  int persistent_handles = 0;
-  //int n, i;
+bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context) {
 
-  tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
-  //tss_r = Tss2_TctiLdr_Initialize("swtpm", &tcti_context);
-  //tss_r = Tss2_TctiLdr_Initialize("NULL", &tcti_context);
-  if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize tcti context\n");
-    return false;
-  }
+  int persistent_handles = 0;
   
-  tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
-  if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize esys context\n");
-    return false;
-  }
   // Read the # of persistent handles and check that created/existing handles really exist
   persistent_handles = getCap_handles_persistent(esys_context, ek_handle, ak_handle);
   if (persistent_handles == -1 ) {
     printf("Error while reading persistent handles!\n");
     goto error;
   }
-  Esys_Finalize(&esys_context);
-  Tss2_TctiLdr_Finalize (&tcti_context);
   return true;
 error:
-  Esys_Finalize(&esys_context);
-  Tss2_TctiLdr_Finalize (&tcti_context);
+
   return false;
 }
 
