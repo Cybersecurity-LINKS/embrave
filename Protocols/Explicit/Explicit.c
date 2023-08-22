@@ -45,7 +45,7 @@ int nonce_create(Nonce *nonce_blob)
 
 int openPEM(const char *path, unsigned char **pem_file) {
   int len_file = 0;
-  char *data;
+  unsigned char *data;
   FILE *fp = fopen(path, "r");
   if(fp == NULL){
     printf("Could not open the PEM file %s \n", path);
@@ -58,7 +58,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   fseek(fp, 0L, SEEK_SET);
 
   // read the data from the file 
-  data = (char*) malloc((len_file + 1)*sizeof(char));
+  data = (unsigned char*) malloc((len_file + 1)*sizeof(char));
   if(data == NULL){
     printf("malloc error\n");
     return -1;
@@ -82,6 +82,27 @@ int PCR9softbindig(Ex_challenge_reply *rply){
         return -1;
     }
 
+    //printf("PEM to extend PCR9:\n%s\n", pem);
+
+    digest = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
+    if(digest == NULL){
+        free(pem);
+        printf("malloc error:\n");
+        return -1;
+    }
+
+    //Digest the certificate
+    ret = digest_message(pem, strlen((const char*) pem), 0, digest, NULL);
+    if(ret == -1){
+        printf("digest pem error\n");
+        free(pem);
+        free(digest);
+        return -1;
+    }
+
+   // tpm2_util_hexdump(digest, SHA256_DIGEST_LENGTH);
+
+    free(digest);
     free(pem);
     return 0;
 }

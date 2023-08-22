@@ -118,30 +118,6 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, u
     return -1;
 }
 
-
-/* void digest_message(const unsigned char *message, size_t message_len, unsigned char **digest, unsigned int *digest_len)
-{
-	EVP_MD_CTX *mdctx;
-
-	if((mdctx = EVP_MD_CTX_new()) == NULL)
-		handleErrors();
-
-	if(1 != EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL))
-		handleErrors();
-
-	if(1 != EVP_DigestUpdate(mdctx, message, message_len))
-		handleErrors();
-
-	if((*digest = (unsigned char *)OPENSSL_malloc(EVP_MD_size(EVP_sha256()))) == NULL)
-		handleErrors();
-
-	if(1 != EVP_DigestFinal_ex(mdctx, *digest, digest_len))
-		handleErrors();
-
-	EVP_MD_CTX_free(mdctx);
-}
- */
-
 int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsigned char *digest, int *digest_len) {
   EVP_MD_CTX *mdctx;
   //const EVP_MD *md;
@@ -171,11 +147,15 @@ int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsi
     break;
   }
 
-  if(1 != EVP_DigestUpdate(mdctx, message, message_len))
-		return -1;
+  if(1 != EVP_DigestUpdate(mdctx, message, message_len)){
+    printf("EVP_DigestUpdate error\n");
+    return -1;
+  }
 
-  if(1 != EVP_DigestFinal_ex(mdctx, digest,NULL))
-		return -1;
+  if(1 != EVP_DigestFinal_ex(mdctx, digest,NULL)){
+    printf("EVP_DigestFinal_ex error\n");
+    return -1;
+  }
 
   EVP_MD_CTX_free(mdctx);
 

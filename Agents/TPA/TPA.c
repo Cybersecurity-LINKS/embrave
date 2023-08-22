@@ -90,6 +90,7 @@ int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl){
 
   //PCR9 softbinding
   ret = PCR9softbindig(rpl);
+  if(ret != 0) goto end;
 
   //TPM Quote creation
   ret = create_quote(chl, rpl, esys_context);
