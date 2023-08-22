@@ -73,8 +73,9 @@ int openPEM(const char *path, unsigned char **pem_file) {
 
 int PCR9softbindig(ESYS_CONTEXT *esys_context){
     unsigned char *pem = NULL;
-    unsigned char *digest = NULL;
-
+    unsigned char *digest_buff = NULL;
+    TPMI_DH_PCR pcr_index;
+    TPML_DIGEST_VALUES digest;
     //Open the public certificate
     int ret = openPEM("../certs/server.crt", &pem);
     if(ret == -1){
@@ -84,27 +85,47 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
 
     printf("PEM to extend PCR9:\n%s\n", pem);
 
-    digest = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
-    if(digest == NULL){
+    digest_buff = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
+    if(digest_buff == NULL){
         free(pem);
         printf("malloc error:\n");
         return -1;
     }
 
     //Digest the certificate
-    ret = digest_message(pem, strlen((const char*) pem), 0, digest, NULL);
+    ret = digest_message(pem, strlen((const char*) pem), 0, digest_buff, NULL);
     if(ret == -1){
         printf("digest pem error\n");
         free(pem);
-        free(digest);
+        free(digest_buff);
         return -1;
     }
 
-    tpm2_util_hexdump(digest, SHA256_DIGEST_LENGTH);
+    tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
 
-   //Extend SHA256 PCR9
+    //Set PCR id 9
+    bool result = pcr_get_id("9", &pcr_index);
+    if (!result) {
+        printf("pcr_get_id error \n");
+        free(pem);
+        free(digest_buff);
+        return -1;
+    }
 
-    free(digest);
+    //Set digest structure
+    digest.count = 1;
+    digest.digests->hashAlg = TPM2_ALG_SHA256;
+    memcpy(digest.digests->digest.sha256, digest_buff, SHA256_DIGEST_LENGTH);//BYTE == uint8 == unsigned char
+    
+    //Extend SHA256 PCR9
+    TSS2_RC tss_r = Esys_PCR_Extend(esys_context, pcr_index, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &digest);
+    if(tss_r != TSS2_RC_SUCCESS){
+        printf("Could not extend PCR9\n");
+        free(pem);
+        free(digest_buff);
+        return -1;
+    }
+    free(digest_buff);
     free(pem);
     return 0;
 }

@@ -95,7 +95,7 @@ end:
   return 0;
 }
 
-int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl){
+/* int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl){
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
@@ -138,7 +138,7 @@ end:
   if(ret != 0)
     return -1;
   return 0;
-}
+} */
 
 void TPA_free(Ex_challenge_reply *rpl)
 {
