@@ -126,6 +126,15 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
   //Start timer 3
   get_start_timer();
 
+  //Softbindings verify
+  ret = PCR9softbindig_verify(rpl);
+  if (ret != 0){
+    printf("Untrusted TPA\n");
+    return -1;
+  }else {
+    printf("Softbindings verification OK\n");
+  }
+
   //Open the goldenvalues DB
   int rc = sqlite3_open_v2(db_file_name, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {

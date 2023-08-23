@@ -1,9 +1,6 @@
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/TPA/TPA.h"
-//static const char *s_lsn = "tcp://192.168.1.12:8765";   // Listening address
-//static const char *s_lsn_tls= "tcp://192.168.1.12:8766";   // Listening address
-//static const char *s_lsn_tls= "tcp://localhost:8766";   // Listening address
-//static const char *s_lsn = "tcp://10.0.0.1:8765";   // Listening address
+
 static bool Continue = true;
 
 
@@ -42,7 +39,6 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
       }
       //Send the challenge reply
       if (send_challenge_reply(c, r, &rpl) != 0){
-        //TODO
         printf("Send challenge reply error\n");
         c->is_closing = 1;
         Continue = false;
@@ -54,7 +50,8 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
 
       break;
     default:
-    //disconnect
+      printf("Unknown tag close connection\n");
+      c->is_closing = 1;
       break; 
     }
     //mg_send(c, r->buf, r->len);  // echo it back
@@ -67,7 +64,7 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
   (void) fn_data;
 }
 
-// SERVER event handler
+// SERVER event handler with TLS
 static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN && c->is_listening == 1) {
     MG_INFO(("SERVER is listening"));
@@ -104,24 +101,21 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
         TPA_free(&rpl);
         break;
       }
+
       //Send the challenge reply
       if (send_challenge_reply(c, r, &rpl) != 0){
-        //TODO
         printf("Send challenge reply error\n");
         c->is_closing = 1;
         Continue = false;
       }
-
       TPA_free(&rpl);
     break;
     case RA_TYPE_DAA:
 
     break;
     default:
-    //Unknown tag, disconnect
-      printf("Unknown tag\n");
+      printf("Unknown tag close connection\n");
       c->is_closing = 1;
-      Continue = false;
     break; 
     }
     //mg_send(c, r->buf, r->len);  // echo it back

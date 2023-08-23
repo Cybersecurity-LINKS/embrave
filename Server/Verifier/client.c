@@ -1,12 +1,5 @@
-//#include "../mongoose.h"
-//#include "../RA/RA.h"
 #include "../Mongoose/mongoose.h"
 #include "../../Agents/Remote_Attestor/RA.h"
-
-//static const char *s_conn = "tcp://192.168.1.12:8766";  // Connect to address
-//static const char *s_conn = "tcp://192.168.1.12:8765";  // Connect to address
-//static const char *s_conn = "tcp://192.168.1.12:8766";  // Connect to address
-//static const char *s_conn = "tcp://10.0.0.1:8765";  // Connect to address
 
 // client resources
 static struct c_res_s {
@@ -69,10 +62,8 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     Continue = false;
   } else if (ev == MG_EV_ERROR) {
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
-    
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    //int n;
     int tag = 0;
     Ex_challenge chl;
 
@@ -81,8 +72,10 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
       Continue = false;
       return;
     }
+
     //Send Explict tag
     mg_send(c, &tag, sizeof(int));
+
     //Send nonce
     mg_send(c, &chl, sizeof(Ex_challenge));
     //printf("CLIENT sent data\n");
@@ -140,10 +133,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     Continue = false;
   } else if (ev == MG_EV_ERROR) {
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
-    
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    //int n;
     int tag = 0;
     Ex_challenge chl;
 
@@ -152,8 +143,10 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
       Continue = false;
       return;
     }
+
     //Send Explict tag
     mg_send(c, &tag, sizeof(int));
+
     //Send nonce
     mg_send(c, &chl, sizeof(Ex_challenge));
     //printf("CLIENT sent data\n");

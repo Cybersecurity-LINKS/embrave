@@ -76,6 +76,8 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     unsigned char *digest_buff = NULL;
     TPMI_DH_PCR pcr_index;
     TPML_DIGEST_VALUES digest;
+    
+    printf("PCR9softbindig\n");
     //Open the public certificate
     int ret = openPEM("../certs/server.crt", &pem);
     if(ret == -1){
@@ -83,7 +85,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
         return -1;
     }
 
-    printf("PEM to extend PCR9:\n%s\n", pem);
+    //printf("PEM to extend PCR9:\n%s\n", pem);
 
     digest_buff = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
     if(digest_buff == NULL){
@@ -102,6 +104,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     }
 
     tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
+    printf("\n");
 
     //Set PCR id 9
     bool result = pcr_get_id("9", &pcr_index);
@@ -125,6 +128,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
         free(digest_buff);
         return -1;
     }
+
     free(digest_buff);
     free(pem);
     return 0;
@@ -152,7 +156,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
     return false;
     }
 
-    //tpm2_util_hexdump(pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    tpm2_util_hexdump(pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
     return memcmp(pcrs.pcr_values[0].digests[0].buffer, pcr_cmp, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
@@ -160,7 +164,60 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
 
 int PCR9softbindig_verify(Ex_challenge_reply *rply)
 {
-    return 0;
+    unsigned char *pem = NULL;
+    unsigned char *digest_buff = NULL;
+    uint8_t pcr9_sha256[SHA256_DIGEST_LENGTH];
+    int sz;
+    //TODO binding server crt wiht attester
+
+    //Open the servers's public certificate
+    int ret = openPEM("../certs/server.crt", &pem);
+    if(ret == -1){
+        printf("openPEM error\n");
+        return -1;
+    }
+
+    //printf("PEM to extend PCR9:\n%s\n", pem);
+
+    digest_buff = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
+    if(digest_buff == NULL){
+        free(pem);
+        printf("malloc error:\n");
+        return -1;
+    }
+
+    //Digest the servers's public certificate
+    ret = digest_message(pem, strlen((const char*) pem), 0, digest_buff, NULL);
+    if(ret == -1){
+        printf("digest pem error\n");
+        free(pem);
+        free(digest_buff);
+        return -1;
+    }
+
+    tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
+    printf("\n");
+
+    //Reconstrcut the PCR9 extension starting from 0..0
+    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
+    memcpy(sha256_concatenated + (SHA256_DIGEST_LENGTH *sizeof(uint8_t)), digest_buff, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+
+    if (digest_message(sha256_concatenated, (SHA256_DIGEST_LENGTH *2 * sizeof(uint8_t)), 0, pcr9_sha256, &sz) != 0){
+        printf("Digest creation error\n");
+        return -1;
+    }
+
+/*     tpm2_util_hexdump(pcr9_sha256, SHA256_DIGEST_LENGTH);
+    printf("\n");
+
+        tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[2].buffer, SHA256_DIGEST_LENGTH);
+    printf("\n"); */
+
+    ret = memcmp(rply->pcrs.pcr_values[1].digests[2].buffer, pcr9_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    free(digest_buff);
+    free(pem);
+    free(sha256_concatenated);
+    return ret;
 };
 
 int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
@@ -194,7 +251,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     //Set pcr to quote (all sha256) 
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
         printf("pcr_parse_selections failed\n");
-        printf("ERRORE QUI\n");
+        printf("ERRORE QUI?\n");
         return -1;
     }
 
@@ -417,8 +474,6 @@ void bin_2_hash(char *buff, BYTE *data, size_t len){
 //template_data = hash_length|hash_name(null terminated string)|filedata_hash|filename_length|filename(null terminated string)
 //template_hash = sha1(template_data)
 int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
-
-    
     uint32_t pcr;
     uint32_t field_len;
 	uint32_t field_path_len;
@@ -428,11 +483,10 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     uint8_t *entry_aggregate;
     int sz;
     unsigned char *calculated_template_hash = NULL;
-    //uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
 
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
-  //  printf("%d ", pcr);
+    //printf("%d ", pcr);
     //printf("%ld\n ", *total_read);
     
     memcpy(template_hash, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
@@ -449,7 +503,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     char template_type[TCG_EVENT_NAME_LEN_MAX + 1];
     memcpy(template_type, rply ->ima_log + *total_read, template_name_len);
     *total_read += template_name_len * sizeof(char);
-  //  printf("%s ", template_type);
+    //printf("%s ", template_type);
     
 
     uint32_t template_len;
@@ -458,13 +512,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     //printf("%d ", template_len);
 
     //Allocate a buffer for PCR extension verification
-   // printf("%ld\n", template_len);
-  //  printf("quiiiiiiiiiiiiiiiiii1\n");
     entry_aggregate = calloc(template_len + 1, sizeof(uint8_t));
- //   entry_aggregate[template_len] = '\0';
     
-
-
     memcpy(&field_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
     
@@ -497,18 +546,18 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
     *total_read += 8 * sizeof(uint8_t);
-  //  printf("%s", alg_field);
+    //printf("%s", alg_field);
 
     memcpy(entry_aggregate + acc, alg_field, sizeof alg_field);
     acc += 8*sizeof(uint8_t);
 
     memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-   // tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-  //  printf(" ");
+    //tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    //printf(" ");
     bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     //printf("buff %s\n", hash_name);
-  //  hash_name_byte[SHA256_DIGEST_LENGTH] = '\0';
+    //hash_name_byte[SHA256_DIGEST_LENGTH] = '\0';
     memcpy(entry_aggregate + acc, hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     acc += SHA256_DIGEST_LENGTH *sizeof(uint8_t);
 
@@ -518,21 +567,19 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     memcpy(entry_aggregate + acc, &field_path_len, sizeof(uint32_t));
     acc += sizeof(uint32_t);
 
- 
     *path_name = malloc(sizeof(char) * field_path_len);
 
     memcpy(*path_name, rply ->ima_log + *total_read, sizeof(char) * field_path_len);
     *total_read += sizeof(char) * field_path_len;
-   // printf("%ld %s\n",field_path_len, *path_name);
+    //printf("%ld %s\n",field_path_len, *path_name);
 
     memcpy(entry_aggregate + acc, *path_name, sizeof(uint8_t) * field_path_len);
     acc += sizeof(char) * field_path_len;
 
-   // tpm2_util_hexdump(*entry_aggregate, acc);
-   // printf("%d %d\n", template_len, acc);
+    //tpm2_util_hexdump(*entry_aggregate, acc);
+    //printf("%d %d\n", template_len, acc);
     calculated_template_hash = malloc(SHA_DIGEST_LENGTH *sizeof(unsigned char));
     
-    //char xxx[SHA_DIGEST_LENGTH+1];
     if (digest_message(entry_aggregate, template_len, 1, calculated_template_hash, &sz) != 0){
         printf("Digest creation error\n");
         free(calculated_template_hash);
@@ -540,8 +587,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         return -1;
     }
 
- //   tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-  //  printf("\n");
+    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    //printf("\n");
 
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
@@ -555,20 +602,16 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         //printf("\n\n\n");
     } 
 
-   // tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
- //   printf("\n");
+    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    //printf("\n");
 
-     //Compute the template digest SHA256
+    //Compute the template digest SHA256
     if (digest_message(entry_aggregate, template_len, 0, template_hash_sha256, &sz) != 0){
         printf("Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return -1;
     }
-
-   // tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    //printf("\n");
-
 
     free(calculated_template_hash);
     free(entry_aggregate);
@@ -696,10 +739,9 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     if(strcmp(event_name, "ima-ng") != 0){
         //printf("%s\n", event_name);
-        //other template here
         printf("Unknown IMA template\n");
         return -1;
-    }
+    }//other template here
 
     //TODO incremental ima log
     //No incremental ima => PCR10s = 0x00
@@ -741,14 +783,10 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     printf("IMA log verification OK\n");
     printf("WARNING check_goldenvalue DEV!\n");
     
-/*     char hash_ima_ascii[SHA256_DIGEST_LENGTH  * 2+1];
-    bin_2_hash(hash_ima_ascii, pcr10_sha256, sizeof(uint8_t) * (SHA256_DIGEST_LENGTH ));
-    printf("%s\n", hash_ima_ascii);
-
-    char hash_ima_ascii2[SHA_DIGEST_LENGTH  * 2+1];
-    bin_2_hash(hash_ima_ascii2, pcr10_sha1, sizeof(uint8_t) * (SHA_DIGEST_LENGTH ));
-    printf("%s\n", hash_ima_ascii2); */
-
+    //tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    //printf("\n");
+    //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    //printf("\n");
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
@@ -766,12 +804,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
             goto error;
         }
     printf("PCR10 calculation OK\n");
-
-
-
-   // printf("%d\n", total_read);
-    
-   
 
     free(pcr10_sha1);
     free(pcr10_sha256);

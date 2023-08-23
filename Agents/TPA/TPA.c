@@ -40,14 +40,12 @@ int TPA_init(void) {
   printf("%d\n", ret);
   //Check if PCR9 is zero
   if(ret  == 0){
-
+    //PCR9 is zero => softbinding
+    ret = PCR9softbindig(esys_context);
+    if(ret != 0) goto error;
   } else if(ret == -1){
     goto error;
   }
-  //PCR9 softbinding
-  ret = PCR9softbindig(esys_context);
-  if(ret != 0) goto error;
-
 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
