@@ -103,8 +103,8 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
         return -1;
     }
 
-    tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
-    printf("\n");
+    //tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
+    //printf("\n");
 
     //Set PCR id 9
     bool result = pcr_get_id("9", &pcr_index);
@@ -156,7 +156,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
     return false;
     }
 
-    tpm2_util_hexdump(pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    //tpm2_util_hexdump(pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
     return memcmp(pcrs.pcr_values[0].digests[0].buffer, pcr_cmp, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
@@ -195,8 +195,8 @@ int PCR9softbindig_verify(Ex_challenge_reply *rply)
         return -1;
     }
 
-    tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
-    printf("\n");
+    //tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
+    //printf("\n");
 
     //Reconstrcut the PCR9 extension starting from 0..0
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
@@ -523,10 +523,9 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     //sha256 len = 0x28
     if(field_len != 0x28){
-        //printf("IMA LOG ERROR ROW\n");
         //the next field must be "sha256:" so if it is "sha1:" means that there was an error during the IMA log creation => skip row
-        //EX: 10 204004cc472d826c599a7d5517284df006d6ac5c ima-ng sha256:a6ef4c60f89141ea82ebf851fa2f92f1d27520764c902570fbf7a77ee80295e6 /var/lib/logrotate/status
-        //10 0000000000000000000000000000000000000000 ima-ng sha1:0000000000000000000000000000000000000000 /var/lib/logrotate/status
+        //EX: 10 20..5c ima-ng sha256:a6..e6 /var/lib/logrotate/status
+        //10 00..00 ima-ng sha1:00..00 /var/lib/logrotate/status
         memcpy(alg_sha1_field, rply ->ima_log + *total_read, 6*sizeof(uint8_t));
         *total_read += 6 * sizeof(uint8_t);
         memcpy(entry_aggregate + acc, alg_sha1_field, sizeof alg_sha1_field);
@@ -553,11 +552,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-    //tpm2_util_hexdump(hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    //printf(" ");
     bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    //printf("buff %s\n", hash_name);
-    //hash_name_byte[SHA256_DIGEST_LENGTH] = '\0';
+
     memcpy(entry_aggregate + acc, hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     acc += SHA256_DIGEST_LENGTH *sizeof(uint8_t);
 
@@ -576,8 +572,6 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     memcpy(entry_aggregate + acc, *path_name, sizeof(uint8_t) * field_path_len);
     acc += sizeof(char) * field_path_len;
 
-    //tpm2_util_hexdump(*entry_aggregate, acc);
-    //printf("%d %d\n", template_len, acc);
     calculated_template_hash = malloc(SHA_DIGEST_LENGTH *sizeof(unsigned char));
     
     if (digest_message(entry_aggregate, template_len, 1, calculated_template_hash, &sz) != 0){
@@ -766,7 +760,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
@@ -781,7 +775,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
 
     }
     printf("IMA log verification OK\n");
-    printf("WARNING check_goldenvalue DEV!\n");
+    //printf("WARNING check_goldenvalue DEV!\n");
     
     //tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     //printf("\n");

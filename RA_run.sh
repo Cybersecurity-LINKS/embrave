@@ -3,7 +3,7 @@ if [ $# != 2 ]
     echo "Arguments error: usage ./RA_run.sh listen_ip int_tls(0,1)"
     exit 1
 fi
-for ((i=1; i<=500; i++))
+for ((i=1; i<=100; i++))
 do
     (cd ./Server/Verifier/ && sudo ./client $1 $2)
     echo $i

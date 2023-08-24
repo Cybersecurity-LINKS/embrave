@@ -1,0 +1,11 @@
+/home/pi/.vscode-server/
+/etc/fake-hwclock.data
+/var/log/journal/
+/var/lib/systemd/random-seed
+/var/lib/dhcpcd/
+/var/log/
+/var/lib/logrotate/status.tmp
+/home/pi/tpa/Protocols/Explicit/goldenvalues.db
+/home/pi/tpa/Server/Verifier/client
+/home/pi/tpa/Server/Attester/TPA
+/boot/System_Volume_Information/

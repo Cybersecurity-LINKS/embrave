@@ -15,3 +15,5 @@ sudo python3 Whitelist_generator/add_whitelist.py <path/file_to_exclude>
 ./RA_build.sh listen_ip_no_tls:port int_tls(0,1)
 # example
 ~/tpa $ ./RA_build.sh 192.168.1.12 1
+
+whitelist.txt TODO

@@ -1,16 +1,5 @@
 ripensare ak pem e server pem loading nel RA
 fase provisioning ak e creazione del binding
-togliere exclude list da py
-pulire Whitelist_generator
-aggiungere al py queste whitelist
-    /home/pi/.vscode-server/
-    /etc/fake-hwclock.data
-    /var/log/journal/
-    /var/lib/systemd/random-seed
-    /var/lib/dhcpcd/wlan0-Wind3
-    /var/log/
-    /var/lib/logrotate/status.tmp
 mongoose come git module
-tool_lib as patch serve?
 modificare gli script per avere tutti i file da mandare al RA in una cartella da copiare
-scrivere eben install md e readme
+scrivere bene install md e readme
