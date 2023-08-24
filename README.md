@@ -17,3 +17,6 @@ sudo python3 Whitelist_generator/add_whitelist.py <path/file_to_exclude>
 ~/tpa $ ./RA_build.sh 192.168.1.12 1
 
 whitelist.txt TODO
+scp pi@192.168.1.12:/home/pi/tpa/Protocols/Explicit/goldenvalues.db ./Protocols/Explicit/
+scp pi@192.168.1.12:/home/pi/tpa/Server/certs/ca.crt ./Server/certs/
+scp pi@192.168.1.12:/home/pi/tpa/Server/certs/server.crt ./Server/certs/

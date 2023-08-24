@@ -136,7 +136,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
 
 //ret value 0: pcr9 =0 1: pcr9!=0 -1: error
 int check_pcr9(ESYS_CONTEXT *esys_context){
-    int ret;
+    //int ret;
     TPML_PCR_SELECTION pcr_select;
     uint8_t pcr_cmp[SHA256_DIGEST_LENGTH];
     TSS2_RC tss_r;
