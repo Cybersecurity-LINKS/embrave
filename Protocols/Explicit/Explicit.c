@@ -18,10 +18,6 @@ struct {
         tpm2_loaded_object object;
 } key;
 
-
-
-
-//int get_quote_parameters(ESYS_CONTEXT *ectx, Ex_challenge_reply *rply);
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
@@ -223,7 +219,6 @@ int PCR9softbindig_verify(Ex_challenge_reply *rply)
 int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
     char handle[11]= "0x81000004";
-    //char pcrs[18] = "sha1:10+sha256:all";
     TPML_PCR_SELECTION pcr_select;
     int ret;
     tpm2_algorithm algs;
@@ -290,13 +285,14 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
 
-    //free used data 
+    //Free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
     //pcr_print_(&pcr_select, &(rply->pcrs));
+    
     //Copy nonce
     rply->nonce_blob.size = chl->nonce_blob.size;
     memcpy(&rply->nonce_blob.buffer, &chl->nonce_blob.buffer, rply->nonce_blob.size);
@@ -336,7 +332,6 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPML_PCR_SELECTION pcr_select;
-    //char pcrs_select[18] = "sha1:10+sha256:all";
     if( rply == NULL || pem_file_name == NULL) return -1;
     
     bio = BIO_new_file(pem_file_name, "rb");
@@ -395,7 +390,7 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
         goto err;
     }
 
-    //1 verify OK 0 verify failed -rc ohter errors
+    //1 verify OK 0 verify failed -rc other errors
     rc = EVP_PKEY_verify(pkey_ctx, rply->sig, rply->sig_size, msg_hash.buffer, msg_hash.size);
     if (rc != 1) {
         if (rc == 0) {
@@ -442,7 +437,7 @@ err:
 }
 
 
-//dest buff, input data, len of data
+//Convert len byte from data to hex and put them in buff
 void bin_2_hash(char *buff, BYTE *data, size_t len){
 
     size_t i;
@@ -468,11 +463,11 @@ void bin_2_hash(char *buff, BYTE *data, size_t len){
 }
 
 
-//read one row of the IMA Log
-//format of ima row
-//pcr|template_hash|template_name_length|template_name|template_data_lenght|template_data
-//template_data = hash_length|hash_name(null terminated string)|filedata_hash|filename_length|filename(null terminated string)
-//template_hash = sha1(template_data)
+/*  read one row of the IMA Log
+    format of ima row
+    pcr|template_hash|template_name_length|template_name|template_data_lenght|template_data
+    template_data = hash_length|hash_name(null terminated string)|filedata_hash|filename_length|filename(null terminated string)
+    template_hash = sha1(template_data) */
 int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
     uint32_t pcr;
     uint32_t field_len;
@@ -487,8 +482,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
     //printf("%d ", pcr);
-    //printf("%ld\n ", *total_read);
-    
+
     memcpy(template_hash, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
     //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
@@ -637,7 +631,7 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Golden value found, IMA row OK
-       // printf("%s: ", sqlite3_column_text(res, 0));
+        //printf("%s: ", sqlite3_column_text(res, 0));
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         return 0;
@@ -661,8 +655,6 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Path name found in the whitelist, IMA row OK
-        //printf("%s", sqlite3_column_text(res, 0));
-        //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         return 0;
         
@@ -673,8 +665,8 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
 }
 
 
-int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256){
-
+int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, 
+            uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256){
     int sz;
     //PCR concatenation
     //SHA256
@@ -785,12 +777,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
     //digests[i] i = pcrid mod 8 => 10 mod 8 2
-   // printf("%d\n", rply->pcrs.pcr_values[1].digests->size);
-   // tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-  //  printf("\n");
-
-    //tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-   // printf("\n");
     //Compare PCR10 with the received one
     if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
         || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
@@ -814,12 +800,6 @@ error:
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
     
-    //NotUsed = 0;
-
-/*     for (int i = 0; i < argc; i++) {
-
-        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    } */
     if(argv[0] > 0)
         return 0;
     else
@@ -828,10 +808,6 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName) {
 
 tool_rc tpm2_quote_free(void) {
 
-/*     if (ctx.pcr_output) {
-        fclose(ctx.pcr_output);
-    } */
-    //free(ctx.quoted);
     free(signature);
 
     //Close authorization sessions

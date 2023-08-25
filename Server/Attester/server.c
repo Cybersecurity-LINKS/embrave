@@ -6,6 +6,7 @@ static bool Continue = true;
 
 int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge *chl);
 int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl);
+void print_sent_data(Ex_challenge_reply *rpl);
 
 // SERVER event handler
 static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
@@ -150,11 +151,8 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
 {
   //Signature is dynamic memory=> cant send all structure in one time
   //Signature size
-
-  //size_t sz = sizeof(tpm2_pcrs);
-  //printf("AK PEM file recived: %ld\n", sz);
   mg_send(c, &rpl->sig_size, sizeof(UINT16));
-  //printf("Signature (size %d) received:\n", rpl->sig_size);
+
   //Signature
   mg_send(c, rpl->sig, rpl->sig_size);
 
@@ -162,7 +160,6 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
   
   //Data quoted
-  //mg_send(c, &rpl->quoted, sizeof(TPM2B_ATTEST));
   mg_send(c, &rpl->quoted->size, sizeof(UINT16));
   mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
 
@@ -173,8 +170,31 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //IMA Log
   mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
   mg_send(c, rpl->ima_log, rpl->ima_log_size);
-  printf("IMA log file sent size: %d\n", rpl->ima_log_size);
+
+  print_sent_data(rpl);
+
   return 0;
+}
+
+void print_sent_data(Ex_challenge_reply *rpl){
+  printf("NONCE:");
+  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
+    printf("%02X", rpl->nonce_blob.buffer[i]);
+  printf("\n");
+
+  TPML_PCR_SELECTION pcr_select;
+  if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
+    printf("pcr_parse_selections print server failed\n");
+    return;
+  }
+  pcr_print_(&pcr_select, &(rpl->pcrs)); 
+
+  print_signature(&rpl->sig_size, rpl->sig);
+  
+  print_quoted(rpl->quoted);
+  
+  printf("IMA log size sent:%d\n", rpl->ima_log_size);
+  
 }
 
 int main(int argc, char *argv[]) {

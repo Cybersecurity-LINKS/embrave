@@ -15,10 +15,10 @@ static bool error = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
 static Ex_challenge_reply rpl;
-//int challenge_create(struct mg_connection *c);
+
 int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
-
+void print_data(Ex_challenge_reply *rpl);
 
 static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   int *i = &((struct c_res_s *) fn_data)->i;
@@ -207,12 +207,10 @@ int main(int argc, char *argv[]) {
     return -1;
 }
 
-int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
-{
-  //char pcrs[18] = "sha1:10+sha256:all";
+int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
+
   int ret;
   if(r == NULL) return -1;
-
   //printf("Received %d data from socket\n", r->len);
   
   while(r->len > 0) {
@@ -238,7 +236,6 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
     case 2:
       //Quoted data size
       if(rpl->quoted == NULL) rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
-      //if(rpl->quoted == NULL) return -1;
       ret = try_read(r, sizeof(UINT16), &rpl->quoted->size);
       if(ret == 0) last_rcv = 3;
       else return 1;
@@ -279,31 +276,33 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl)
   }
 
   last_rcv = 0;
-
-  //Print received data
-  //printf("NONCE Received:");
- // for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
- //   printf("%02X", rpl->nonce_blob.buffer[i]);
- // printf("\n");
-
-/*   TPML_PCR_SELECTION pcr_select;
-  if (!pcr_parse_selections(pcrs, &pcr_select)) {
-    printf("pcr_parse_selections failed\n");
-    return -1;
-  }
-  pcr_print_(&pcr_select, &(rpl->pcrs)); */
-
- // print_signature(&rpl->sig_size, rpl->sig);
   
-
- // print_quoted(rpl->quoted);
-
-/*    printf("IMA log recived:\n");
-  rpl->ima_log[rpl->ima_log_size] = '\n';
-  printf("%s\n", rpl->ima_log);  */
-
+  print_data(rpl);
 
   return 0;
+}
+
+//Print received data
+void print_data(Ex_challenge_reply *rpl){
+  
+  printf("NONCE Received:");
+  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
+    printf("%02X", rpl->nonce_blob.buffer[i]);
+  printf("\n");
+
+  TPML_PCR_SELECTION pcr_select;
+  if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
+    printf("pcr_parse_selections print client failed\n");
+    return;
+  }
+  pcr_print_(&pcr_select, &(rpl->pcrs)); 
+
+  print_signature(&rpl->sig_size, rpl->sig);
+  
+  print_quoted(rpl->quoted);
+
+  printf("IMA log size recived:%d\n", rpl->ima_log_size);
+  
 }
 
   /* Try reading data from the received data buffer. 
