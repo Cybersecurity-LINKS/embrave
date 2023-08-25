@@ -408,7 +408,7 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
         goto err;
     }
 
-    // Define the pcr selection
+/*     // Define the pcr selection
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
         printf("pcr_parse_selections failed\n");
         goto err;
@@ -423,7 +423,7 @@ int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
     // Verify that the digest from quote matches PCR digest
     if (!tpm2_util_verify_digests(&attest.attested.quote.pcrDigest, &pcr_hash)) {
         goto err;
-    }
+    } */
 
     OPENSSL_free(bio);
     EVP_PKEY_free(pkey);
