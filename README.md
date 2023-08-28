@@ -1,4 +1,22 @@
 # Trusted Platform Agent (TPA) and Remote Attestor (RA) (name TBD)
+C-language implementation of a Trusted Platform Agent (TPA) and Remote Attestor (RA). The TPA waits on two TCP sockets (one of which is configured for a TLS connection) for the challenge of an RA and sends:
+* The TPM Quote and signature calculated with the nonce and the digest of SHA1 PCR10 and all SHA256 PCRs
+* The SHA1 PCR10 an all SHA256 PCRs
+* The complete IMA Log
+* In the case of TLS connection, PCR9 SHA256 is extended with the SHA256 digest of the server TLS public certificate
+
+The RA verifies:
+* The TPM Quote against the quoted data and the public AK key (in his possession)
+* The quoted digest of PCR against the digest of sent PCRs
+* All IMA log events against the golden Values database or the Exclude database
+* Reconstruction of SHA1 PCR10 and SHA256 PCR and comparison against the sent ones
+* In the case of TLS connection, the PCR9 SHA256 extension is re-created with the server TLS public certificate (in his possession) and compared with the sent PCR9
+
+Limitation:
+- Only ima-ng format of IMA log is supported
+- In the event of a server key change, the device must be restarted
+- Some files must be excluded manually
+- Exclusive support of TPM2.0
 
 ## Build and install
 Refer to the [INSTALL.md](INSTALL.md) file for instructions about building and installing the applications.
