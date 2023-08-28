@@ -1,4 +1,7 @@
-# TPA
+# Trusted Platform Agent (TPA) and Remote Attestor (RA)
+
+
+[INSTALL](INSTALL.md)
 
 create_whitelist.py
 sudo python3 script/add_excludelist.py <path/file_to_exclude>
