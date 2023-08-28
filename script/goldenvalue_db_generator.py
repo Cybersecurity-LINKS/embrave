@@ -95,7 +95,7 @@ def add_row(conn, row):
     conn.commit()
     return cur.lastrowid
 
-def add_row_whitelist(conn, row):
+def add_row_excludelist(conn, row):
     sql = ''' INSERT INTO whitelist(name)
               VALUES(?) '''
     cur = conn.cursor()
@@ -192,8 +192,8 @@ if __name__ == '__main__':
                 num_files+=1
     bootaggr()
     
-    with open('whitelist.txt', 'r') as whitelist:
-        for lines in whitelist:
-            add_row_whitelist(conn, lines[:-1])
+    with open('./script/exclude.txt', 'r') as excludelist:
+        for lines in excludelist:
+            add_row_excludelist(conn, lines[:-1])
             
     conn.close

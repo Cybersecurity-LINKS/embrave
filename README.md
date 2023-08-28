@@ -1,7 +1,7 @@
 # TPA
 
 create_whitelist.py
-sudo python3 script/add_whitelist.py <path/file_to_exclude>
+sudo python3 script/add_excludelist.py <path/file_to_exclude>
 
 # creation of certficate usage
 ~/tpa $ ./script/create_certificates.sh
