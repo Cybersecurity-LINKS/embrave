@@ -5,5 +5,4 @@ if [ $# != 2 ]
 fi
 
 cd ./Server/Attester/
-make 
 sudo ./TPA $1 $2
