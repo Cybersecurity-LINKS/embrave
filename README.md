@@ -1,5 +1,5 @@
 # Trusted Platform Agent (TPA) and Remote Attestor (RA) (name TBD)
-C-language implementation of a Trusted Platform Agent (TPA) and Remote Attestor (RA). The TPA waits on two TCP sockets (one of which is configured for a TLS connection) for the challenge of an RA and sends:
+C-language implementation of a Trusted Platform Agent (TPA) and Remote Attestor (RA) for Remote Attestation. The TPA waits on two TCP sockets (one of which is configured for a TLS connection) for the challenge of an RA and sends:
 * The TPM Quote and signature calculated with the nonce and the digest of SHA1 PCR10 and all SHA256 PCRs
 * The SHA1 PCR10 an all SHA256 PCRs
 * The complete IMA Log
