@@ -22,7 +22,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 sudo systemctl daemon-reload
 ```
 ## Dependencies of tpm2-tools
-install the dependencies listed at this [link]<https://tpm2-tools.readthedocs.io/en/latest/INSTALL/>
+install the dependencies listed at this [link](https://tpm2-tools.readthedocs.io/en/latest/INSTALL/)
 
 ## sqlite3
 ```sh
