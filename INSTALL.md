@@ -23,5 +23,15 @@ sudo apt install libsqlite3-dev
     ./configure
 2 tpa && RA
 
+# compile TPA
+./TPA_build.sh tcp://listen_ip_no_tls:port tcp://listen_ip_tls:port
+# example
+~/tpa $ ./TPA_build.sh tcp://192.168.1.12:8765 tcp://localhost:8766
+
+# compile RA (0 IP no TLS 1 IP TLS)
+./RA_build.sh listen_ip_no_tls:port int_tls(0,1)
+# example
+~/tpa $ ./RA_build.sh 192.168.1.12 1
+
 
 
