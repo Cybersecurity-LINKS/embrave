@@ -1,7 +1,7 @@
 #include "TPA.h"
 
 
-//static long ima_byte_sent = 0;
+static uint32_t ima_byte_sent = 0;
 
 int load_ima_log(const char *path, Ex_challenge_reply *rpl);
 
@@ -153,6 +153,9 @@ void TPA_free(Ex_challenge_reply *rpl)
 
 /* 
   Read the IMA log and send it all, starting from position ima_byte_sent byte
+  ret value
+  0 ima log read ok
+  -1 error
  */
 
 int load_ima_log(const char *path, Ex_challenge_reply *rpl)
@@ -164,6 +167,19 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
 	  printf("Unable to open IMA file\n");
 		return -1;
 	}
+
+  if(ima_byte_sent != 0){
+    int ret = fseek(fp, ima_byte_sent, SEEK_SET);
+    printf("fseek ret %d\n", ret);
+    if (ret != 0){
+      printf("Unable to fseek IMA file\n");
+      return -1;
+    }
+    rpl->wholeLog = 0;
+  }
+  else {
+    rpl->wholeLog = 1;
+  }
   
   rpl->ima_log_size = 0;
   buff_sz = 2048;
@@ -173,40 +189,44 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
     char block[2048];
     read_bytes = fread(block, 1, sizeof(block), fp);
 
-        if (read_bytes == 0) {
-            // Eof or error
-            if (feof(fp)) {
-                break; // EOF
-            } else {
-                printf("Error reading the IMA log\n");
-                free(rpl->ima_log);
-                fclose(fp);
-                return -1;
-            }
+    if (read_bytes == 0) {
+      printf("%ld\n", rpl->ima_log_size);
+      // Eof or error
+      if (feof(fp)) {
+        if(rpl->ima_log_size != 0){
+          //Eof, save the number of byte read
+          ima_byte_sent += rpl->ima_log_size;
+          break;
         }
-
-/*         // Espandi il buffer per includere i dati letti
-        rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, rpl->ima_log_size + read_bytes);
-        if (rpl->ima_log == NULL) {
-            printf("Error realloc the IMA log buffer\n");
-            fclose(fp);
-            return -1;
-        } */
-
-        //Realloc buffer if needed
-        if(buff_sz < rpl->ima_log_size + read_bytes){
-          rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, 2 * buff_sz);
-          if (rpl->ima_log == NULL) {
-            printf("Error realloc the IMA log buffer\n");
-            fclose(fp);
-            return -1;
-          }
-          buff_sz = 2 * buff_sz;
+        else{
+          //No new entry in the IMA log, no need to re send it
+          //TODO
+          printf("No need to send the IMA log\n");
+          //fclose(fp);
+          //free(rpl->ima_log);
+          //return 1;
+          break;
         }
+      } else {
+        printf("Error reading the IMA log\n");
+        free(rpl->ima_log);
+        fclose(fp);
+        return -1;
+        }
+    }
 
-        // Copia il blocco letto nel buffer espanso
-        memcpy(rpl->ima_log + rpl->ima_log_size, block, read_bytes);
-        rpl->ima_log_size += read_bytes;
+    //Realloc buffer if needed
+    if(buff_sz < rpl->ima_log_size + read_bytes){
+      rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, 2 * buff_sz);
+      if (rpl->ima_log == NULL) {
+        printf("Error realloc the IMA log buffer\n");
+        fclose(fp);
+        return -1;
+      }
+      buff_sz = 2 * buff_sz;
+    }
+    memcpy(rpl->ima_log + rpl->ima_log_size, block, read_bytes);
+    rpl->ima_log_size += read_bytes;
     }
 
   fclose(fp);

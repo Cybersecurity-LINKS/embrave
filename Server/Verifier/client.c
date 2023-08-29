@@ -261,12 +261,23 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
     case 6:
       //IMA log size
       ret = try_read(r, sizeof(uint32_t), &rpl->ima_log_size);
+      if (rpl->ima_log_size == 0)
+      {
+        printf("TODO SKIP IMA LOG\n");
+        return 1;
+      }
+      
       if(ret == 0) last_rcv = 7;
       else return 1;
     break;
     case 7:
       if(rpl->ima_log == NULL) rpl->ima_log = malloc(rpl->ima_log_size);
       ret = try_read(r, rpl->ima_log_size, rpl->ima_log);
+      if(ret == 0) last_rcv = 8;
+      else return 1;
+    break;
+    case 8:
+      ret = try_read(r, sizeof(uint8_t), &rpl->wholeLog);
       if(ret != 0) return 1;
     break;
     default:
@@ -302,6 +313,7 @@ void print_data(Ex_challenge_reply *rpl){
   print_quoted(rpl->quoted);
 
   printf("IMA log size recived:%d\n", rpl->ima_log_size);
+  printf("IMA whole log %d\n", rpl->wholeLog);
   
 }
 

@@ -43,6 +43,7 @@ typedef struct {
     //IMA
     unsigned char * ima_log;
     uint32_t ima_log_size;
+    uint8_t wholeLog;
 } Ex_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);

@@ -169,9 +169,13 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
 
   //IMA Log
   mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
-  mg_send(c, rpl->ima_log, rpl->ima_log_size);
-
-  print_sent_data(rpl);
+  if(rpl->ima_log_size != 0){
+    printf("QUIIIIIIII\n");
+    mg_send(c, rpl->ima_log, rpl->ima_log_size);
+    mg_send(c, &rpl->wholeLog, sizeof(uint8_t));
+  }
+    
+  //print_sent_data(rpl);
 
   return 0;
 }
