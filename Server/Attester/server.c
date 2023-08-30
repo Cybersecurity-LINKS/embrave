@@ -170,7 +170,6 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   //IMA Log
   mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
   if(rpl->ima_log_size != 0){
-    printf("QUIIIIIIII\n");
     mg_send(c, rpl->ima_log, rpl->ima_log_size);
     mg_send(c, &rpl->wholeLog, sizeof(uint8_t));
   }
@@ -198,7 +197,7 @@ void print_sent_data(Ex_challenge_reply *rpl){
   print_quoted(rpl->quoted);
   
   printf("IMA log size sent:%d\n", rpl->ima_log_size);
-  
+  printf("IMA whole log size sent:%d\n", rpl->wholeLog);
 }
 
 int main(int argc, char *argv[]) {

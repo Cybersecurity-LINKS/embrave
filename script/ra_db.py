@@ -35,49 +35,41 @@ def create_table(conn, create_table_sql):
 
 
 def add_row(conn, row):
-    sql = ''' INSERT INTO whitelist(name)
-              VALUES(?) '''
+    sql = ''' INSERT INTO tpa(ak, ak_path, pcr10, gv_db, tls_pem_path, timestamp)
+              VALUES(?, ?, ?, ?, ?, ?) '''
     cur = conn.cursor()
-    cur.execute(sql, [row])
+    cur.execute(sql, row)
     conn.commit()
     return cur.lastrowid
 
 
 def main():
-    database = r"./Protocols/Explicit/goldenvalues.db"
-    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
-                                        name text NOT NULL,
-                                        PRIMARY KEY (name)
-                                    ); """
-    sql_create_projects_table2 = """ CREATE TABLE IF NOT EXISTS golden_values (
-                                        name text NOT NULL,
-                                        hash text NOT NULL,
-                                        PRIMARY KEY (name,hash)
+    database = r"./Agents/Remote_Attestor/tpa.db"
+    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS tpa (
+                                        ak text NOT NULL,
+                                        ak_path text NOT NULL,
+                                        pcr10 text,
+                                        gv_db text NOT NULL,
+                                        tls_pem_path text NOT NULL,
+                                        timestamp text,
+                                        PRIMARY KEY (ak)
                                     ); """
     
-    if len(sys.argv) < 2:
-        print("Required the name to add in the whitelist")
+    if len(sys.argv) < 5:
+        print("Required the ak digest, ak path, tls pem path and goldenvalue db path")
         sys.exit(1)
 
     name = sys.argv[1]
-    print(name)
+    ak_path = sys.argv[2]
+    pem_path = sys.argv[3]
+    gv_db = sys.argv[4]
 
+    row_1 = (name, ak_path, None, gv_db, pem_path, None)
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
-    #create_table(conn, sql_create_projects_table2)
-    add_row(conn, name)
+
+    add_row(conn, row_1)
     conn.close
-"""     cur = conn.cursor()
-    cur.execute(''' CREATE INDEX index_name ON golden_values (name, hash); ''')
-    conn.commit() """
-    
-
-"""     cur = conn.cursor()
-    cur.execute(''' ALTER TABLE golden_values ORDER BY name asc; ''')
-    conn.commit()
-
-    conn.close """
-
 
 if __name__ == '__main__':
     main()
