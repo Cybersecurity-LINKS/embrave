@@ -709,7 +709,14 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(u_int8_t));
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
 
-    if(rply->ima_log == NULL || rply->ima_log_size <=0){
+    
+    if(rply->ima_log_size == 0){
+        //No new event in the TPA
+        printf("No IMA log received so compare old PCR10 with received:\n");
+        //TODO
+        goto PCR10;
+
+    } else if(rply->ima_log == NULL || rply->ima_log_size < 0){
         printf("verify_ima_log bad input\n");
         return -1;
     }
@@ -778,8 +785,8 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     //pcrs.pcr_values[1].digests->size == 32 == sha256
     //digests[i] i = pcrid mod 8 => 10 mod 8 2
     //Compare PCR10 with the received one
-    if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
-        || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
+PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
+            || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
             printf("PCR10 calculation mismatch\n");
             goto error;
         }

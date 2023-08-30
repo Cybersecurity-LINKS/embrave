@@ -211,10 +211,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
 
   int ret;
   if(r == NULL) return -1;
-  //printf("Received %d data from socket\n", r->len);
+  printf("Received %d data from socket\n", r->len);
   
   while(r->len > 0) {
-    //printf("buffer len %d case %d\n", r->len, last_rcv);
+    printf("buffer len %d case %d\n", r->len, last_rcv);
     switch (last_rcv)
     {
     case 0: 
@@ -261,12 +261,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
     case 6:
       //IMA log size
       ret = try_read(r, sizeof(uint32_t), &rpl->ima_log_size);
-      if (rpl->ima_log_size == 0)
-      {
-        printf("TODO SKIP IMA LOG\n");
-        return 1;
+      if (rpl->ima_log_size == 0){
+        last_rcv = 0;
+        return 0;
       }
-      
       if(ret == 0) last_rcv = 7;
       else return 1;
     break;
