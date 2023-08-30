@@ -31,7 +31,6 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
   } else if (ev == MG_EV_READ) {
     //printf("Client received data\n");
     int n = 0;
-    printf("%s ffff\n", tpa_data.ak_path);
     struct mg_iobuf *r = &c->recv;
     n = load_challenge_reply(r, &rpl);
     if(n < 0){
@@ -48,7 +47,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     get_finish_timer();
     print_timer(1);
 
-    if(RA_explicit_challenge_verify(&rpl) < 0){
+    if(RA_explicit_challenge_verify(&rpl, &tpa_data) < 0){
       error = true;
     }
 
@@ -118,8 +117,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     //End timer 1
     get_finish_timer();
     print_timer(1);
-
-    if(RA_explicit_challenge_verify_TLS(&rpl) < 0){
+    
+    if(RA_explicit_challenge_verify_TLS(&rpl, &tpa_data) < 0){
       error = true;
     }
 
@@ -165,10 +164,10 @@ int get_paths(char * id){
 
   sqlite3_stmt *res;
   sqlite3 *db;
+  int byte;
   //char *sql = "SELECT * FROM tpa where ak = '605403c37ebf5d0e73cc4e1569724635ee77181e54eb258035afc914d9d10285'";
   char *sql = "SELECT * FROM tpa ";
   //TODO
-  int idx;
   int step;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
@@ -194,10 +193,30 @@ int get_paths(char * id){
   //Execute the sql query
   step = sqlite3_step(res);
   if (step == SQLITE_ROW) {
-    tpa_data.ak_path = sqlite3_column_text(res, 1);
-    tpa_data.gv_path = sqlite3_column_text(res, 3);
-    printf("%s", sqlite3_column_text(res, 2));
-    
+    //N byte entry -> malloc -> memcpy
+    //Ak path
+    byte = sqlite3_column_bytes(res, 1);
+    tpa_data.ak_path = malloc(byte);
+    memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 1), byte);
+
+    //PCR10, could be null
+    byte = sqlite3_column_bytes(res, 2);
+    printf(" quiii %d\n", byte);
+
+    //Goldenvalue db path
+    byte = sqlite3_column_bytes(res, 3);
+    tpa_data.gv_path = malloc(byte);
+    memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 3), byte);
+    //printf("%s\n", tpa_data.gv_path);
+
+    //TLS cert path
+    byte = sqlite3_column_bytes(res, 4);
+    tpa_data.tls_path = malloc(byte);
+    memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 4), byte);
+
+    //Timestamp, could be null    
+    //TODO
+
     sqlite3_finalize(res);
     sqlite3_close(db);
     return 0;
@@ -206,7 +225,7 @@ int get_paths(char * id){
   
   sqlite3_finalize(res);
   sqlite3_close(db);
-  return 0;
+  return -1;
 }
 
 int main(int argc, char *argv[]) {
@@ -218,7 +237,7 @@ int main(int argc, char *argv[]) {
   get_start_timer();
 
   get_paths(NULL);
-  
+
   //printf("%d\n", argc);
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");

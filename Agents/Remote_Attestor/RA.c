@@ -1,19 +1,17 @@
 #include "RA.h"
 
-char *load_ak_bind(char * db_file_name);
-
 int RA_explicit_challenge_create(Ex_challenge *chl)
 {
   return nonce_create(&(chl->nonce_blob));
 }
 
-int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
+int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
 {
   int ret;
   sqlite3 *db;
-  char * pem_file_name, db_file_name[250];
+ // char * pem_file_name, db_file_name[250];
   if(rpl == NULL) return -1;
-
+  
   //FAIL TEST commented
   //rpl->quoted->attestationData[2] = 'a'; //TEST change a bit in the quoted data
   //rpl->quoted->size = 47488; //TEST change a bit in the quoted data size
@@ -27,16 +25,8 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   //Start timer 2
   get_start_timer();
 
-  //TODO better version
-  //load ak bind
-  pem_file_name = load_ak_bind(db_file_name);
-  if(pem_file_name == NULL){
-    printf("AK loading faled\n");
-    return -1;
-  }
-
   //verify quote
-  ret = verify_quote(rpl, pem_file_name);
+  ret = verify_quote(rpl, tpa_data->ak_path );
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
@@ -52,7 +42,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl)
   get_start_timer();
 
   //Open the goldenvalues DB
-  int rc = sqlite3_open_v2(db_file_name, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2((const char *) tpa_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -82,11 +72,11 @@ end:
     return -1;
 }
 
-int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
+int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
 {
   int ret;
   sqlite3 *db;
-  char * pem_file_name, db_file_name[250];
+  //char * pem_file_name, db_file_name[250];
   if(rpl == NULL) return -1;
 
   //FAIL TEST commented
@@ -102,16 +92,8 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
   //Start timer 2
   get_start_timer();
 
-  //TODO better version
-  //load ak bind
-  pem_file_name = load_ak_bind(db_file_name);
-  if(pem_file_name == NULL){
-    printf("AK loading faled\n");
-    return -1;
-  }
-
   //verify quote
-  ret = verify_quote(rpl, pem_file_name);
+  ret = verify_quote(rpl, (const char *) tpa_data->ak_path);
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
@@ -127,7 +109,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
   get_start_timer();
 
   //Softbindings verify
-  ret = PCR9softbindig_verify(rpl);
+  ret = PCR9softbindig_verify(rpl, tpa_data);
   if (ret != 0){
     printf("Untrusted TPA\n");
     return -1;
@@ -136,7 +118,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl)
   }
 
   //Open the goldenvalues DB
-  int rc = sqlite3_open_v2(db_file_name, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2((const char *) tpa_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -164,41 +146,6 @@ end:
     return 0;
   else
     return -1;
-}
-
-char *load_ak_bind(char * db_file_name){
-  FILE*fp;
-  char *a = NULL;
-  char *b = NULL;
-  //char *c = NULL;
-  size_t sz;
-  fp = fopen("../../Agents/Remote_Attestor/DB/ak_bind.txt", "r");
-  char *buff;
-
-  if(fp == NULL) return NULL;
-  //The getline function uses the realloc function 
-  //to automatically increase the memory block as required
-  while(getline(&a, &sz, fp) != -1){
-    buff = strtok(a, " ");
-    //TODO dinamic ip 
-    if(strcmp(buff, "tcp://localhost:8765") == 0){
-      b = strtok(NULL, " ");
-      if(b == NULL) return NULL;
-     // db_file_name = malloc(strlen(b)+1);
-     // if(db_file_name == NULL) return NULL;
-      memcpy(db_file_name, b, strlen(b)+1);
-      //printf("%s\n", db_file_name);
-      //c = strtok(NULL, " ");
-     // printf("%s\n", db_file_name);
-     // printf("%s\n", c);
-      //db_file_name = strtok(NULL, " ");
-      return strtok(NULL, " ");
-    }
-      
-  } 
-  
-  free(a);
-  return NULL;
 }
 
 void RA_free(Ex_challenge_reply *rpl){

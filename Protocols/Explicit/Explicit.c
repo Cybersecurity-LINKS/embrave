@@ -158,16 +158,15 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
 
 }
 
-int PCR9softbindig_verify(Ex_challenge_reply *rply)
+int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data)
 {
     unsigned char *pem = NULL;
     unsigned char *digest_buff = NULL;
     uint8_t pcr9_sha256[SHA256_DIGEST_LENGTH];
     int sz;
-    //TODO binding server crt wiht attester
 
     //Open the servers's public certificate
-    int ret = openPEM("../certs/server.crt", &pem);
+    int ret = openPEM((const char*) tpa_data->tls_path, &pem);
     if(ret == -1){
         printf("openPEM error\n");
         return -1;
@@ -323,7 +322,7 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
     pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
-int verify_quote(Ex_challenge_reply *rply, char* pem_file_name)
+int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
