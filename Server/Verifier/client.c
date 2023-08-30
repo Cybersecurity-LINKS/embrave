@@ -15,6 +15,7 @@ static bool error = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
 static Ex_challenge_reply rpl;
+static Tpa_data tpa_data;
 
 int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
@@ -30,7 +31,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
   } else if (ev == MG_EV_READ) {
     //printf("Client received data\n");
     int n = 0;
-    
+    printf("%s ffff\n", tpa_data.ak_path);
     struct mg_iobuf *r = &c->recv;
     n = load_challenge_reply(r, &rpl);
     if(n < 0){
@@ -157,6 +158,56 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     }
 }
 
+// Load the AK path, the TLS certificate, the last PCR10 if present, 
+// and the goldenvalue db path for a certain tpa
+int get_paths(char * id){
+  (void) id;
+
+  sqlite3_stmt *res;
+  sqlite3 *db;
+  //char *sql = "SELECT * FROM tpa where ak = '605403c37ebf5d0e73cc4e1569724635ee77181e54eb258035afc914d9d10285'";
+  char *sql = "SELECT * FROM tpa ";
+  //TODO
+  int idx;
+  int step;
+
+  int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  if ( rc != SQLITE_OK) {
+    printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+
+  //convert the sql statament 
+  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+/*         //Set the parametrized input
+        idx = sqlite3_bind_parameter_index(res, "@name");
+        sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
+
+        idx2 = sqlite3_bind_parameter_index(res, "@hash");
+        sqlite3_bind_text(res, idx2, hash_name, strlen(hash_name), NULL); */
+  } else {
+    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+  }
+    
+  //Execute the sql query
+  step = sqlite3_step(res);
+  if (step == SQLITE_ROW) {
+    tpa_data.ak_path = sqlite3_column_text(res, 1);
+    tpa_data.gv_path = sqlite3_column_text(res, 3);
+    printf("%s", sqlite3_column_text(res, 2));
+    
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    return 0;
+        
+  } 
+  
+  sqlite3_finalize(res);
+  sqlite3_close(db);
+  return 0;
+}
 
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
@@ -166,13 +217,15 @@ int main(int argc, char *argv[]) {
   //Start Timer 1
   get_start_timer();
 
+  get_paths(NULL);
+  
   //printf("%d\n", argc);
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
     return -1;
   }
   n = strtol(argv[2], NULL, 10) ;
-  printf("%s\n", argv[2]);
+
   if(n == 0)
     snprintf(s_conn, 250, "tcp://%s:8765", argv[1]);
   else if(n == 1)
@@ -211,10 +264,10 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
 
   int ret;
   if(r == NULL) return -1;
-  printf("Received %d data from socket\n", r->len);
+  //printf("Received %d data from socket\n", r->len);
   
   while(r->len > 0) {
-    printf("buffer len %d case %d\n", r->len, last_rcv);
+    //printf("buffer len %d case %d\n", r->len, last_rcv);
     switch (last_rcv)
     {
     case 0: 
@@ -286,7 +339,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
 
   last_rcv = 0;
   
-  print_data(rpl);
+  //print_data(rpl);
 
   return 0;
 }
