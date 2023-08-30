@@ -1,1 +1,0 @@
-tcp://localhost:8765 file:../../Protocols/Explicit/goldenvalues.db ../../Agents/Remote_Attestor/AKs/ak.pub.pem
