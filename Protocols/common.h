@@ -23,6 +23,7 @@
 enum { NS_PER_SECOND = 1000000000 };
 
 typedef struct {
+    char *sha_ak;
     char *ak_path;
     char *gv_path;
     char *tls_path;

@@ -194,6 +194,10 @@ int get_paths(char * id){
   step = sqlite3_step(res);
   if (step == SQLITE_ROW) {
     //N byte entry -> malloc -> memcpy
+    byte = sqlite3_column_bytes(res, 0);
+    tpa_data.sha_ak = malloc(byte);
+    memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 0), byte);
+
     //Ak path
     byte = sqlite3_column_bytes(res, 1);
     tpa_data.ak_path = malloc(byte);
