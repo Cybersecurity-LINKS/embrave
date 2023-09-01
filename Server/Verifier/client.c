@@ -194,29 +194,37 @@ int get_paths(char * id){
   step = sqlite3_step(res);
   if (step == SQLITE_ROW) {
     //N byte entry -> malloc -> memcpy
-    byte = sqlite3_column_bytes(res, 0);
-    tpa_data.sha_ak = malloc(byte);
-    memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 0), byte);
+
+    //ID
+    tpa_data.id = sqlite3_column_int(res, 0);
+    
+    //byte = sqlite3_column_bytes(res, 1);
+    //tpa_data.sha_ak = malloc(byte);
+    //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
 
     //Ak path
-    byte = sqlite3_column_bytes(res, 1);
-    tpa_data.ak_path = malloc(byte);
-    memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 1), byte);
-
-    //PCR10, could be null
     byte = sqlite3_column_bytes(res, 2);
+    tpa_data.ak_path = malloc(byte);
+    memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
+
+    //PCR10 sha256, could be null
+    byte = sqlite3_column_bytes(res, 3);
+    printf(" quiii %d\n", byte);
+
+    //PCR10 sha1, could be null
+    byte = sqlite3_column_bytes(res, 4);
     printf(" quiii %d\n", byte);
 
     //Goldenvalue db path
-    byte = sqlite3_column_bytes(res, 3);
+    byte = sqlite3_column_bytes(res, 5);
     tpa_data.gv_path = malloc(byte);
-    memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 3), byte);
+    memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
     //printf("%s\n", tpa_data.gv_path);
 
     //TLS cert path
-    byte = sqlite3_column_bytes(res, 4);
+    byte = sqlite3_column_bytes(res, 6);
     tpa_data.tls_path = malloc(byte);
-    memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 4), byte);
+    memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
 
     //Timestamp, could be null    
     //TODO

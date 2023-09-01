@@ -51,7 +51,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db);
+  ret = verify_ima_log(rpl, db, tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
     goto end;
@@ -127,7 +127,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db);
+  ret = verify_ima_log(rpl, db, tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
     goto end;

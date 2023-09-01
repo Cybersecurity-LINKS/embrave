@@ -23,11 +23,13 @@
 enum { NS_PER_SECOND = 1000000000 };
 
 typedef struct {
-    char *sha_ak;
+    int id;
+    //char *sha_ak;
     char *ak_path;
     char *gv_path;
     char *tls_path;
-   // const unsigned char *pcr10_old;
+    char *pcr10_old_sha1;
+    char *pcr10_old_sha256;
 } Tpa_data;
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context);

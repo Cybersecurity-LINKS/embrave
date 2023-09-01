@@ -35,8 +35,8 @@ def create_table(conn, create_table_sql):
 
 
 def add_row(conn, row):
-    sql = ''' INSERT INTO tpa(ak, ak_path, pcr10, gv_db, tls_pem_path, timestamp)
-              VALUES(?, ?, ?, ?, ?, ?) '''
+    sql = ''' INSERT INTO tpa(id, ak, ak_path, pcr10_sha256, pcr10_sha1, gv_db, tls_pem_path, timestamp)
+              VALUES(?, ?, ?, ?, ?, ?, ?, ?) '''
     cur = conn.cursor()
     cur.execute(sql, row)
     conn.commit()
@@ -46,13 +46,14 @@ def add_row(conn, row):
 def main():
     database = r"./Agents/Remote_Attestor/tpa.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS tpa (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         ak text NOT NULL,
                                         ak_path text NOT NULL,
-                                        pcr10 text,
+                                        pcr10_sha256 text,
+                                        pcr10_sha1 text,
                                         gv_db text NOT NULL,
                                         tls_pem_path text NOT NULL,
-                                        timestamp text,
-                                        PRIMARY KEY (ak)
+                                        timestamp text
                                     ); """
     
     if len(sys.argv) < 5:
@@ -64,7 +65,7 @@ def main():
     pem_path = sys.argv[3]
     gv_db = sys.argv[4]
 
-    row_1 = (name, ak_path, None, gv_db, pem_path, None)
+    row_1 = (None, name, ak_path, None, None, gv_db, pem_path, None)
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
 

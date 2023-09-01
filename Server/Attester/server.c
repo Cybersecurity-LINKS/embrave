@@ -174,7 +174,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
     mg_send(c, &rpl->wholeLog, sizeof(uint8_t));
   }
     
-  //print_sent_data(rpl);
+  print_sent_data(rpl);
 
   return 0;
 }

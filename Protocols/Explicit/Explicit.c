@@ -692,12 +692,55 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int save_pcr10(char* pcr10_sha256, char* pcr10_sha1){
+int save_pcr10(Tpa_data *tpa){
+    sqlite3_stmt *res;
+    sqlite3 *db;
+    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1 WHERE id = @id ";
 
+    int idx, idx2, idx3;
+    //char *err_msg = 0;
+    int step;
+
+    int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    if ( rc != SQLITE_OK) {
+        printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    //convert the sql statament 
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        //Set the parametrized input
+        idx = sqlite3_bind_parameter_index(res, "@sha256");
+        sqlite3_bind_text(res, idx, tpa->pcr10_old_sha256, strlen(tpa->pcr10_old_sha256), NULL);
+
+        idx2 = sqlite3_bind_parameter_index(res, "@sha1");
+        sqlite3_bind_text(res, idx2, tpa->pcr10_old_sha1, strlen(tpa->pcr10_old_sha1), NULL);
+
+        idx3 = sqlite3_bind_parameter_index(res, "@id");
+        sqlite3_bind_int(res, idx3, tpa->id);
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+    
+    //Execute the sql query
+    step = sqlite3_step(res);
+    if (step == SQLITE_ROW) {
+        //Golden value found, IMA row OK
+        printf("error insert");
+        //printf("%s\n", sqlite3_column_text(res, 1));
+        sqlite3_finalize(res);
+        return -1;
+        
+    } 
+
+    printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
+    return 0;
 
 }
 
-int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
+int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -712,7 +755,8 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     uint8_t * pcr10_sha256 = NULL;
     uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(u_int8_t));
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
-
+    char buff256[(SHA256_DIGEST_LENGTH * 2)+ 1];
+    char buff1[(SHA_DIGEST_LENGTH *2) + 1];
     
     if(rply->ima_log_size == 0){
         //No new event in the TPA
@@ -791,13 +835,18 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db){
     //Compare PCR10 with the received one
     if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
-            printf("PCR10 calculation mismatch\n");
-            goto error;
-        }
+        printf("PCR10 calculation mismatch\n");
+        goto error;
+    }
     printf("PCR10 calculation OK\n");
 
+    //Convert PCR10 to hex
+    bin_2_hash(buff1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    bin_2_hash(buff256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    tpa->pcr10_old_sha1 = buff1;
+    tpa->pcr10_old_sha256 = buff256;
     //Store the PCRs10 for future incremental IMA log
-    ret = save_pcr10();
+    ret = save_pcr10(tpa);
 
     free(pcr10_sha1);
     free(pcr10_sha256);
