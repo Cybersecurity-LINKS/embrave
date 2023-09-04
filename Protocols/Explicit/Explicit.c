@@ -764,6 +764,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL && !rply->wholeLog){
         //Old PCR 10 values to use, convert to byte
+        printf("QUI\n");
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha1, &sz1, pcr10_sha1);
         //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
@@ -776,11 +777,11 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     
     if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
         //No new event in the TPA
-        printf("No IMA log received so compare old PCR10 with received:\n");
+        printf("No IMA log received, compare the old PCR10 with received one:\n");
         //TODO
-        //goto PCR10;
+        goto PCR10;
 
-    } else {
+    } else if (rply->ima_log_size == 0 && tpa->pcr10_old_sha256 == NULL && tpa->pcr10_old_sha1 == NULL) {
         printf("No IMA log received but no old PCR10 in the tpa db error\n");
         goto error;
     }
@@ -847,8 +848,13 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     //digests[i] i = pcrid mod 8 => 10 mod 8 2
 
     //Compare PCR10 with the received one
-    if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
+PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
+        
+         tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
+         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
         printf("PCR10 calculation mismatch\n");
         goto error;
     }

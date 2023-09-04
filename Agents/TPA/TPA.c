@@ -3,7 +3,7 @@
 
 static uint32_t ima_byte_sent = 0;
 
-int load_ima_log(const char *path, Ex_challenge_reply *rpl);
+int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log);
 
 int TPA_init(void) {
   // TPM
@@ -88,7 +88,7 @@ int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
   if(ret != 0) goto end;
 
   //Load IMA log
-  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl);//Real path
+  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog);//Real path
   
   //printf("WARNING: IMA LOG DEV PATH\n");
   //ret = load_ima_log("/home/pi/tpa/binary_runtime_measurements", rpl); //Dev path
@@ -112,7 +112,7 @@ void TPA_free(Ex_challenge_reply *rpl)
   -1 error
  */
 
-int load_ima_log(const char *path, Ex_challenge_reply *rpl)
+int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
 {
   FILE *fp;
   size_t read_bytes, buff_sz;
@@ -122,7 +122,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
 		return -1;
 	}
 
-  if(ima_byte_sent != 0){
+  if(ima_byte_sent != 0 && all_log != 1){
     int ret = fseek(fp, ima_byte_sent, SEEK_SET);
     printf("fseek ret %d\n", ret);
     if (ret != 0){
@@ -133,6 +133,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl)
   }
   else {
     rpl->wholeLog = 1;
+    ima_byte_sent = 0;
   }
   
   rpl->ima_log_size = 0;
