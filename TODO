@@ -1,5 +1,3 @@
-id - ak sha256
-dopo PCR10 calculation OK salavre il pcr 10
 copiare il pcr10 old se non null prima della verification
 se ima log sz = 0 , comparare il pcr10 old col ricevuto
 aggiungere il time stamp durante il salvataggio
