@@ -12,6 +12,7 @@ static size_t last_read = 0;
 static size_t to_read = 0;
 static bool end = false;
 static bool error = false;
+static bool send_all_log = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
 static Ex_challenge_reply rpl;
@@ -66,6 +67,13 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
     int tag = 0;
     Ex_challenge chl;
+
+    //If PCR10 are empty from tpa db, make tpa send all ima log
+    if(send_all_log){
+      chl.send_wholeLog = 1;
+    } else {
+      chl.send_wholeLog = 0;
+    }
 
     //Create nonce
     if(RA_explicit_challenge_create(&chl)!= 0){
@@ -137,7 +145,14 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
     int tag = 0;
     Ex_challenge chl;
-
+    
+    //If PCR10 are empty from tpa db, make tpa send all ima log
+    if(send_all_log){
+      chl.send_wholeLog = 1;
+    } else {
+      chl.send_wholeLog = 0;
+    }
+    
     //Create nonce
     if(RA_explicit_challenge_create(&chl)!= 0){
       Continue = false;
@@ -209,18 +224,19 @@ int get_paths(int id){
     tpa_data.ak_path = malloc(byte);
     memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
 
-    //PCR10 sha256, could be null
+    //PCR10s sha256, could be null
     byte = sqlite3_column_bytes(res, 3);
     if(byte != 0){
+      //SHA256
       tpa_data.pcr10_old_sha256 = malloc(byte);
-      memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);
-    }
-
-    //PCR10 sha1, could be null
-    byte = sqlite3_column_bytes(res, 4);
-    if(byte != 0){
+      memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
+      
+      //SHA1
+      byte = sqlite3_column_bytes(res, 4);
       tpa_data.pcr10_old_sha1 = malloc(byte);
       memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
+    } else {
+      send_all_log = true;
     }
 
     //Goldenvalue db path

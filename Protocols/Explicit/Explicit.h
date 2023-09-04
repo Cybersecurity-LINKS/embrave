@@ -31,6 +31,7 @@ typedef struct {
 
 typedef struct {
     Nonce nonce_blob;
+    uint8_t send_wholeLog;
 } Ex_challenge;
 
 typedef struct {

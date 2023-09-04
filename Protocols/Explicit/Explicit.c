@@ -757,7 +757,12 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     UINT16 sz = (UINT16) SHA256_DIGEST_LENGTH;
     UINT16 sz1 = (UINT16) SHA_DIGEST_LENGTH;
 
-    if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
+    if((rply->ima_log == NULL && rply->ima_log_size > 0) || (rply->ima_log_size < 0) || (db == NULL)){
+        printf("verify_ima_log bad input\n");
+        return -1;
+    }
+
+    if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL && !rply->wholeLog){
         //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha1, &sz1, pcr10_sha1);
@@ -769,16 +774,18 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         tpa->pcr10_old_sha1 = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
     }
     
-    if(rply->ima_log_size == 0){
+    if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
         //No new event in the TPA
         printf("No IMA log received so compare old PCR10 with received:\n");
         //TODO
         //goto PCR10;
 
-    } else if(rply->ima_log == NULL || rply->ima_log_size < 0){
-        printf("verify_ima_log bad input\n");
-        return -1;
+    } else {
+        printf("No IMA log received but no old PCR10 in the tpa db error\n");
+        goto error;
     }
+    
+
 
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME

@@ -144,6 +144,7 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challe
     //printf("%02X", chl->nonce_blob.buffer[i]);
   //printf("\n");
   //printf("r buf :%ld\n", r->len);
+  printf("Send all IMA LOG? %d\n", chl->send_wholeLog);
   return 0;
 }
 
