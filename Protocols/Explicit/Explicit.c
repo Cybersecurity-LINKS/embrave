@@ -516,7 +516,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
 
     //sha256 len = 0x28
     if(field_len != 0x28){
-        //the next field must be "sha256:" so if it is "sha1:" means that there was an error during the IMA log creation => skip row
+        //the next field must be "sha256:" 
+        //so if it is "sha1:" means that there was an error during the IMA log creation => skip row
         //EX: 10 20..5c ima-ng sha256:a6..e6 /var/lib/logrotate/status
         //10 00..00 ima-ng sha1:00..00 /var/lib/logrotate/status
         memcpy(alg_sha1_field, rply ->ima_log + *total_read, 6*sizeof(uint8_t));
@@ -574,9 +575,8 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         return -1;
     }
 
-    printf("SHA1:");
-    tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
+    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    //printf("\n");
 
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
@@ -657,7 +657,6 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         //Path name found in the whitelist, IMA row OK
         sqlite3_finalize(res);
         return 0;
-        
     } 
 
     //IMA row not found in the whitelist db 
@@ -697,11 +696,10 @@ int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1 WHERE id = @id ";
-
     int idx, idx2, idx3;
-    //char *err_msg = 0;
     int step;
 
+    printf("Save PCR10\n");
     int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
@@ -729,14 +727,14 @@ int save_pcr10(Tpa_data *tpa){
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Golden value found, IMA row OK
-        printf("error insert");
+        printf("error insert\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         return -1;
         
     } 
 
-    printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
+    //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
     return 0;
 
 }
@@ -756,19 +754,17 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     uint8_t * pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(uint8_t));
     uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
-    //char buff256[(SHA256_DIGEST_LENGTH * 2)+ 1];
-    //char buff1[(SHA_DIGEST_LENGTH *2) + 1];
     UINT16 sz = (UINT16) SHA256_DIGEST_LENGTH;
     UINT16 sz1 = (UINT16) SHA_DIGEST_LENGTH;
+
     if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
-        //Old PCR 10 values to use
-        printf("%s\n%s\n", tpa->pcr10_old_sha256, tpa->pcr10_old_sha1);
+        //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha1, &sz1, pcr10_sha1);
-        tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("\n");
+        //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        //printf("\n");
     } else {
-        //No old PCR10 values
+        //No old PCR10 values, allocates space for saving them
         tpa->pcr10_old_sha256 = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
         tpa->pcr10_old_sha1 = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
     }
@@ -798,10 +794,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         printf("Unknown IMA template\n");
         return -1;
     }//other template here
-
-    //TODO incremental ima log
-    //No incremental ima => PCR10s = 0x00
-
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
@@ -838,14 +830,15 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     printf("IMA log verification OK\n");
     //printf("WARNING check_goldenvalue DEV!\n");
     
-    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+/*     tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     printf("\n");
     tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
+    printf("\n"); */
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
     //digests[i] i = pcrid mod 8 => 10 mod 8 2
+
     //Compare PCR10 with the received one
     if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){

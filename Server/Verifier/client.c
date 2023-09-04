@@ -159,16 +159,16 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
 
 // Load the AK path, the TLS certificate, the last PCR10 if present, 
 // and the goldenvalue db path for a certain tpa
-int get_paths(char * id){
+int get_paths(int id){
   (void) id;
 
   sqlite3_stmt *res;
   sqlite3 *db;
   int byte;
   //char *sql = "SELECT * FROM tpa where ak = '605403c37ebf5d0e73cc4e1569724635ee77181e54eb258035afc914d9d10285'";
-  char *sql = "SELECT * FROM tpa ";
+  char *sql = "SELECT * FROM tpa WHERE id = @id";
   //TODO
-  int step;
+  int step, idx;
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;
@@ -183,12 +183,10 @@ int get_paths(char * id){
   //convert the sql statament 
   rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
   if (rc == SQLITE_OK) {
-/*         //Set the parametrized input
-        idx = sqlite3_bind_parameter_index(res, "@name");
-        sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
+    //Set the parametrized input
+    idx = sqlite3_bind_parameter_index(res, "@id");
+    sqlite3_bind_int(res, idx, id);
 
-        idx2 = sqlite3_bind_parameter_index(res, "@hash");
-        sqlite3_bind_text(res, idx2, hash_name, strlen(hash_name), NULL); */
   } else {
     fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
   }
@@ -201,11 +199,12 @@ int get_paths(char * id){
     //ID
     tpa_data.id = sqlite3_column_int(res, 0);
     
+    //SHA256 of AK
     //byte = sqlite3_column_bytes(res, 1);
     //tpa_data.sha_ak = malloc(byte);
     //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
 
-    //Ak path
+    //Ak file path
     byte = sqlite3_column_bytes(res, 2);
     tpa_data.ak_path = malloc(byte);
     memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
@@ -244,6 +243,7 @@ int get_paths(char * id){
         
   } 
   
+  printf("No id found in the tpa databse for %d\n", id);
   sqlite3_finalize(res);
   sqlite3_close(db);
   return -1;
@@ -257,8 +257,11 @@ int main(int argc, char *argv[]) {
   //Start Timer 1
   get_start_timer();
 
-  get_paths(NULL);
-
+  //TODO MORE IDs
+  if (get_paths(1) != 0){
+    printf("Error from tpa.db\n");
+    return -1;
+  }
   //printf("%d\n", argc);
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
