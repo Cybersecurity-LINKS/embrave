@@ -148,7 +148,16 @@ end:
     return -1;
 }
 
-void RA_free(Ex_challenge_reply *rpl){
+void RA_free(Ex_challenge_reply *rpl, Tpa_data *tpa_data){
   free(rpl->sig);
   free(rpl->quoted);
+  free(tpa_data->ak_path);
+  free(tpa_data->gv_path);
+  free(tpa_data->tls_path);
+  if(tpa_data->pcr10_old_sha1 != NULL){
+    free(tpa_data->pcr10_old_sha1);
+  }
+  if(tpa_data->pcr10_old_sha256 != NULL){
+    free(tpa_data->pcr10_old_sha256);
+  }
 }

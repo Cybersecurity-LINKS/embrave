@@ -37,7 +37,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
       r->len = 0;
       end = true;
       error = true;
-      RA_free(&rpl);
+      RA_free(&rpl, &tpa_data);
       return;
     } //waitng for more data from TPA
     else if(n == 1) return;
@@ -53,7 +53,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
 
     r->len = 0;
     end = true;
-    RA_free(&rpl);
+    RA_free(&rpl, &tpa_data);
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("CLIENT disconnected"));
 
@@ -108,7 +108,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
       r->len = 0;
       end = true;
       error = true;
-      RA_free(&rpl);
+      RA_free(&rpl, &tpa_data);
       return;
     } //waitng for more data from TPA
     else if(n == 1) return;
@@ -124,7 +124,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
 
     r->len = 0;
     end = true;
-    RA_free(&rpl);
+    RA_free(&rpl, &tpa_data);
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("CLIENT disconnected"));
 
@@ -170,6 +170,9 @@ int get_paths(char * id){
   //TODO
   int step;
 
+  tpa_data.pcr10_old_sha256 = NULL;
+  tpa_data.pcr10_old_sha1 = NULL;
+
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
@@ -209,11 +212,17 @@ int get_paths(char * id){
 
     //PCR10 sha256, could be null
     byte = sqlite3_column_bytes(res, 3);
-    printf(" quiii %d\n", byte);
+    if(byte != 0){
+      tpa_data.pcr10_old_sha256 = malloc(byte);
+      memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);
+    }
 
     //PCR10 sha1, could be null
     byte = sqlite3_column_bytes(res, 4);
-    printf(" quiii %d\n", byte);
+    if(byte != 0){
+      tpa_data.pcr10_old_sha1 = malloc(byte);
+      memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
+    }
 
     //Goldenvalue db path
     byte = sqlite3_column_bytes(res, 5);

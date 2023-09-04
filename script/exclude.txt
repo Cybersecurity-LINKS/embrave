@@ -11,3 +11,4 @@
 /boot/System_Volume_Information/
 /etc/resolv.conf
 /etc/unbound/unbound.conf.d/resolvconf_resolvers.conf
+/home/pi/tpa/Agents/Remote_Attestor/tpa.db

@@ -753,10 +753,17 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     uint32_t template_len;
     uint8_t * pcr10_sha1 = NULL;
     uint8_t * pcr10_sha256 = NULL;
-    uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(u_int8_t));
-    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
-    char buff256[(SHA256_DIGEST_LENGTH * 2)+ 1];
-    char buff1[(SHA_DIGEST_LENGTH *2) + 1];
+    uint8_t * sha1_concatenated = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
+    uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
+    //char buff256[(SHA256_DIGEST_LENGTH * 2)+ 1];
+    //char buff1[(SHA_DIGEST_LENGTH *2) + 1];
+
+    if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
+        printf("%s\n%s\n", tpa->pcr10_old_sha256, tpa->pcr10_old_sha1);
+    } else {
+        tpa->pcr10_old_sha256 = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
+        tpa->pcr10_old_sha1 = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
+    }
     
     if(rply->ima_log_size == 0){
         //No new event in the TPA
@@ -771,7 +778,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
-    total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(u_int8_t);
+    total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(uint8_t);
     memcpy(&template_len, rply ->ima_log + total_read, sizeof(uint32_t));
 
     total_read += sizeof(uint32_t);
@@ -786,8 +793,8 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     //TODO incremental ima log
     //No incremental ima => PCR10s = 0x00
-    pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(u_int8_t));
-    pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(u_int8_t));
+    pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(uint8_t));
+    pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(uint8_t));
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
@@ -841,10 +848,14 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     printf("PCR10 calculation OK\n");
 
     //Convert PCR10 to hex
-    bin_2_hash(buff1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+/*     bin_2_hash(buff1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(buff256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     tpa->pcr10_old_sha1 = buff1;
-    tpa->pcr10_old_sha256 = buff256;
+    tpa->pcr10_old_sha256 = buff256; */
+    bin_2_hash(tpa->pcr10_old_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    bin_2_hash(tpa->pcr10_old_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+
+
     //Store the PCRs10 for future incremental IMA log
     ret = save_pcr10(tpa);
 
