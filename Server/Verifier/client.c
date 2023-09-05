@@ -180,6 +180,7 @@ int get_paths(int id){
   int byte;
   char *sql = "SELECT * FROM tpa WHERE id = @id";
   int step, idx;
+  time_t ltime;
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;

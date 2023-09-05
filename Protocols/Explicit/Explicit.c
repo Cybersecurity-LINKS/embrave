@@ -700,8 +700,12 @@ int save_pcr10(Tpa_data *tpa){
     char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1 WHERE id = @id ";
     int idx, idx2, idx3;
     int step;
-
-    printf("Save PCR10\n");
+    //struct timespec now;
+    time_t ltime;
+    struct tm t;
+    ltime = time(NULL);
+    char * s =asctime(gmtime(&ltime));
+    printf("Save PCR10 %s\n", s);
     int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));

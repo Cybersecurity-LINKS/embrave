@@ -1,4 +1,7 @@
-se ima log sz = 0 , comparare il pcr10 old col ricevuto
+time => gmtime => snprintf => db
+read db => string => scanf => struct tm => difftime su now
+
+se No IMA log received => skip save pcr9 ?
 id passato come parametro a client
 aggiungere il time stamp durante il salvataggio
 
