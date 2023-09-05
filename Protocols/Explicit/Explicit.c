@@ -768,15 +768,17 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL && !rply->wholeLog){
         //Old PCR 10 values to use, convert to byte
-        printf("QUI\n");
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha1, &sz1, pcr10_sha1);
         //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         //printf("\n");
     } else {
+        if(tpa->pcr10_old_sha256 == NULL){
+            tpa->pcr10_old_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+            tpa->pcr10_old_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+        }
         //No old PCR10 values, allocates space for saving them
-        tpa->pcr10_old_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
-        tpa->pcr10_old_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+
     }
     
     if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
@@ -825,7 +827,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
