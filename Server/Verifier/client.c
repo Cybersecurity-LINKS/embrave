@@ -217,6 +217,7 @@ int get_paths(int id){
     //byte = sqlite3_column_bytes(res, 1);
     //tpa_data.sha_ak = malloc(byte);
     //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
+
     //Ak file path
     byte = sqlite3_column_bytes(res, 2);
     tpa_data.ak_path = malloc((byte + 1) * sizeof(char));
@@ -253,6 +254,7 @@ int get_paths(int id){
 
     //Timestamp, could be null    
     //TODO
+    
     sqlite3_finalize(res);
     sqlite3_close(db);
     return 0;

@@ -164,7 +164,7 @@ int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data)
     unsigned char *digest_buff = NULL;
     uint8_t pcr9_sha256[SHA256_DIGEST_LENGTH];
     int sz;
-printf("%s\n", tpa_data->ak_path);
+
     //Open the servers's public certificate
     int ret = openPEM((const char*) tpa_data->tls_path, &pem);
     if(ret == -1){
