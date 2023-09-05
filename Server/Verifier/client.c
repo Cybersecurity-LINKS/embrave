@@ -177,8 +177,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
 int get_paths(int id){
   (void) id;
 
-  sqlite3_stmt *res;
-  sqlite3 *db;
+  sqlite3_stmt *res= NULL;
+  sqlite3 *db = NULL;
   int byte;
   //char *sql = "SELECT * FROM tpa where ak = '605403c37ebf5d0e73cc4e1569724635ee77181e54eb258035afc914d9d10285'";
   char *sql = "SELECT * FROM tpa WHERE id = @id";
@@ -187,6 +187,9 @@ int get_paths(int id){
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;
+  tpa_data.ak_path = NULL;
+  tpa_data.gv_path = NULL;
+  tpa_data.tls_path = NULL;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
@@ -218,22 +221,22 @@ int get_paths(int id){
     //byte = sqlite3_column_bytes(res, 1);
     //tpa_data.sha_ak = malloc(byte);
     //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
-
+printf("QUIIII\n");
     //Ak file path
     byte = sqlite3_column_bytes(res, 2);
-    tpa_data.ak_path = malloc(byte);
+    tpa_data.ak_path = malloc((byte + 1) * sizeof(char));
     memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
     tpa_data.ak_path[byte] = '\0';
     //PCR10s sha256, could be null
     byte = sqlite3_column_bytes(res, 3);
     if(byte != 0){
       //SHA256
-      tpa_data.pcr10_old_sha256 = malloc(byte);
+      tpa_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
       memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
       tpa_data.pcr10_old_sha256[byte] = '\0';
       //SHA1
       byte = sqlite3_column_bytes(res, 4);
-      tpa_data.pcr10_old_sha1 = malloc(byte);
+      tpa_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
       memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
       tpa_data.pcr10_old_sha1[byte] = '\0';
     } else {
@@ -243,7 +246,7 @@ int get_paths(int id){
     //Goldenvalue db path
     byte = sqlite3_column_bytes(res, 5);
     printf("%d\n", byte);
-    tpa_data.gv_path = malloc(byte);
+    tpa_data.gv_path = malloc((byte + 1) * sizeof(char));
     memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
     tpa_data.gv_path[byte] = '\0';
     //printf("%s\n", tpa_data.gv_path);
@@ -251,15 +254,17 @@ int get_paths(int id){
     //TLS cert path
     byte = sqlite3_column_bytes(res, 6);
     printf("%d\n", byte);
-    tpa_data.tls_path = malloc(byte );
+    tpa_data.tls_path = malloc((byte + 1) *sizeof(char));
     memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
     tpa_data.tls_path[byte] = '\0';
 
     //Timestamp, could be null    
     //TODO
-
+printf("QUIIII222\n");
     sqlite3_finalize(res);
+    printf("QUIIII222\n");
     sqlite3_close(db);
+    printf("QUIIII222\n");
     return 0;
         
   } 
