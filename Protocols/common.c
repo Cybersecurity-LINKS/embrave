@@ -92,6 +92,7 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, u
       if(strcmp((char *) ek_handle, handle_hex) == 0) h1 = 1;
       if(strcmp((char *) ak_handle, handle_hex) == 0) h2 = 1;
     }
+    free(capabilityData);
     if(h1 && h2)
       return 0;
     return -1;
