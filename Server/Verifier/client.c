@@ -175,14 +175,10 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
 // Load the AK path, the TLS certificate, the last PCR10 if present, 
 // and the goldenvalue db path for a certain tpa
 int get_paths(int id){
-  (void) id;
-
   sqlite3_stmt *res= NULL;
   sqlite3 *db = NULL;
   int byte;
-  //char *sql = "SELECT * FROM tpa where ak = '605403c37ebf5d0e73cc4e1569724635ee77181e54eb258035afc914d9d10285'";
   char *sql = "SELECT * FROM tpa WHERE id = @id";
-  //TODO
   int step, idx;
 
   tpa_data.pcr10_old_sha256 = NULL;
@@ -221,7 +217,6 @@ int get_paths(int id){
     //byte = sqlite3_column_bytes(res, 1);
     //tpa_data.sha_ak = malloc(byte);
     //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
-printf("QUIIII\n");
     //Ak file path
     byte = sqlite3_column_bytes(res, 2);
     tpa_data.ak_path = malloc((byte + 1) * sizeof(char));
@@ -245,7 +240,6 @@ printf("QUIIII\n");
 
     //Goldenvalue db path
     byte = sqlite3_column_bytes(res, 5);
-    printf("%d\n", byte);
     tpa_data.gv_path = malloc((byte + 1) * sizeof(char));
     memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
     tpa_data.gv_path[byte] = '\0';
@@ -253,18 +247,14 @@ printf("QUIIII\n");
 
     //TLS cert path
     byte = sqlite3_column_bytes(res, 6);
-    printf("%d\n", byte);
     tpa_data.tls_path = malloc((byte + 1) *sizeof(char));
     memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
     tpa_data.tls_path[byte] = '\0';
 
     //Timestamp, could be null    
     //TODO
-printf("QUIIII222\n");
     sqlite3_finalize(res);
-    printf("QUIIII222\n");
     sqlite3_close(db);
-    printf("QUIIII222\n");
     return 0;
         
   } 

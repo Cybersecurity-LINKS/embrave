@@ -140,7 +140,6 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   print_timer(3);
   save_timer();
 end:
-  //free(pem_file_name);
   sqlite3_close(db);
   if (ret == 0)
     return 0;

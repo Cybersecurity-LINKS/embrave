@@ -534,6 +534,7 @@ int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * tem
         memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
         *total_read += sizeof(uint32_t);
         *total_read += sizeof(char) * field_path_len;
+        free(entry_aggregate);
         return 1;
     } 
 
@@ -658,6 +659,7 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         sqlite3_finalize(res);
         return 0;
     } 
+    sqlite3_finalize(res);
 
     //IMA row not found in the whitelist db 
     return -1;
@@ -730,10 +732,12 @@ int save_pcr10(Tpa_data *tpa){
         printf("error insert\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
+        sqlite3_close(db);
         return -1;
         
     } 
-
+    sqlite3_finalize(res);
+    sqlite3_close(db);
     //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
     return 0;
 
@@ -744,7 +748,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
     uint8_t template_hash_sha256[SHA256_DIGEST_LENGTH];
-    char event_name[TCG_EVENT_NAME_LEN_MAX + 1];
+    char *event_name = calloc((TCG_EVENT_NAME_LEN_MAX + 1),  sizeof(char));
     uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
     int ret;
@@ -771,8 +775,8 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         //printf("\n");
     } else {
         //No old PCR10 values, allocates space for saving them
-        tpa->pcr10_old_sha256 = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
-        tpa->pcr10_old_sha1 = calloc(SHA_DIGEST_LENGTH * 2, sizeof(uint8_t));
+        tpa->pcr10_old_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+        tpa->pcr10_old_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
     }
     
     if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
@@ -871,12 +875,14 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     free(pcr10_sha256);
     free(sha1_concatenated);
     free(sha256_concatenated);
+    free(event_name);
     return 0;
 error:
     free(pcr10_sha1);
     free(pcr10_sha256);
     free(sha1_concatenated);
     free(sha256_concatenated);
+    free(event_name);
     return -1;
 }
 
