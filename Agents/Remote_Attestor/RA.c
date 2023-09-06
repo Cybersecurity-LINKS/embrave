@@ -159,4 +159,6 @@ void RA_free(Ex_challenge_reply *rpl, Tpa_data *tpa_data){
   if(tpa_data->pcr10_old_sha256 != NULL){
     free(tpa_data->pcr10_old_sha256);
   }
+  if(tpa_data->timestamp != NULL)
+    free(tpa_data->timestamp);
 }

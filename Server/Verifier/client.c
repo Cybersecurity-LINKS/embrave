@@ -180,13 +180,15 @@ int get_paths(int id){
   int byte;
   char *sql = "SELECT * FROM tpa WHERE id = @id";
   int step, idx;
-  time_t ltime;
+  time_t ltime, ltime_now;
+  struct tm t, t_now;
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;
   tpa_data.ak_path = NULL;
   tpa_data.gv_path = NULL;
   tpa_data.tls_path = NULL;
+  tpa_data.timestamp = NULL;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
@@ -254,7 +256,25 @@ int get_paths(int id){
     tpa_data.tls_path[byte] = '\0';
 
     //Timestamp, could be null    
-    //TODO
+    byte = sqlite3_column_bytes(res, 7);
+    if(byte != 0){
+      tpa_data.timestamp = malloc((byte + 1) *sizeof(char));
+      memcpy(tpa_data.timestamp, (char *) sqlite3_column_text(res, 7), byte);
+      tpa_data.timestamp[byte] = '\0';
+      printf("%s\n", tpa_data.timestamp);
+
+      //Check if still fresh
+      memset(&t, 0, sizeof t);  // set all fields to 0
+      sscanf(tpa_data.timestamp,"%d %d %d %d %d %d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec);
+      ltime_now = time(NULL);
+   
+      //double x = difftime(ltime_now, mktime(&t));
+      printf("%lf\n",(double) FRESH);
+      if(difftime(ltime_now, mktime(&t)) > FRESH){
+        //TODO
+      }
+    }
+
     
     sqlite3_finalize(res);
     sqlite3_close(db);

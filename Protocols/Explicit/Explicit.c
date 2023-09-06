@@ -697,15 +697,19 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1 WHERE id = @id ";
-    int idx, idx2, idx3;
+    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm WHERE id = @id ";
+    int idx, idx2, idx3, idx4;
     int step;
-    //struct timespec now;
     time_t ltime;
-    struct tm t;
+    struct tm *t;
+    char buff [50];
     ltime = time(NULL);
-    char * s =asctime(gmtime(&ltime));
-    printf("Save PCR10 %s\n", s);
+    t = gmtime(&ltime);
+    //char * s = asctime(t);
+
+    snprintf(buff, 50, "%d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+
+    printf("Save PCR10 \n");
     int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
@@ -725,6 +729,9 @@ int save_pcr10(Tpa_data *tpa){
 
         idx3 = sqlite3_bind_parameter_index(res, "@id");
         sqlite3_bind_int(res, idx3, tpa->id);
+
+        idx4 = sqlite3_bind_parameter_index(res, "@tm");
+        sqlite3_bind_text(res, idx4, buff, strlen(buff), NULL);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }

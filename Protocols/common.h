@@ -19,6 +19,9 @@
 
 #define RA_TYPE_EXPLICIT 0
 #define RA_TYPE_DAA 1
+#ifndef FRESH
+    #define FRESH 60
+#endif
 
 enum { NS_PER_SECOND = 1000000000 };
 
@@ -30,6 +33,7 @@ typedef struct {
     char *tls_path;
     char *pcr10_old_sha1;
     char *pcr10_old_sha256;
+    char *timestamp;
 } Tpa_data;
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context);

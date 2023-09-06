@@ -1,6 +1,6 @@
-time => gmtime => snprintf => db
-read db => string => scanf => struct tm => difftime su now
-
+ 
+azzerare le entry se now > tmax
+NOTA timestamp aggiornato ad ogni attestazione
 se No IMA log received => skip save pcr9 ?
 id passato come parametro a client
 aggiungere il time stamp durante il salvataggio

@@ -63,6 +63,9 @@ Run the following script on the RA passing as input parameter the IP address of 
 ```sh
 ./RA_run.sh 192.168.1.12 1
 ```
+### RA entry freshness 
+to change the maximum validity time of the RA database entry, compile the client by adding the parameter -DFRESH=<time max in seconds> Default: 60s
+
 ## License
 TBD
 
