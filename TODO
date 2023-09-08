@@ -1,10 +1,6 @@
- 
-azzerare le entry se now > tmax
 NOTA timestamp aggiornato ad ogni attestazione
 se No IMA log received => skip save pcr9 ?
 id passato come parametro a client
-aggiungere il time stamp durante il salvataggio
-
 durante il loading iniziale se timestamp scaduto forzare tutto  a zero
 fase provisioning ak e creazione del binding
 mongoose come git module

@@ -6,4 +6,5 @@ fi
 
 cd ./Server/Attester/
 make 
-sudo ./TPA $1 $2
+#valgrind --leak-check=yes
+sudo   ./TPA $1 $2

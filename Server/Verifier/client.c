@@ -261,7 +261,7 @@ int get_paths(int id){
       tpa_data.timestamp = malloc((byte + 1) *sizeof(char));
       memcpy(tpa_data.timestamp, (char *) sqlite3_column_text(res, 7), byte);
       tpa_data.timestamp[byte] = '\0';
-      printf("%s\n", tpa_data.timestamp);
+      //printf("%s\n", tpa_data.timestamp);
 
       //Check if still fresh
       memset(&t, 0, sizeof t);  // set all fields to 0
@@ -269,9 +269,9 @@ int get_paths(int id){
       ltime_now = time(NULL);
    
       //double x = difftime(ltime_now, mktime(&t));
-      printf("%lf\n",(double) FRESH);
       if(difftime(ltime_now, mktime(&t)) > FRESH){
-        //TODO
+        printf("Entry too old, send all IMA log\n");
+        send_all_log = true;
       }
     }
 
