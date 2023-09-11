@@ -704,10 +704,10 @@ int save_pcr10(Tpa_data *tpa){
     struct tm *t;
     char buff [50];
     ltime = time(NULL);
-    t = gmtime(&ltime);
+    t = localtime(&ltime);
     //char * s = asctime(t);
 
-    snprintf(buff, 50, "%d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+    snprintf(buff, 50, "%d %d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_isdst);
 
     printf("Save PCR10 \n");
     int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
@@ -838,7 +838,7 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }

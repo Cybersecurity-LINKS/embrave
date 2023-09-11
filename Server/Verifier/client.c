@@ -180,8 +180,8 @@ int get_paths(int id){
   int byte;
   char *sql = "SELECT * FROM tpa WHERE id = @id";
   int step, idx;
-  time_t ltime, ltime_now;
-  struct tm t, t_now;
+  time_t ltime_now;
+  struct tm t;
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;
@@ -265,14 +265,25 @@ int get_paths(int id){
 
       //Check if still fresh
       memset(&t, 0, sizeof t);  // set all fields to 0
-      sscanf(tpa_data.timestamp,"%d %d %d %d %d %d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec);
+      sscanf(tpa_data.timestamp,"%d %d %d %d %d %d %d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec, &t.tm_isdst);
       ltime_now = time(NULL);
    
-      //double x = difftime(ltime_now, mktime(&t));
-      if(difftime(ltime_now, mktime(&t)) > FRESH){
+      //
+/*       char* s =asctime(localtime(&ltime_now));
+      time_t xxx = mktime(&t);
+
+      printf("%s\n", s); */
+
+      //printf("%s\n", s)
+      double x = difftime(ltime_now, mktime(&t));
+      double v = (double) FRESH;
+      printf("%f\n", x);
+      if(difftime(ltime_now, mktime(&t)) > v){
         printf("Entry too old, send all IMA log\n");
         send_all_log = true;
       }
+    } else {
+      send_all_log = true;
     }
 
     
