@@ -3,20 +3,16 @@ CC = gcc
 CFLAGS = -g  -Wall -fPIC 
 
 # define the C source files
-#SRCS = PoC_TPA.c ${WAM_DIR}/WAM/WAM.c tpm2_createek.c tpm2_createak.c tpm2_quote.c\
- createek_util.c createak_util.c PCR9Extend.c PEMconvertPub.c ../IMA/ima_read_writeOut_binary.c all_util.c
-
 SRCS = client.c ../Mongoose/mongoose.c ../../Agents/Remote_Attestor/RA.c ../../Protocols/Explicit/Explicit.c\
 ../../Protocols/common.c \
 
 
 #tpm2tools lib
 SRCS +=  ../../tpm2-tools/tools/tpm2_tool.c $(wildcard ../../tpm2-tools/lib/*.c) 
-#../../Protocols/tpm_tools/tpm2_utils.c
 # define any library to link into executable:
 #  if I want to link libraries (libx.so or libx.a) I use the -llibname option
 FLAGS = -lssl -lcrypto \
--DMG_ENABLE_OPENSSL=1 -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lsqlite3 #-DFRESH=900000 #-lcrypto -D MG_IO_SIZE=102004
+-DMG_ENABLE_OPENSSL=1 -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lsqlite3 -DDEBUG=1#-DFRESH=900000 #-lcrypto -D MG_IO_SIZE=102004
 
 LDFLAGS+= -I../../tpm2-tools/tools/ -I../../tpm2-tools/lib/\
 

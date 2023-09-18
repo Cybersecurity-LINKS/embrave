@@ -145,7 +145,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
     read_bytes = fread(block, 1, sizeof(block), fp);
 
     if (read_bytes == 0) {
-      printf("%ld\n", rpl->ima_log_size);
+      //printf("%ld\n", rpl->ima_log_size);
       // Eof or error
       if (feof(fp)) {
         if(rpl->ima_log_size != 0){
@@ -155,11 +155,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          //TODO
           printf("No need to send the IMA log\n");
-          //fclose(fp);
-          //free(rpl->ima_log);
-          //return 1;
           break;
         }
       } else {
@@ -182,7 +178,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
     }
     memcpy(rpl->ima_log + rpl->ima_log_size, block, read_bytes);
     rpl->ima_log_size += read_bytes;
-    }
+  }
 
   fclose(fp);
   return 0;

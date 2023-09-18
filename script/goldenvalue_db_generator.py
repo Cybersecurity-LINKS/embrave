@@ -145,7 +145,7 @@ if __name__ == '__main__':
 
     num_files = 0
 
-    database = r"./Agents/Remote_Attestor/DB/goldenvalues.db"
+    database = r"./Protocols/Explicit/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS golden_values (
                                         name text NOT NULL,
                                         hash text NOT NULL,

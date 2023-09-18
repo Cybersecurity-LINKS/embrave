@@ -139,12 +139,14 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challe
     printf("Transmission challenge data error \n");
     return -1;
   }
-  //printf("NONCE Received:");
-  //for(int i= 0; i< (int) chl->nonce_blob.size; i++)
-    //printf("%02X", chl->nonce_blob.buffer[i]);
-  //printf("\n");
-  //printf("r buf :%ld\n", r->len);
+
+#ifdef debug
+  printf("NONCE Received:");
+  for(int i= 0; i< (int) chl->nonce_blob.size; i++)
+    printf("%02X", chl->nonce_blob.buffer[i]);
+  printf("\n");
   printf("Send all IMA LOG? %d\n", chl->send_wholeLog);
+#endif
   return 0;
 }
 
@@ -175,7 +177,10 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
     mg_send(c, &rpl->wholeLog, sizeof(uint8_t));
   }
     
+#ifdef  DEBUG
   print_sent_data(rpl);
+#endif     
+  
 
   return 0;
 }

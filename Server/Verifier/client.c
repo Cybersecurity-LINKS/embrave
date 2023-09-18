@@ -432,8 +432,9 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
 
   last_rcv = 0;
   
-  //print_data(rpl);
-
+#ifdef  DEBUG
+  print_data(rpl);
+#endif 
   return 0;
 }
 
