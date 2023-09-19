@@ -1,3 +1,5 @@
+mkdir -p ./Server/certs
+
 ## Common parameters
 SUBJ="/C=IT/ST=Turin/L=Docks/O=Links/CN=tpa"
 
