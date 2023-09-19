@@ -33,6 +33,7 @@ sudo apt install libsqlite3-dev
 ```sh
 git clone https://github.com/Cybersecurity-LINKS/tpa
 cd tpa/tpm2-tools/
+git apply tool_as_lib.patch
 ./bootstrap
 ./configure
 cd ..
