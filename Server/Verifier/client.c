@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
   get_start_timer();
 
   //TODO MORE IDs
-  if (get_paths(1) != 0){
+  if (get_paths(4) != 0){
     printf("Error from tpa.db\n");
     return -1;
   }

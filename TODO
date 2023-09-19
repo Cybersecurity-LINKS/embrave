@@ -1,7 +1,13 @@
-NOTA timestamp aggiornato ad ogni attestazione
+CA.CRT DA AGGIUANGERE AI DB PER tls
+ID DEL TPA.DB PASSATO COME parametro
+TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
+modificare lo scritp del db di tpa per ritornare il numero di riga
+FIXARE CRASH SCRIP PYTHON GOLDEN VALUE DB
+CREARE FULL DB IMX8 + EXCPLUDE listed
+TEST RASP + IMX
+aggiornare readme
 se No IMA log received => skip save pcr9 ?
 id passato come parametro a client
 durante il loading iniziale se timestamp scaduto forzare tutto  a zero
 fase provisioning ak e creazione del binding
 mongoose come git module
-modificare gli script per avere tutti i file da mandare al RA in una cartella da copiare

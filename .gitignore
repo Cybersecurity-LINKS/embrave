@@ -74,3 +74,6 @@ Server/certs/server.csr
 Protocols/Explicit/whitelist.db
 exclude_list
 Agents/Remote_Attestor/tpa.db
+Protocols/Explicit/goldenvalues.imx.db
+Server/certs/server.imx.crt
+Agents/Remote_Attestor/AKs/ak.pub.imx.pem
