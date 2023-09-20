@@ -313,21 +313,23 @@ int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[250];
-  int n;
+  int n, id;
+
+  if(argc != 4){
+    printf("Not enough arguments\n");
+    return -1;
+  }
   //Start Timer 1
   get_start_timer();
 
-  //TODO MORE IDs
-  if (get_paths(1) != 0){
+  id = strtol(argv[3], NULL, 10);
+
+  if (get_paths(id) != 0){
     printf("Error from tpa.db\n");
     return -1;
   }
-  //printf("%d\n", argc);
-  if(argc != 3){
-    printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
-    return -1;
-  }
-  n = strtol(argv[2], NULL, 10) ;
+
+  n = strtol(argv[2], NULL, 10);
 
   if(n == 0)
     snprintf(s_conn, 250, "tcp://%s:8765", argv[1]);
