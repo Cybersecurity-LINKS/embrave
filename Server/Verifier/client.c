@@ -18,6 +18,7 @@ static int last_rcv = 0;
 static Ex_challenge_reply rpl;
 static Tpa_data tpa_data;
 
+
 int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
 void print_data(Ex_challenge_reply *rpl);
@@ -101,7 +102,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
   } else if (ev == MG_EV_CONNECT) {
     MG_INFO(("CLIENT connected"));
 
-    struct mg_tls_opts opts = {.ca = "../certs/ca.crt"};
+    //struct mg_tls_opts opts = {.ca = "../certs/ca.imx.crt"};
+    struct mg_tls_opts opts = {.ca = tpa_data.ca};
     mg_tls_init(c, &opts);
     MG_INFO(("CLIENT initialized TLS"));
 
@@ -189,6 +191,7 @@ int get_paths(int id){
   tpa_data.gv_path = NULL;
   tpa_data.tls_path = NULL;
   tpa_data.timestamp = NULL;
+  tpa_data.ca = NULL;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
@@ -255,11 +258,18 @@ int get_paths(int id){
     memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
     tpa_data.tls_path[byte] = '\0';
 
-    //Timestamp, could be null    
+    //CA cert path
     byte = sqlite3_column_bytes(res, 7);
+    tpa_data.ca = malloc((byte + 1) *sizeof(char));
+    memcpy(tpa_data.ca, (char *) sqlite3_column_text(res, 7), byte);
+    tpa_data.ca[byte] = '\0';
+    printf("%s\n", tpa_data.ca);
+
+    //Timestamp, could be null    
+    byte = sqlite3_column_bytes(res, 8);
     if(byte != 0){
       tpa_data.timestamp = malloc((byte + 1) *sizeof(char));
-      memcpy(tpa_data.timestamp, (char *) sqlite3_column_text(res, 7), byte);
+      memcpy(tpa_data.timestamp, (char *) sqlite3_column_text(res, 8), byte);
       tpa_data.timestamp[byte] = '\0';
       //printf("%s\n", tpa_data.timestamp);
 
@@ -308,7 +318,7 @@ int main(int argc, char *argv[]) {
   get_start_timer();
 
   //TODO MORE IDs
-  if (get_paths(4) != 0){
+  if (get_paths(1) != 0){
     printf("Error from tpa.db\n");
     return -1;
   }

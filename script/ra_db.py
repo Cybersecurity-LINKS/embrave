@@ -35,8 +35,8 @@ def create_table(conn, create_table_sql):
 
 
 def add_row(conn, row):
-    sql = ''' INSERT INTO tpa(id, ak, ak_path, pcr10_sha256, pcr10_sha1, gv_db, tls_pem_path, timestamp)
-              VALUES(?, ?, ?, ?, ?, ?, ?, ?) '''
+    sql = ''' INSERT INTO tpa(id, ak, ak_path, pcr10_sha256, pcr10_sha1, gv_db, tls_pem_path, ca_pem_path, timestamp)
+              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?) '''
     cur = conn.cursor()
     cur.execute(sql, row)
     conn.commit()
@@ -53,19 +53,21 @@ def main():
                                         pcr10_sha1 text,
                                         gv_db text NOT NULL,
                                         tls_pem_path text NOT NULL,
+                                        ca_pem_path text NOT NULL,
                                         timestamp text
                                     ); """
     
     if len(sys.argv) < 5:
         print("Required the ak digest, ak path, tls pem path and goldenvalue db path")
         sys.exit(1)
-
+    
     name = sys.argv[1]
     ak_path = sys.argv[2]
     pem_path = sys.argv[3]
     gv_db = sys.argv[4]
+    ca_path = sys.argv[5]
 
-    row_1 = (None, name, ak_path, None, None, gv_db, pem_path, None)
+    row_1 = (None, name, ak_path, None, None, gv_db, pem_path, ca_path, None)
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
 

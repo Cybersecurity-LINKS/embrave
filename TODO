@@ -1,8 +1,6 @@
-CA.CRT DA AGGIUANGERE AI DB PER tls
 ID DEL TPA.DB PASSATO COME parametro
 TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
 modificare lo scritp del db di tpa per ritornare il numero di riga
-FIXARE CRASH SCRIP PYTHON GOLDEN VALUE DB
 CREARE FULL DB IMX8 + EXCPLUDE listed
 TEST RASP + IMX
 aggiornare readme

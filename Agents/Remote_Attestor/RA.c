@@ -111,7 +111,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   //Softbindings verify
   ret = PCR9softbindig_verify(rpl, tpa_data);
   if (ret != 0){
-    printf("Untrusted TPA\n");
+    printf("Untrusted TPA (PCR9softbindig_verify)\n");
     return -1;
   }else {
     printf("Softbindings verification OK\n");
