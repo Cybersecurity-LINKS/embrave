@@ -59,9 +59,9 @@ Run the following script on the TPA passing as input parameter tcp://listen_ip_n
 ./TPA_build.sh tcp://192.168.1.12:8765 tcp://localhost:8766
 ```
 ### RA
-Run the following script on the RA passing as input parameter the IP address of the tpa to attest and 1 for TLS connection or 0 without TLS connection
+Run the following script on the RA passing as input parameter the IP address of the tpa to attest and 1 for TLS connection or 0 without TLS connection and an integer that rapresents the row of the tpa to attest
 ```sh
-./RA_run.sh 192.168.1.12 1
+./RA_run.sh 192.168.1.12 1 <id>
 ```
 ### RA entry freshness 
 to change the maximum validity time of the RA database entry, compile the client by adding the parameter -DFRESH=<time max in seconds> Default: 60s
