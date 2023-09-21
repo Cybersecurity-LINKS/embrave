@@ -1,10 +1,11 @@
+se digest pcr != digest pcr quote, nella verifica dell'ima log ad ogni pcr10 ricostruito verificare che sia uguale a sent pcr10
+cancellare i pcr se untrusted tpa ?
 TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
 modificare lo scritp del db di tpa per ritornare il numero di riga
 CREARE FULL DB IMX8 + EXCPLUDE listed
 TEST RASP + IMX
 aggiornare readme
 se No IMA log received => skip save pcr9 ?
-id passato come parametro a client
 durante il loading iniziale se timestamp scaduto forzare tutto  a zero
 fase provisioning ak e creazione del binding
 mongoose come git module
