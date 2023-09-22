@@ -26,6 +26,8 @@ void get_finish_timer(){
 }
 
 void print_timer(int n){
+
+
   switch(n){
     case 1:
       sub_timespec(start, finish, &delta_1);
@@ -40,9 +42,11 @@ void print_timer(int n){
       fprintf(stdout,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
     break;
   }
+
 }
 
 void save_timer(void){
+#ifdef TESTS
   FILE* fp = NULL;
   fp = fopen("test.txt", "a");
 
@@ -51,7 +55,7 @@ void save_timer(void){
   fprintf(fp,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
 
   fclose(fp);
-
+#endif
 }
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context) {

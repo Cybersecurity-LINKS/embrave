@@ -67,7 +67,10 @@ Run the following script on the RA passing as input parameter the IP address of 
 to change the maximum validity time of the RA database entry, compile the client by adding the parameter -DFRESH=<time max in seconds> Default: 60s
 
 ### Print info 
-to print all info, compile the client/server by adding the parameter -DDEBU=1
+to print all info, compile the client/server by adding the parameter -DDEBUG=1
+
+### Save test 
+to save times for tests, compile the client by adding the parameter -DTESTS=1
 
 ## License
 TBD
