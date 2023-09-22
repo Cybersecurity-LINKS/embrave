@@ -358,7 +358,6 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
     TPML_PCR_SELECTION pcr_select;
     if( rply == NULL || pem_file_name == NULL) return -1;
 
-    rply->dsc = 0;
     
     bio = BIO_new_file(pem_file_name, "rb");
     if (!bio) {
@@ -451,7 +450,10 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
     if (rc == -2) {
         goto err;
     } else if (rc == -1) {
-        rply->dsc = 1;
+        OPENSSL_free(bio);
+        EVP_PKEY_free(pkey);
+        EVP_PKEY_CTX_free(pkey_ctx);
+        return 2;
     } 
 
     OPENSSL_free(bio);
