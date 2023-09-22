@@ -23,6 +23,7 @@ int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_sel
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
+int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 
 int nonce_create(Nonce *nonce_blob)
 {
@@ -273,16 +274,14 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         return -1;
     }
 
-    //print_quoted(rply->quoted);
-
-    rply->sig = copy_signature(&(rply->sig_size));
-    if(rply->sig == NULL) return -1;
-    //print_signature(&(rply->sig_size), rply->sig);
-
     //Get PCR List
     if (get_pcrList(ectx, &(rply->pcrs), &pcr_select) != 0 ){
         return -1;
     }
+
+    rply->sig = copy_signature(&(rply->sig_size));
+    if(rply->sig == NULL) return -1;
+    //print_signature(&(rply->sig_size), rply->sig);
 
     //Free used data 
     ret = tpm2_quote_free();
@@ -290,8 +289,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
         printf("tpm2_quote_free error %d\n", ret);
         return -1;
     }
-    //pcr_print_(&pcr_select, &(rply->pcrs));
-    
+
     //Copy nonce
     rply->nonce_blob.size = chl->nonce_blob.size;
     memcpy(&rply->nonce_blob.buffer, &chl->nonce_blob.buffer, rply->nonce_blob.size);
@@ -322,6 +320,33 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
     pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
+int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
+
+    // Sanity check -- they should at least be same size!
+    if (quoteDigest->size != pcr_digest->size) {
+        printf("FATAL ERROR: PCR values failed to match quote's digest!\n");
+        return -2;
+    }
+
+    // Compare running digest with quote's digest
+    int k;
+    for (k = 0; k < quoteDigest->size; k++) {
+        if (quoteDigest->buffer[k] != pcr_digest->buffer[k]) {
+            printf("WARNING: PCR values failed to match quote's digest!, possible desynch\n");
+                
+            tpm2_util_hexdump(quoteDigest->buffer, quoteDigest->size);
+            printf("\n");
+            tpm2_util_hexdump(pcr_digest->buffer, quoteDigest->size);
+            printf("\n"); 
+
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+
 int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
@@ -332,6 +357,8 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPML_PCR_SELECTION pcr_select;
     if( rply == NULL || pem_file_name == NULL) return -1;
+
+    rply->dsc = 0;
     
     bio = BIO_new_file(pem_file_name, "rb");
     if (!bio) {
@@ -420,9 +447,12 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
     }
 
     // Verify that the digest from quote matches PCR digest
-    if (!tpm2_util_verify_digests(&attest.attested.quote.pcrDigest, &pcr_hash)) {
+    rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
+    if (rc == -2) {
         goto err;
-    }
+    } else if (rc == -1) {
+        rply->dsc = 1;
+    } 
 
     OPENSSL_free(bio);
     EVP_PKEY_free(pkey);
@@ -855,10 +885,10 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     printf("IMA log verification OK\n");
     //printf("WARNING check_goldenvalue DEV!\n");
     
-/*     tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     printf("\n");
     tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n"); */
+    printf("\n"); 
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
