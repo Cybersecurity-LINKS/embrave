@@ -1,11 +1,11 @@
 mkdir -p ./to_receive
 
-scp -pr root@192.168.85.203:/TestFolder/sources/to_send ./to_receive
+scp -pr root@192.168.85.203:/sources/lemon/to_send ./to_receive
 
-mv ./to_receive/to_send/ak.pub.pem ./Agents/Remote_Attestor/AKs/ak.pub.imx.pem
-mv ./to_receive/to_send/server.crt ./Server/certs/server.imx.crt
-mv ./to_receive/to_send/goldenvalues.db ./Protocols/Explicit/goldenvalues.imx.db
-mv ./to_receive/to_send/ca.crt ./Protocols/Explicit/ca.imx.crt
+cp ./to_receive/to_send/ak.pub.pem ./Agents/Remote_Attestor/AKs/ak.pub.imx.pem
+cp ./to_receive/to_send/server.crt ./Server/certs/server.imx.crt
+#mv ./to_receive/to_send/goldenvalues.db ./Protocols/Explicit/goldenvalues.imx.db
+cp ./to_receive/to_send/ca.crt ./Server/certs/ca.imx.crt
 #create sha256 ak digest
 var=$(openssl dgst -sha256 ./Agents/Remote_Attestor/AKs/ak.pub.imx.pem)
 sha256=$(echo "${var#*= }")
