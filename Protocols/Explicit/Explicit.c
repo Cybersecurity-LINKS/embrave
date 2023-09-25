@@ -470,27 +470,10 @@ err:
 
 //Convert len byte from data to hex and put them in buff
 void bin_2_hash(char *buff, BYTE *data, size_t len){
-
     size_t i;
     for (i = 0; i < len; i++) {
-    /* "sprintf" converts each byte in the "buf" array into a 2 hex string
-     * characters appended with a null byte, for example 10 => "0A\0".
-     *
-     * This string would then be added to the output array starting from the
-     * position pointed at by "ptr". For example if "ptr" is pointing at the 0
-     * index then "0A\0" would be written as output[0] = '0', output[1] = 'A' and
-     * output[2] = '\0'.
-     *
-     * "sprintf" returns the number of chars in its output excluding the null
-     * byte, in our case this would be 2. So we move the "ptr" location two
-     * steps ahead so that the next hex string would be written at the new
-     * location, overriding the null byte from the previous hex string.
-     *
-     * We don't need to add a terminating null byte because it's been already 
-     * added for us from the last hex string. */  
-        buff += sprintf(buff, "%02x", data[i]);
+        buff += sprintf(buff, "%02x", data[i]); //No needa terminating null byte, already from the last hex string
     }
-
 }
 
 
@@ -730,9 +713,9 @@ int refresh_tpa_entry(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL WHERE id = @id ";
-    //int idx, idx2, idx3, idx4;
+    int idx;
     int step;
-
+    
     int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
@@ -742,7 +725,11 @@ int refresh_tpa_entry(Tpa_data *tpa){
 
     //convert the sql statament
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc != SQLITE_OK) {
+    if (rc == SQLITE_OK) {
+        //Set the parametrized input
+        idx = sqlite3_bind_parameter_index(res, "@id");
+        sqlite3_bind_int(res, idx, tpa->id);
+    } else if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
@@ -760,7 +747,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
         return -1;
         
     } 
-
+    
     sqlite3_finalize(res);
     sqlite3_close(db);
     //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
@@ -929,10 +916,10 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     printf("IMA log verification OK\n");
     //printf("WARNING check_goldenvalue DEV!\n");
     
-    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+/*     tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     printf("\n");
     tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n"); 
+    printf("\n");  */
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
@@ -942,14 +929,13 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
         
-        /*tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+/*         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
         printf("\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("\n"); */
+        printf("\n");  */
         printf("PCR10 calculation mismatch\n");
-
         //refresh tpa db entry
-
+        refresh_tpa_entry(tpa);
         goto unk;
     }
     printf("PCR10 calculation OK\n");
@@ -960,6 +946,8 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
 
     //Store the PCRs10 for future incremental IMA log
     ret = save_pcr10(tpa);
+    if(ret == -1)
+        goto error;
 
     free(pcr10_sha1);
     free(pcr10_sha256);

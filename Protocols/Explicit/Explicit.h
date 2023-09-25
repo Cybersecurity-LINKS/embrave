@@ -61,4 +61,5 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa);
 int PCR9softbindig(ESYS_CONTEXT *esys_context);
 int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data);
 int check_pcr9(ESYS_CONTEXT *esys_context);
+int refresh_tpa_entry(Tpa_data *tpa);
 #endif

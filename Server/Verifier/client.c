@@ -281,7 +281,8 @@ int get_paths(int id){
       printf("%s\n", s); */
 
       //printf("%s\n", s)
-      double x = difftime(ltime_now, mktime(&t));
+      //double x = difftime(ltime_now, mktime(&t));
+      difftime(ltime_now, mktime(&t));
       double v = (double) FRESH;
       //printf("%f\n", x);
       if(difftime(ltime_now, mktime(&t)) > v){
@@ -354,7 +355,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
-
+  //printf("%d\n", error_val);//
   return error_val;
 }
 
