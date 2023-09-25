@@ -30,6 +30,9 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
+  } else if(ret == -2){
+    printf("Unknown TPA\n");
+    return -2;
   } else {
     printf("Quote signature verification OK\n");
   }
@@ -47,6 +50,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     printf("Untrusted TPA\n");
+    ret = -1;
     goto end;
   }
 
@@ -54,22 +58,20 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
   ret = verify_ima_log(rpl, db, tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
-    goto end;
+  } else if (ret == -2){
+    printf("Unknown TPA\n");
   } else {
     printf("Trusted TPA\n");
+    //End timer 3
+    get_finish_timer();
+    print_timer(3);
+    save_timer();
   }
 
-  //End timer 3
-  get_finish_timer();
-  print_timer(3);
-  save_timer();
 end:
   //free(pem_file_name);
   sqlite3_close(db);
-  if (ret == 0)
-    return 0;
-  else
-    return -1;
+  return ret;
 }
 
 int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
@@ -97,6 +99,9 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
+  } else if(ret == -2){
+    printf("Unknown TPA\n");
+    return -2;
   } else {
     printf("Quote signature verification OK\n");
   }
@@ -123,6 +128,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     printf("Untrusted TPA\n");
+    ret = -1;
     goto end;
   }
 
@@ -130,21 +136,20 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   ret = verify_ima_log(rpl, db, tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
-    goto end;
+  } else if (ret == -2){
+    printf("Unknown TPA\n");
   } else {
     printf("Trusted TPA\n");
+    //End timer 3
+    get_finish_timer();
+    print_timer(3);
+    save_timer();
   }
 
-  //End timer 3
-  get_finish_timer();
-  print_timer(3);
-  save_timer();
 end:
+  //free(pem_file_name);
   sqlite3_close(db);
-  if (ret == 0)
-    return 0;
-  else
-    return -1;
+  return ret;
 }
 
 void RA_free(Ex_challenge_reply *rpl, Tpa_data *tpa_data){

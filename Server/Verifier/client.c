@@ -11,7 +11,7 @@ static bool Continue = true;
 static size_t last_read = 0;
 static size_t to_read = 0;
 static bool end = false;
-static bool error = false;
+static int error_val;
 static bool send_all_log = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
@@ -38,7 +38,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     if(n < 0){
       r->len = 0;
       end = true;
-      error = true;
+      error_val = n;
       RA_free(&rpl, &tpa_data);
       return;
     } //waitng for more data from TPA
@@ -49,9 +49,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     get_finish_timer();
     print_timer(1);
 
-    if(RA_explicit_challenge_verify(&rpl, &tpa_data) < 0){
-      error = true;
-    }
+    error_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
 
     r->len = 0;
     end = true;
@@ -117,7 +115,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     if(n < 0){
       r->len = 0;
       end = true;
-      error = true;
+      error_val = n;
       RA_free(&rpl, &tpa_data);
       return;
     } //waitng for more data from TPA
@@ -128,9 +126,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     get_finish_timer();
     print_timer(1);
     
-    if(RA_explicit_challenge_verify_TLS(&rpl, &tpa_data) < 0){
-      error = true;
-    }
+    error_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
 
     r->len = 0;
     end = true;
@@ -287,7 +283,7 @@ int get_paths(int id){
       //printf("%s\n", s)
       double x = difftime(ltime_now, mktime(&t));
       double v = (double) FRESH;
-      printf("%f\n", x);
+      //printf("%f\n", x);
       if(difftime(ltime_now, mktime(&t)) > v){
         printf("Entry too old, send all IMA log\n");
         send_all_log = true;
@@ -359,10 +355,7 @@ int main(int argc, char *argv[]) {
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
-  if(!error)
-    return 0;
-  else
-    return -1;
+  return error_val;
 }
 
 int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){

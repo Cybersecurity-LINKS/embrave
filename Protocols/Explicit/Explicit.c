@@ -325,7 +325,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
     // Sanity check -- they should at least be same size!
     if (quoteDigest->size != pcr_digest->size) {
         printf("FATAL ERROR: PCR values failed to match quote's digest!\n");
-        return -2;
+        return -1;
     }
 
     // Compare running digest with quote's digest
@@ -339,7 +339,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
             tpm2_util_hexdump(pcr_digest->buffer, quoteDigest->size);
             printf("\n"); 
 
-            return -1;
+            return -2;
         }
     }
 
@@ -447,13 +447,13 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
 
     // Verify that the digest from quote matches PCR digest
     rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
-    if (rc == -2) {
+    if (rc == -1) {
         goto err;
-    } else if (rc == -1) {
+    } else if (rc == -2) {
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
-        return 2;
+        return -2;
     } 
 
     OPENSSL_free(bio);
@@ -726,6 +726,48 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
+int refresh_tpa_entry(Tpa_data *tpa){
+    sqlite3_stmt *res;
+    sqlite3 *db;
+    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL WHERE id = @id ";
+    //int idx, idx2, idx3, idx4;
+    int step;
+
+    int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    if ( rc != SQLITE_OK) {
+        printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    //convert the sql statament
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+        
+    } 
+
+    //Execute the sql query
+    step = sqlite3_step(res);
+    if (step == SQLITE_ROW) {
+        //Golden value found, IMA row OK
+        printf("error sql update\n");
+        //printf("%s\n", sqlite3_column_text(res, 1));
+        sqlite3_finalize(res);
+        sqlite3_close(db);
+        return -1;
+        
+    } 
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
+    return 0;
+
+}
+
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
@@ -766,13 +808,15 @@ int save_pcr10(Tpa_data *tpa){
         sqlite3_bind_text(res, idx4, buff, strlen(buff), NULL);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
     }
     
     //Execute the sql query
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Golden value found, IMA row OK
-        printf("error insert\n");
+        printf("error sql insert pcr10\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         sqlite3_close(db);
@@ -835,8 +879,6 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         goto error;
     }
     
-
-
     //verify the correct IMA log template 
     //ima_ng: PCR SHA1 TEMPLATE_NAME SHA256 HASH PATH_NAME
     total_read = sizeof(uint32_t) + SHA_DIGEST_LENGTH*sizeof(uint8_t);
@@ -900,12 +942,15 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
         
-         tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        /*tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");
-         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("\n");
+        tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n"); */
         printf("PCR10 calculation mismatch\n");
-        goto error;
+
+        //refresh tpa db entry
+
+        goto unk;
     }
     printf("PCR10 calculation OK\n");
 
@@ -929,6 +974,13 @@ error:
     free(sha256_concatenated);
     free(event_name);
     return -1;
+unk:
+    free(pcr10_sha1);
+    free(pcr10_sha256);
+    free(sha1_concatenated);
+    free(sha256_concatenated);
+    free(event_name);
+    return -2;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
