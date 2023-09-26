@@ -32,7 +32,10 @@ class Hash:
     @staticmethod
     def sha256_hash(f):
         sha256_hash = hashlib.sha256()
-        chunk = f.read(4096) #64 blocks of 64 bytes, which is the block size for sha1 and sha256
+        try:
+            chunk = f.read(4096) #64 blocks of 64 bytes, which is the block size for sha1 and sha256
+        except:
+            return None
         while chunk:
             sha256_hash.update(chunk)
             chunk = f.read(4096)
@@ -112,7 +115,8 @@ def compute_hash(hash_algo, f, file_path, num_files):
             Hash.SHA512: Hash.sha512_hash
         }
     digest_str = switch_algorithms[hash_algo](f)
-
+    if digest_str == None:
+        return
     row_1 = (file_path, digest_str)
     add_row(conn, row_1)
     num_files  = num_files + 1
@@ -177,15 +181,18 @@ if __name__ == '__main__':
                     if fp.is_dir() or fp.is_symlink() or fp.is_block_device() or fp.is_char_device():
                         continue
                     else:
-                        a = "/run/"
-                        b = "/sys/"
-                        c = "/proc/"
+                        #a = "/run/"
+                        #b = "/sys/"
+                        #c = "/proc/"
                         print(file_path)
-                        if file_path.startswith(a) or file_path.startswith(b) or file_path.startswith(c):
-                            continue
-                        with open(file_path, 'rb') as f:
-                            compute_hash(hash_algo, f, file_path, num_files)
-                            num_files+=1
+                       # if file_path.startswith(a) or file_path.startswith(b) or file_path.startswith(c):
+                        #    continue
+                        try:
+                            with open(file_path, 'rb') as f:
+                                compute_hash(hash_algo, f, file_path, num_files)
+                                num_files+=1
+                        except:
+                                continue
         else:
             with open(path, 'rb') as f:
                 compute_hash(hash_algo, f, path, num_files)
