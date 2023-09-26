@@ -18,3 +18,4 @@
 /home/root/.bash_history
 /var/lib/NetworkManager/timestamps.
 /var/lib/NetworkManager/internal-
+/var/lib/logrotate.status

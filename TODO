@@ -1,8 +1,5 @@
-se pc10 mismatch allora unkwon tpa
-cancellare i pcr se untrusted tpa
 TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
 modificare lo scritp del db di tpa per ritornare il numero di riga
-CREARE FULL DB IMX8 + EXCPLUDE listed
 TEST RASP + IMX
 aggiornare readme
 se No IMA log received => skip save pcr9 ?
