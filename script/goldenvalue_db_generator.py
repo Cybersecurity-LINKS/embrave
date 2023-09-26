@@ -131,6 +131,8 @@ def bootaggr():
     add_row(conn, row_1)
     file.close()
 
+class StopLookingForThings(Exception): pass
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Required the hash algorithm and at least one path as parameters")
@@ -161,11 +163,10 @@ if __name__ == '__main__':
                                     ); """
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
-    #create whitelist db
     create_table(conn, sql_create_projects_table1)
 
     for path in paths:
-            # Display the current path
+        # Display the current path
         print('   ' + path)
 
         p = pathlib.Path(path)
@@ -181,18 +182,24 @@ if __name__ == '__main__':
                     if fp.is_dir() or fp.is_symlink() or fp.is_block_device() or fp.is_char_device():
                         continue
                     else:
-                        #a = "/run/"
-                        #b = "/sys/"
-                        #c = "/proc/"
+                        Exclude_paths = ["/sys/kernel/debug/regmap/", "/run/initct", "/run/user/", "/run/systemd/inhibit/",
+                                        "/run/systemd/inaccessible/", "/sys/kernel/tracing/trace_pipe", "/sys/kernel/tracing/per_cpu/",
+                                        "/sys/kernel/debug/tracing/trace_pipe", "/sys/kernel/debug/tracing/per_cpu/", "/run/systemd/sessions/",
+                                        "/proc/kmsg"]
+
                         print(file_path)
-                       # if file_path.startswith(a) or file_path.startswith(b) or file_path.startswith(c):
-                        #    continue
+                        try:
+                            for ex in Exclude_paths:
+                                if file_path.startswith(ex):
+                                    raise StopLookingForThings()
+                        except StopLookingForThings:
+                            continue
                         try:
                             with open(file_path, 'rb') as f:
                                 compute_hash(hash_algo, f, file_path, num_files)
                                 num_files+=1
                         except:
-                                continue
+                            continue
         else:
             with open(path, 'rb') as f:
                 compute_hash(hash_algo, f, path, num_files)
