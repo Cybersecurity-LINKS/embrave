@@ -124,7 +124,7 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
 
   if(ima_byte_sent != 0 && all_log != 1){
     int ret = fseek(fp, ima_byte_sent, SEEK_SET);
-    printf("fseek ret %d\n", ret);
+    
     if (ret != 0){
       printf("Unable to fseek IMA file\n");
       return -1;
@@ -145,7 +145,6 @@ int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
     read_bytes = fread(block, 1, sizeof(block), fp);
 
     if (read_bytes == 0) {
-      //printf("%ld\n", rpl->ima_log_size);
       // Eof or error
       if (feof(fp)) {
         if(rpl->ima_log_size != 0){
