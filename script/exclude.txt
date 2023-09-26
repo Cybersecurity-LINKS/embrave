@@ -12,7 +12,6 @@
 /etc/resolv.conf
 /etc/unbound/unbound.conf.d/resolvconf_resolvers.conf
 /home/pi/tpa/Agents/Remote_Attestor/tpa.db
-/var/lib/systemd/random-seed
 /var/lib/systemd/backlight/platform-backlight
 /var/lib/alsa/asound.state
 /var/lib/NetworkManager/NetworkManager.state
