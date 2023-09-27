@@ -16,6 +16,7 @@
 /var/lib/alsa/asound.state
 /var/lib/NetworkManager/NetworkManager.state
 /home/root/.bash_history
-/var/lib/NetworkManager/timestamps.
+/var/lib/NetworkManager/timestamps
 /var/lib/NetworkManager/internal-
 /var/lib/logrotate.status
+/var/lib/containerd/io.containerd.metadata.v1.bolt/meta.db

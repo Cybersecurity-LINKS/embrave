@@ -407,7 +407,9 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
         printf("files_tpm2b_attest_to_tpms_attest failed \n");
         goto err;
     }
-
+    //printf("restart count %d \n",attest.clockInfo.restartCount );
+    //printf("clock %ld \n", attest.clockInfo.clock);
+    printf("reset count %d\n", attest.clockInfo.resetCount);
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
