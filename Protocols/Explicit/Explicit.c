@@ -347,7 +347,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
 }
 
 
-int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
+int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name, Tpa_data *tpa)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -410,6 +410,17 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name)
     //printf("restart count %d \n",attest.clockInfo.restartCount );
     //printf("clock %ld \n", attest.clockInfo.clock);
     printf("reset count %d\n", attest.clockInfo.resetCount);
+    if(tpa->pcr10_old_sha256 == NULL || tpa->resetCount == attest.clockInfo.resetCount){
+        //Save resetCount
+        tpa->resetCount = attest.clockInfo.resetCount;
+    } else {
+        printf("tpa rebooted after last attestation\n");
+        OPENSSL_free(bio);
+        EVP_PKEY_free(pkey);
+        EVP_PKEY_CTX_free(pkey_ctx);
+        return -2;
+    }
+    
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
@@ -714,7 +725,8 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 int refresh_tpa_entry(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL WHERE id = @id ";
+    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL WHERE id = @id ";
+    //char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL WHERE id = @id ";
     int idx;
     int step;
     
@@ -760,6 +772,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
+   // char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount WHERE id = @id ";
     char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm WHERE id = @id ";
     int idx, idx2, idx3, idx4;
     int step;

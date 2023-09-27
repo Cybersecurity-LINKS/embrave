@@ -188,6 +188,7 @@ int get_paths(int id){
   tpa_data.tls_path = NULL;
   tpa_data.timestamp = NULL;
   tpa_data.ca = NULL;
+  tpa_data.resetCount = -1;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {

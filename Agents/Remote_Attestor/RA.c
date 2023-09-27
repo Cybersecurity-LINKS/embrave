@@ -26,7 +26,7 @@ int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data)
   get_start_timer();
 
   //verify quote
-  ret = verify_quote(rpl, tpa_data->ak_path );
+  ret = verify_quote(rpl, tpa_data->ak_path,  tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
@@ -96,7 +96,7 @@ int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data
   get_start_timer();
 
   //verify quote
-  ret = verify_quote(rpl, (const char *) tpa_data->ak_path);
+  ret = verify_quote(rpl, (const char *) tpa_data->ak_path,  tpa_data);
   if (ret == -1){
     printf("Untrusted TPA\n");
     return -1;
