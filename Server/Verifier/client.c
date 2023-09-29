@@ -180,6 +180,7 @@ int get_paths(int id){
   int step, idx;
   time_t ltime_now;
   struct tm t;
+  double fresh = (double) FRESH;
 
   tpa_data.pcr10_old_sha256 = NULL;
   tpa_data.pcr10_old_sha1 = NULL;
@@ -188,7 +189,7 @@ int get_paths(int id){
   tpa_data.tls_path = NULL;
   tpa_data.timestamp = NULL;
   tpa_data.ca = NULL;
-  tpa_data.resetCount = -1;
+  tpa_data.resetCount = 0;
 
   int rc = sqlite3_open_v2("file:../../Agents/Remote_Attestor/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
@@ -226,6 +227,7 @@ int get_paths(int id){
     tpa_data.ak_path = malloc((byte + 1) * sizeof(char));
     memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
     tpa_data.ak_path[byte] = '\0';
+
     //PCR10s sha256, could be null
     byte = sqlite3_column_bytes(res, 3);
     if(byte != 0){
@@ -275,26 +277,22 @@ int get_paths(int id){
       sscanf(tpa_data.timestamp,"%d %d %d %d %d %d %d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec, &t.tm_isdst);
       ltime_now = time(NULL);
    
-      //
-/*       char* s =asctime(localtime(&ltime_now));
-      time_t xxx = mktime(&t);
-
-      printf("%s\n", s); */
-
       //printf("%s\n", s)
       //double x = difftime(ltime_now, mktime(&t));
       difftime(ltime_now, mktime(&t));
-      double v = (double) FRESH;
+      
       //printf("%f\n", x);
-      if(difftime(ltime_now, mktime(&t)) > v){
+      if(difftime(ltime_now, mktime(&t)) > fresh){
         printf("Entry too old, send all IMA log\n");
         send_all_log = true;
+      } else {
+        //Reset count
+        tpa_data.resetCount = sqlite3_column_int(res, 9);
       }
     } else {
       send_all_log = true;
     }
 
-    
     sqlite3_finalize(res);
     sqlite3_close(db);
     return 0;

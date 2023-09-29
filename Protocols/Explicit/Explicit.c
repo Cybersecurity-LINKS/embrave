@@ -410,10 +410,10 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name, Tpa_data *
     //printf("restart count %d \n",attest.clockInfo.restartCount );
     //printf("clock %ld \n", attest.clockInfo.clock);
     printf("reset count %d\n", attest.clockInfo.resetCount);
-    if(tpa->pcr10_old_sha256 == NULL || tpa->resetCount == attest.clockInfo.resetCount){
+    if(tpa->pcr10_old_sha256 == NULL || rply->wholeLog == 1 ){
         //Save resetCount
         tpa->resetCount = attest.clockInfo.resetCount;
-    } else {
+    } else if(tpa->resetCount != attest.clockInfo.resetCount) {
         printf("tpa rebooted after last attestation\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
@@ -772,9 +772,9 @@ int refresh_tpa_entry(Tpa_data *tpa){
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-   // char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount WHERE id = @id ";
-    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm WHERE id = @id ";
-    int idx, idx2, idx3, idx4;
+    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount WHERE id = @id ";
+    //char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm WHERE id = @id ";
+    int idx, idx2, idx3, idx4, idx5;
     int step;
     time_t ltime;
     struct tm *t;
@@ -808,6 +808,9 @@ int save_pcr10(Tpa_data *tpa){
 
         idx4 = sqlite3_bind_parameter_index(res, "@tm");
         sqlite3_bind_text(res, idx4, buff, strlen(buff), NULL);
+
+        idx5 = sqlite3_bind_parameter_index(res, "@resetCount");
+        sqlite3_bind_int(res, idx5, tpa->resetCount);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
