@@ -4,10 +4,9 @@ durante la prima quote salvare il tpm reset nella struttura dati
 durante le quote succesiva ,se presente il campo vecchio reset controllare sia uguale, altrimenti untrusted ?
 
 TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
-modificare lo scritp del db di tpa per ritornare il numero di riga
 
 aggiornare readme
 se No IMA log received => skip save pcr9 ?
-durante il loading iniziale se timestamp scaduto forzare tutto  a zero
+
 fase provisioning ak e creazione del binding
 mongoose come git module

@@ -42,6 +42,21 @@ def add_row(conn, row):
     conn.commit()
     return cur.lastrowid
 
+def read_id(conn, sha256_ak):
+    """
+    Query all rows in the tasks table
+    :param conn: the Connection object
+    :return:
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM tpa WHERE ak=?", (sha256_ak,))
+
+    rows = cur.fetchall()
+    for row in rows:
+        x=row[0]
+        print("Id to lauch the RA:")
+        print(x)
+
 
 def main():
     database = r"./Agents/Remote_Attestor/tpa.db"
@@ -73,6 +88,7 @@ def main():
     create_table(conn, sql_create_projects_table)
 
     add_row(conn, row_1)
+    read_id(conn, name)
     conn.close
 
 if __name__ == '__main__':
