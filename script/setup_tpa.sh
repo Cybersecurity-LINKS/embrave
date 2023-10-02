@@ -8,7 +8,7 @@ sudo ./script/create_tpm_keys.sh
 sudo ./script/create_certificates.sh
 
 #create the goldenvalue db
-#sudo python3 ./script/goldenvalue_db_generator.py sha256 /
+sudo python3 ./script/goldenvalue_db_generator.py sha256 /
 
 #copy the file to send
 cp ./Agents/Remote_Attestor/AKs/ak.pub.pem ./to_send/

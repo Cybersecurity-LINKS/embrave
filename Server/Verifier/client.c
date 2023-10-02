@@ -228,22 +228,6 @@ int get_paths(int id){
     memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
     tpa_data.ak_path[byte] = '\0';
 
-    //PCR10s sha256, could be null
-    byte = sqlite3_column_bytes(res, 3);
-    if(byte != 0){
-      //SHA256
-      tpa_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
-      memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
-      tpa_data.pcr10_old_sha256[byte] = '\0';
-      //SHA1
-      byte = sqlite3_column_bytes(res, 4);
-      tpa_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
-      memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
-      tpa_data.pcr10_old_sha1[byte] = '\0';
-    } else {
-      send_all_log = true;
-    }
-
     //Goldenvalue db path
     byte = sqlite3_column_bytes(res, 5);
     tpa_data.gv_path = malloc((byte + 1) * sizeof(char));
@@ -286,10 +270,31 @@ int get_paths(int id){
         printf("Entry too old, send all IMA log\n");
         send_all_log = true;
       } else {
+        //Entry still fresh so read old pcr10
+            
+        //PCR10s sha256, could be null
+        byte = sqlite3_column_bytes(res, 3);
+        if(byte != 0){
+          //SHA256
+          tpa_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
+          memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
+          tpa_data.pcr10_old_sha256[byte] = '\0';
+          //SHA1
+          byte = sqlite3_column_bytes(res, 4);
+          tpa_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
+          memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
+          tpa_data.pcr10_old_sha1[byte] = '\0';
+        } else {
+          //Possibile to have valid timestamp and no pcr10?
+          send_all_log = true;
+        }
+
         //Reset count
         tpa_data.resetCount = sqlite3_column_int(res, 9);
+        
       }
     } else {
+      //No previus timestamp in the db
       send_all_log = true;
     }
 

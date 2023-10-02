@@ -410,11 +410,11 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name, Tpa_data *
     //printf("restart count %d \n",attest.clockInfo.restartCount );
     //printf("clock %ld \n", attest.clockInfo.clock);
     printf("reset count %d\n", attest.clockInfo.resetCount);
-    if(tpa->pcr10_old_sha256 == NULL || rply->wholeLog == 1 ){
+    if(tpa->pcr10_old_sha256 == NULL ){
         //Save resetCount
         tpa->resetCount = attest.clockInfo.resetCount;
-    } else if(tpa->resetCount != attest.clockInfo.resetCount) {
-        printf("tpa rebooted after last attestation\n");
+    } else if(tpa->resetCount != attest.clockInfo.resetCount && rply->wholeLog == 1 ) {
+        printf("Tpa rebooted after last attestation\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
