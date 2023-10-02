@@ -1,3 +1,16 @@
+// Copyright (C) 2023 Fondazione LINKS 
+
+// This program is free software; you can redistribute it and/or modify 
+// it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
+
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// See the GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License along with this program; if not, 
+// write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+
 #include "Explicit.h"
 
 
@@ -947,10 +960,10 @@ int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
         
-/*         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
         printf("\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("\n");  */
+        printf("\n");  
         printf("PCR10 calculation mismatch\n");
         //refresh tpa db entry
         refresh_tpa_entry(tpa);
