@@ -1,12 +1,7 @@
-riordinare la lettura da tpa db, prima check sul fresh , poi se ancora fresh anche gli altri campi
-durante la prima quote salvare il tpm reset nella struttura dati
-
-durante le quote succesiva ,se presente il campo vecchio reset controllare sia uguale, altrimenti untrusted ?
-
-TOGLIERE LE PORTE DAI PARAMERI DELLA TPA.O
-
-aggiornare readme
-se No IMA log received => skip save pcr9 ?
-
-fase provisioning ak e creazione del binding
-mongoose come git module
+cmake
+cambaire path dei certificati
+togliere daa
+config file
+debug print level 
+error log
+log

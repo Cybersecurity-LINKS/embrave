@@ -155,7 +155,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
     // PCR9 compare value 00 
     memset(pcr_cmp, 0, SHA256_DIGEST_LENGTH); 
 
-    if (!pcr_parse_selections("sha256:9", &pcr_select)){
+    if (!pcr_parse_selections("sha256:9", &pcr_select, NULL)){
         printf("PCR9 pcr_parse_selections error\n");
         return -1;
     }
@@ -257,7 +257,7 @@ int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ect
     }     
 
     //Set pcr to quote (all sha256) 
-    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
+    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
         printf("pcr_parse_selections failed\n");
         printf("ERRORE QUI?\n");
         return -1;
@@ -460,7 +460,7 @@ int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name, Tpa_data *
     }
 
     // Define the pcr selection
-    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
+    if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
         printf("pcr_parse_selections failed\n");
         goto err;
     } 

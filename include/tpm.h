@@ -21,14 +21,14 @@
 #include <sqlite3.h>
 
 #include "common.h"
-#include "tpm2-tools/lib/tpm2_openssl.h"
-#include "tpm2-tools/lib/files.h"
-#include "tpm2-tools/lib/tpm2_convert.h"
-#include "tpm2-tools/lib/tpm2_util.h"
-#include "tpm2-tools/lib/tpm2_alg_util.h"
-#include "tpm2-tools/lib/pcr.h"
-#include "tpm2-tools/lib/object.h"
-#include "tpm2-tools/lib/tpm2.h"
+#include "tpm2_openssl.h"
+#include "files.h"
+#include "tpm2_convert.h"
+#include "tpm2_util.h"
+#include "tpm2_alg_util.h"
+#include "pcr.h"
+#include "object.h"
+#include "tpm2.h"
 #include <openssl/sha.h>
 
 #include <openssl/rand.h>
