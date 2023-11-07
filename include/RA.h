@@ -10,18 +10,19 @@
 // You should have received a copy of the GNU General Public License along with this program; if not, 
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+#ifndef RA_H
+#define RA_H
 
-#ifndef TPA_H
-#define TPA_H
-
+#include <limits.h>    /* for CHAR_BIT */
+#include <stdint.h>    /* for uint32_t */
 #include <stdint.h> 
 #include <stdio.h>
+#include <string.h>
 
-#include "../../Protocols/Explicit/Explicit.h"
+#include "tpm.h"
 
-
-int TPA_init(void);
-int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl);
-//int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl);
-void TPA_free(Ex_challenge_reply *rpl);
+int RA_explicit_challenge_create(Ex_challenge *chl);
+int RA_explicit_challenge_verify(Ex_challenge_reply *rpl, Tpa_data *tpa_data);
+int RA_explicit_challenge_verify_TLS(Ex_challenge_reply *rpl, Tpa_data *tpa_data);
+void RA_free(Ex_challenge_reply *rpl, Tpa_data *tpa_data);
 #endif
