@@ -81,3 +81,4 @@ Server/certs/*
 to_receive/to_send/server.crt
 to_receive/to_send/goldenvalues.imx.db
 to_receive/to_send/ak.pub.pem
+.vscode
