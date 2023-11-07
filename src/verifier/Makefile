@@ -18,7 +18,7 @@ FLAGS = -lssl -lcrypto \
 LDFLAGS+= -I${LEMONDIR}/lib/tpm2-tools/tools/ -I${LEMONDIR}/lib/tpm2-tools/lib/ -I${LEMONDIR}/include/ -I${LEMONDIR}/lib/Mongoose/\
 
 # define the executable file
-MAIN = client
+MAIN = verifier
 
 .PHONY: all
 all:

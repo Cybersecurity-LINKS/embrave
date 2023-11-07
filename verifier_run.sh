@@ -5,10 +5,10 @@ if [ $# != 3 ]
 fi
 for ((i=1; i<=100; i++)) #sudo valgrind --leak-check=yes
 do
-    #(cd ./Server/Verifier/ && sudo ./client $1 $2)
+    #(cd src/verifier/ && sudo ./verifier $1 $2)
     var2=$(( ($RANDOM % 2) + 0 ))
     echo "tls?: $var2"
-    (cd ./Server/Verifier/ && sudo ./client $1 $var2 $3)
+    (cd src/verifier/ && sudo ./verifier $1 $var2 $3)
     echo "RUN: $i"
     if [ $? != 0 ]
         then

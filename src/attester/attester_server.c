@@ -10,7 +10,7 @@
 // You should have received a copy of the GNU General Public License along with this program; if not, 
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-#include "Mongoose/mongoose.h"
+#include "mongoose.h"
 #include "attester_agent.h"
 
 static bool Continue = true;
@@ -204,7 +204,7 @@ void print_sent_data(Ex_challenge_reply *rpl){
   printf("\n");
 
   TPML_PCR_SELECTION pcr_select;
-  if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select)) {
+  if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
     printf("pcr_parse_selections print server failed\n");
     return;
   }
