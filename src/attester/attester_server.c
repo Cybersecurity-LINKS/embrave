@@ -85,8 +85,8 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
     MG_INFO(("SERVER accepted a connection"));
     struct mg_tls_opts opts = {
         //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
-        .cert = "../../certs/server.crt",     // Certificate PEM file
-        .certkey = "../../certs/server.key",  // This pem contains both cert and key
+        .cert = "/home/pi/lemon/certs/server.crt",     // Certificate PEM file
+        .certkey = "/home/pi/lemon/certs/server.key",  // This pem contains both cert and key
     };
     mg_tls_init(c, &opts);
     MG_INFO(("SERVER initialized TLS"));
