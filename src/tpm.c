@@ -89,7 +89,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     
     printf("PCR9softbindig\n");
     //Open the public certificate
-    int ret = openPEM("../certs/server.crt", &pem);
+    int ret = openPEM("/home/pi/lemon/to_receive/to_send/server.crt", &pem);
     if(ret == -1){
         printf("openPEM error\n");
         return -1;

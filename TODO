@@ -1,3 +1,4 @@
+nel agent togliere il passaggio di porte come parametro (hardcoded o config file)
 cmake
 cambaire path dei certificati
 togliere daa
