@@ -46,6 +46,11 @@
 *.mod*
 *.cmd
 .tmp_versions/
+
+# Submodules
+tpm2-tools/
+
+# Custom directories
 modules.order
 Module.symvers
 Mkfile.old
@@ -77,11 +82,11 @@ Agents/Remote_Attestor/tpa.db
 Protocols/Explicit/goldenvalues.imx.db
 Server/certs/server.imx.crt
 Agents/Remote_Attestor/AKs/ak.pub.imx.pem
-Server/certs/*
+Server/certs/
 to_receive/to_send/server.crt
 to_receive/to_send/goldenvalues.imx.db
 to_receive/to_send/ak.pub.pem
-.vscode/*
+.vscode/
 src/verifier/client
 src/verifier/verifier
 src/attester/attester_server
