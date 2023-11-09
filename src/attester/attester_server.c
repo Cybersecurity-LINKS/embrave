@@ -16,9 +16,9 @@
 static bool Continue = true;
 
 
-int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge *chl);
-int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl);
-void print_sent_data(Ex_challenge_reply *rpl);
+int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge *chl);
+int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge_reply *rpl);
+void print_sent_data(tpm_challenge_reply *rpl);
 
 // SERVER event handler
 static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
@@ -30,8 +30,8 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
     int tag;
-    Ex_challenge chl;
-    Ex_challenge_reply rpl;
+    tpm_challenge chl;
+    tpm_challenge_reply rpl;
 
     //Read Tag
     memcpy(&tag, r->buf, sizeof(int));
@@ -43,11 +43,11 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
       load_challenge_request(c,r,&chl);
       
       //Compute the challenge
-      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
+      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
-        TPA_free(&rpl);
+        tpa_free(&rpl);
         break;
       }
       //Send the challenge reply
@@ -57,7 +57,7 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
         Continue = false;
       }
 
-      TPA_free(&rpl);
+      tpa_free(&rpl);
       break;
     case RA_TYPE_DAA:
 
@@ -94,8 +94,8 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
     int tag;
-    Ex_challenge chl;
-    Ex_challenge_reply rpl;
+    tpm_challenge chl;
+    tpm_challenge_reply rpl;
 
     //Read Tag
     memcpy(&tag, r->buf, sizeof(int));
@@ -107,11 +107,11 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
       load_challenge_request(c,r,&chl);
       
       //Compute the challenge
-      if ((TPA_explicit_challenge(&chl, &rpl)) != 0){
+      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
-        TPA_free(&rpl);
+        tpa_free(&rpl);
         break;
       }
 
@@ -121,7 +121,7 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
         c->is_closing = 1;
         Continue = false;
       }
-      TPA_free(&rpl);
+      tpa_free(&rpl);
     break;
     case RA_TYPE_DAA:
 
@@ -142,11 +142,11 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
 }
 
 
-int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challenge *chl)
+int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, tpm_challenge *chl)
 {
-  //chl = (Ex_challenge *) r->buf;
-  memcpy(chl, r->buf, sizeof(Ex_challenge));
-  mg_iobuf_del(r,0,sizeof(Ex_challenge));
+  //chl = (tpm_challenge *) r->buf;
+  memcpy(chl, r->buf, sizeof(tpm_challenge));
+  mg_iobuf_del(r,0,sizeof(tpm_challenge));
   if(chl == NULL && chl->nonce_blob.buffer == NULL && chl->nonce_blob.size != NONCE_SIZE){
     printf("Transmission challenge data error \n");
     return -1;
@@ -162,7 +162,7 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, Ex_challe
   return 0;
 }
 
-int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challenge_reply *rpl)
+int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge_reply *rpl)
 {
   //Signature is dynamic memory=> cant send all structure in one time
   //Signature size
@@ -197,7 +197,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, Ex_challen
   return 0;
 }
 
-void print_sent_data(Ex_challenge_reply *rpl){
+void print_sent_data(tpm_challenge_reply *rpl){
   printf("NONCE:");
   for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
     printf("%02X", rpl->nonce_blob.buffer[i]);
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
   }
 
   //Check TPM keys and extend PCR9
-  if((a = TPA_init()) != 0) return -1;
+  if((a = tpa_init()) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager

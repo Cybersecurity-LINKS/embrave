@@ -44,7 +44,7 @@ typedef struct {
 typedef struct {
     Nonce nonce_blob;
     uint8_t send_wholeLog;
-} Ex_challenge;
+} tpm_challenge;
 
 typedef struct {
     Nonce nonce_blob;
@@ -58,20 +58,20 @@ typedef struct {
     uint32_t ima_log_size;
     uint8_t wholeLog;
     //int dsc;
-} Ex_challenge_reply;
+} tpm_challenge_reply;
 
 int nonce_create(Nonce *nonce_blob);
-int create_quote (Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx);
+int create_quote (tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx);
 void print_quoted(TPM2B_ATTEST * quoted);
-void free_data (Ex_challenge_reply *rply);
+void free_data (tpm_challenge_reply *rply);
 BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 
-int verify_quote(Ex_challenge_reply *rply,const char* pem_file_name, Tpa_data *tpa);
-int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa);
+int verify_quote(tpm_challenge_reply *rply,const char* pem_file_name, Tpa_data *tpa);
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa);
 int PCR9softbindig(ESYS_CONTEXT *esys_context);
-int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data);
+int PCR9softbindig_verify(tpm_challenge_reply *rply, Tpa_data * tpa_data);
 int check_pcr9(ESYS_CONTEXT *esys_context);
 int refresh_tpa_entry(Tpa_data *tpa);
 #endif

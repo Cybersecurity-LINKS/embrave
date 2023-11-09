@@ -20,8 +20,7 @@
 #include "tpm.h"
 
 
-int TPA_init(void);
-int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl);
-//int TPA_explicit_challenge_TLS(Ex_challenge *chl, Ex_challenge_reply *rpl);
-void TPA_free(Ex_challenge_reply *rpl);
+int tpa_init(void);
+int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl);
+void tpa_free(tpm_challenge_reply *rpl);
 #endif

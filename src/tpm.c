@@ -34,7 +34,7 @@ struct {
 tool_rc tpm2_quote_free(void);
 int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
+int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
 int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 
@@ -172,7 +172,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
 
 }
 
-int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data)
+int PCR9softbindig_verify(tpm_challenge_reply *rply, Tpa_data * tpa_data)
 {
     unsigned char *pem = NULL;
     unsigned char *digest_buff = NULL;
@@ -229,7 +229,7 @@ int PCR9softbindig_verify(Ex_challenge_reply *rply, Tpa_data * tpa_data)
     return ret;
 };
 
-int create_quote(Ex_challenge *chl, Ex_challenge_reply *rply,  ESYS_CONTEXT *ectx)
+int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
     char handle[11]= "0x81000004";
     TPML_PCR_SELECTION pcr_select;
@@ -360,7 +360,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
 }
 
 
-int verify_quote(Ex_challenge_reply *rply, const char* pem_file_name, Tpa_data *tpa)
+int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data *tpa)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -508,7 +508,7 @@ void bin_2_hash(char *buff, BYTE *data, size_t len){
     pcr|template_hash|template_name_length|template_name|template_data_lenght|template_data
     template_data = hash_length|hash_name(null terminated string)|filedata_hash|filename_length|filename(null terminated string)
     template_hash = sha1(template_data) */
-int read_ima_log_row(Ex_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
+int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte){
     uint32_t pcr;
     uint32_t field_len;
 	uint32_t field_path_len;
@@ -848,7 +848,7 @@ int save_pcr10(Tpa_data *tpa){
 
 }
 
-int verify_ima_log(Ex_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -1021,7 +1021,7 @@ tool_rc tpm2_quote_free(void) {
 }
 
 
-void free_data (Ex_challenge_reply *rply){
+void free_data (tpm_challenge_reply *rply){
     if(rply->quoted != NULL)
         free(rply->quoted);
 
