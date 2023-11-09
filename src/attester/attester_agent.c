@@ -15,9 +15,9 @@
 
 static uint32_t ima_byte_sent = 0;
 
-int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log);
+int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log);
 
-int TPA_init(void) {
+int tpa_init(void) {
   // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -68,7 +68,7 @@ error:
 
 }
 
-int TPA_explicit_challenge(Ex_challenge *chl, Ex_challenge_reply *rpl)
+int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)
 {
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -112,7 +112,7 @@ end:
   return 0;
 }
 
-void TPA_free(Ex_challenge_reply *rpl)
+void tpa_free(tpm_challenge_reply *rpl)
 {
   free_data (rpl);
 }
@@ -124,7 +124,7 @@ void TPA_free(Ex_challenge_reply *rpl)
   -1 error
  */
 
-int load_ima_log(const char *path, Ex_challenge_reply *rpl, int all_log)
+int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log)
 {
   FILE *fp;
   size_t read_bytes, buff_sz;
