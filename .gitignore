@@ -51,6 +51,7 @@
 tpm2-tools/
 
 # Custom directories
+build/
 modules.order
 Module.symvers
 Mkfile.old

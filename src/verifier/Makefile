@@ -15,7 +15,7 @@ SRCS +=   ${LEMONDIR}/lib/tpm2-tools/tools/tpm2_tool.c $(wildcard ${LEMONDIR}/li
 FLAGS = -lssl -lcrypto \
 -DMG_ENABLE_OPENSSL=1 -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lsqlite3 -DDEBUG=1 #-DTESTS=1#-DFRESH=900000 #-lcrypto -D MG_IO_SIZE=102004
 
-LDFLAGS+= -I${LEMONDIR}/lib/tpm2-tools/tools/ -I${LEMONDIR}/lib/tpm2-tools/lib/ -I${LEMONDIR}/include/ -I${LEMONDIR}/lib/Mongoose/\
+LDFLAGS+= -I${LEMONDIR}/lib/tpm2-tools/tools/ -I${LEMONDIR}/lib/tpm2-tools/lib/ -I${LEMONDIR}/include/ -I${LEMONDIR}/lib/mongoose/\
 
 # define the executable file
 MAIN = verifier
