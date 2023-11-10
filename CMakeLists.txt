@@ -14,45 +14,85 @@ set(verifier_wrkdir ${CMAKE_BINARY_DIR}/verifier.build)
 
 # add patch macro
 macro(add_patch level submodule patch working_directory patch_list)
-  add_custom_command(OUTPUT ${patch}.applied
+  add_custom_command(OUTPUT ${patch}.applied PRE_BUILD
     WORKING_DIRECTORY ${working_directory}
     COMMAND patch --forward -p${level} < ${patchdir}/${submodule}/${patch}
     COMMAND touch ${CMAKE_BINARY_DIR}/${patch}.applied
     COMMENT "Applying ${patch}")
   list(APPEND ${patch_list} ${patch}.applied)
+  #message("PIPPO")
 endmacro()
 
-macro(mkdir name dir)
-  add_custom_command(OUTPUT ${dir}/.exists
-    COMMAND mkdir -p ${dir}
-    COMMAND touch ${dir}/.exists
-  )
-  set(${name} ${dir})
-  set(${name}_exists ${dir}/.exists)
-endmacro()
+#macro(mv name file dir)
+#  add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/config.h.moved
+#    COMMAND mv ${file} ${dir}
+#    COMMAND touch ${CMAKE_BINARY_DIR}/config.h.moved
+#  )
+#  set(${name} ${dir})
+#  set(${name}_exists ${dir}/.exists)
+#endmacro()
 
 ###############################################################################
 ## tpm2-tools patch
 ###############################################################################
 
-add_patch(1 "tpm2-tools" "tool_as_lib.patch" ${tpm2-tools_srcdir} tpm2-tools_patches)
+#add_patch(1 "tpm2-tools" "tool_as_lib.patch" ${tpm2-tools_srcdir} tpm2-tools_patches)
+set(patch "tool_as_lib.patch")
+set(submodule "tpm2-tools")
+set(working_directory ${tpm2-tools_srcdir})
+set(patch_list tpm2-tools_patches)
+set(level 1)
+add_custom_command(OUTPUT ${patch}.applied PRE_BUILD
+    WORKING_DIRECTORY ${working_directory}
+    COMMAND patch --forward -p${level} < ${patchdir}/${submodule}/${patch}
+    COMMAND touch ${CMAKE_BINARY_DIR}/${patch}.applied
+    COMMENT "Applying ${patch}")
+  list(APPEND ${patch_list} ${patch}.applied)
+
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied PRE_BUILD
+    COMMAND cp ${patchdir}/tpm2-tools/config.h ${tpm2-tools_srcdir}/lib
+    COMMAND touch ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied)
+
+add_custom_target(patch_tpm2-tools ALL DEPENDS ${patch}.applied ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied)
 
 ###############################################################################
 ## attester agent
 ###############################################################################
 
-add_custom_command(OUTPUT ${agent_wrkdir} COMMAND mkdir -p ${agent_wrkdir})
-add_custom_target("attester" ALL DEPENDS ${agent_wrkdir} ${tpm2-tools_patches}
-    COMMAND $(MAKE) -C ${agent_srcdir} O=${agent_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
-    COMMENT "Building attester agent"
-)
+add_custom_command(OUTPUT ${agent_wrkdir} PRE_BUILD COMMAND mkdir -p ${agent_wrkdir})
+
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${agent_wrkdir})
+file(GLOB_RECURSE sources src/tpm.c src/common.c src/attester/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+
+add_executable(attester_server ${sources})
+add_dependencies(attester_server patch_tpm2-tools)
+target_compile_options(attester_server PUBLIC -g  -Wall -fPIC)
+target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto)
+
+#add_custom_target("attester" ALL DEPENDS ${agent_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
+#    COMMAND $(MAKE) -C ${agent_srcdir} O=${agent_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
+#    COMMENT "Building attester agent"
+#)
 
 ###############################################################################
 ## verifier
 ###############################################################################
 
-add_custom_command(OUTPUT ${verifier_wrkdir} COMMAND mkdir -p ${verifier_wrkdir})
-add_custom_target("verifier" ALL DEPENDS ${verifier_wrkdir} ${tpm2-tools_patches}
-    COMMAND $(MAKE) -C ${verifier_srcdir} O=${verifier_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
-    COMMENT "Building verifier"
-)
+add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
+
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
+file(GLOB_RECURSE sources src/tpm.c src/common.c src/attester/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+
+add_executable(verifier ${sources})
+add_dependencies(verifier patch_tpm2-tools)
+target_compile_options(verifier PUBLIC -g  -Wall -fPIC)
+target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto)
+
+#add_custom_target("verifier" ALL DEPENDS ${verifier_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
+#    COMMAND $(MAKE) -C ${verifier_srcdir} O=${verifier_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
+#    COMMENT "Building verifier"
+#)
