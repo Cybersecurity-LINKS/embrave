@@ -48,7 +48,7 @@
 .tmp_versions/
 
 # Submodules
-tpm2-tools/
+lib/tpm2-tools/
 
 # Custom directories
 build/
