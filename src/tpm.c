@@ -14,8 +14,6 @@
 #include "tpm.h"
 
 
-
-//TPML_PCR_SELECTION pcr_select;
 TPMT_SIG_SCHEME in_scheme;
 TPMI_ALG_SIG_SCHEME sig_scheme;
 tpm2_convert_sig_fmt sig_format;
@@ -235,16 +233,18 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     TPML_PCR_SELECTION pcr_select;
     int ret;
     tpm2_algorithm algs;
+    TPMS_ATTEST attest;
+    TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
 
     if (ectx == NULL || rply == NULL || chl == NULL) {
         return -1;
     }
+
     //set default values    
     sig_hash_algorithm = TPM2_ALG_NULL;
     pcrs_format = pcrs_output_format_serialized;
     in_scheme.scheme = TPM2_ALG_NULL;
     sig_scheme = TPM2_ALG_NULL;
-
 
     //Set AK handle
     key.handle=handle;
@@ -267,7 +267,6 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     qualification_data.size = TPM2_SHA256_DIGEST_SIZE;
     memcpy(qualification_data.buffer, chl->nonce_blob.buffer, qualification_data.size);
 
-    
     rc = pcr_get_banks(ectx, &cap_data, &algs);
     if (rc != tool_rc_success) {
         return -1;
@@ -279,18 +278,38 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     if (rc != tool_rc_success) {
         return -1;
     }
-
-    rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select,
+    
+    //Retry quote util quoted pcr digest == read pcr digest
+    do{
+        rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select,
         &rply->quoted, &signature, NULL, TPM2_ALG_ERROR);
-    if(rc != 0){
-        printf("tpm2 quote error %d\n", rc);
-        return -1;
-    }
+        if(rc != 0){
+            printf("tpm2 quote error %d\n", rc);
+            return -1;
+        }
 
-    //Get PCR List
-    if (get_pcrList(ectx, &(rply->pcrs), &pcr_select) != 0 ){
-        return -1;
-    }
+        //Get PCR List
+        if (get_pcrList(ectx, &(rply->pcrs), &pcr_select) != 0 ){
+            return -1;
+        }
+
+        //Convert from TPM2B to TPMS format to validate nonce and pcr digest
+        rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
+        if (rc != tool_rc_success) {
+            printf("files_tpm2b_attest_to_tpms_attest failed \n");
+            return -1;
+        }
+
+        //Create the pcr digest with the received pcrs
+        if (!tpm2_openssl_hash_pcr_banks_le(TPM2_ALG_SHA256, &pcr_select, &rply->pcrs, &pcr_hash)) {
+            printf("Failed to hash PCR values\n");
+            return -1;
+        }
+
+        // Verify that the digest from quote matches PCR digest
+        rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
+
+    } while (rc != 0);
 
     rply->sig = copy_signature(&(rply->sig_size));
     if(rply->sig == NULL) return -1;
@@ -345,8 +364,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
     int k;
     for (k = 0; k < quoteDigest->size; k++) {
         if (quoteDigest->buffer[k] != pcr_digest->buffer[k]) {
-            printf("WARNING: PCR values failed to match quote's digest!, possible desynch\n");
-                
+            
             tpm2_util_hexdump(quoteDigest->buffer, quoteDigest->size);
             printf("\n");
             tpm2_util_hexdump(pcr_digest->buffer, quoteDigest->size);
@@ -371,7 +389,6 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     TPML_PCR_SELECTION pcr_select;
     if( rply == NULL || pem_file_name == NULL) return -1;
 
-    
     bio = BIO_new_file(pem_file_name, "rb");
     if (!bio) {
         printf("Failed to open AK public key file '%s': %s\n", pem_file_name, ERR_error_string(ERR_get_error(), NULL));
@@ -420,9 +437,7 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
         printf("files_tpm2b_attest_to_tpms_attest failed \n");
         goto err;
     }
-    //printf("restart count %d \n",attest.clockInfo.restartCount );
-    //printf("clock %ld \n", attest.clockInfo.clock);
-    printf("reset count %d\n", attest.clockInfo.resetCount);
+
     if(tpa->pcr10_old_sha256 == NULL ){
         //Save resetCount
         tpa->resetCount = attest.clockInfo.resetCount;
@@ -476,6 +491,7 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     if (rc == -1) {
         goto err;
     } else if (rc == -2) {
+        printf("WARNING: PCR values failed to match quote's digest!, possible desynch\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
@@ -498,10 +514,10 @@ err:
 void bin_2_hash(char *buff, BYTE *data, size_t len){
     size_t i;
     for (i = 0; i < len; i++) {
-        buff += sprintf(buff, "%02x", data[i]); //No needa terminating null byte, already from the last hex string
+        //No need a terminating null byte, already from the last hex string
+        buff += sprintf(buff, "%02x", data[i]); 
     }
 }
-
 
 /*  read one row of the IMA Log
     format of ima row
@@ -527,7 +543,6 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
     //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     //printf("\n");
-
 
     uint32_t template_name_len;
     memcpy(&template_name_len, rply ->ima_log + *total_read, sizeof(uint32_t));
@@ -706,7 +721,6 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     return -1;
 }
 
-
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, 
             uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256){
     int sz;
@@ -739,7 +753,6 @@ int refresh_tpa_entry(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL WHERE id = @id ";
-    //char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL WHERE id = @id ";
     int idx;
     int step;
     
@@ -786,7 +799,6 @@ int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount WHERE id = @id ";
-    //char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm WHERE id = @id ";
     int idx, idx2, idx3, idx4, idx5;
     int step;
     time_t ltime;
@@ -794,7 +806,6 @@ int save_pcr10(Tpa_data *tpa){
     char buff [50];
     ltime = time(NULL);
     t = localtime(&ltime);
-    //char * s = asctime(t);
 
     snprintf(buff, 50, "%d %d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_isdst);
 
@@ -889,7 +900,6 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
         //No new event in the TPA
         printf("No IMA log received, compare the old PCR10 with received one:\n");
-        //TODO
         goto PCR10;
 
     } else if (rply->ima_log_size == 0 && tpa->pcr10_old_sha256 == NULL && tpa->pcr10_old_sha1 == NULL) {
@@ -945,7 +955,6 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     }
     printf("IMA log verification OK\n");
-    //printf("WARNING check_goldenvalue DEV!\n");
     
 /*     tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     printf("\n");
@@ -960,14 +969,15 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
             || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
         
-         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("PCR10 calculation mismatch, PCRS10:\n");
+        tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
         printf("\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
-        printf("PCR10 calculation mismatch\n");
+        
         //refresh tpa db entry
         refresh_tpa_entry(tpa);
-        goto unk;
+        goto unknown;
     }
     printf("PCR10 calculation OK\n");
 
@@ -993,7 +1003,7 @@ error:
     free(sha256_concatenated);
     free(event_name);
     return -1;
-unk:
+unknown:
     free(pcr10_sha1);
     free(pcr10_sha256);
     free(sha1_concatenated);
@@ -1003,7 +1013,6 @@ unk:
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
-    
     if(argv[0] > 0)
         return 0;
     else
@@ -1019,7 +1028,6 @@ tool_rc tpm2_quote_free(void) {
 
     return rc;
 }
-
 
 void free_data (tpm_challenge_reply *rply){
     if(rply->quoted != NULL)
