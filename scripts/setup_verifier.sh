@@ -1,4 +1,8 @@
-
+if [ $# != 1 ]
+  then
+    echo "Arguments error: usage ./setup_verifier.sh listen_ip"
+    exit 1
+fi
 #scp -pr root@192.168.85.203:/sources/lemon/to_send ./to_receive
 LEMONDIR=/home/ale/Scrivania/lemon
 #cp ./to_receive/to_send/ak.pub.pem ./Agents/Remote_Attestor/AKs/ak.pub.imx.pem
@@ -10,4 +14,4 @@ var=$(openssl dgst -sha256 ${LEMONDIR}/certs/ak.pub.pem)
 sha256=$(echo "${var#*= }")
 
 #create remote attestor binding database
-python3 ./script/verifier_db.py $sha256 ${LEMONDIR}/certs/ak.pub.pem ${LEMONDIR}/certs/server.crt file:${LEMONDIR}/certs/goldenvalues.db ${LEMONDIR}/certs/ca.imx.crt
+python3 ./scripts/verifier_db.py $sha256 ${LEMONDIR}/certs/ak.pub.pem ${LEMONDIR}/certs/server.crt file:${LEMONDIR}/certs/goldenvalues.db ${LEMONDIR}/certs/ca.crt $1

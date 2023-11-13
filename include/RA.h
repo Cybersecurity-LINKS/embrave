@@ -21,7 +21,7 @@
 
 #include "tpm.h"
 
-int RA_explicit_challenge_create(tpm_challenge *chl);
+int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data);
 int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data);
 int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, Tpa_data *tpa_data);
 void RA_free(tpm_challenge_reply *rpl, Tpa_data *tpa_data);

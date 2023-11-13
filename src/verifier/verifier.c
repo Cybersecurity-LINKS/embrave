@@ -59,8 +59,8 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     
 
     //End timer 1
-    get_finish_timer();
-    print_timer(1);
+    //get_finish_timer();
+    //print_timer(1);
 
     error_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
 
@@ -77,7 +77,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    int tag = 0;
+    //int tag = 0;
     tpm_challenge chl;
 
     //If PCR10 are empty from tpa db, make tpa send all ima log
@@ -88,13 +88,13 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     }
 
     //Create nonce
-    if(RA_explicit_challenge_create(&chl)!= 0){
+    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
 
     //Send Explict tag
-    mg_send(c, &tag, sizeof(int));
+    //mg_send(c, &tag, sizeof(int));
 
     //Send nonce
     mg_send(c, &chl, sizeof(tpm_challenge));
@@ -113,11 +113,9 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
   } else if (ev == MG_EV_CONNECT) {
     MG_INFO(("CLIENT connected"));
 
-    //struct mg_tls_opts opts = {.ca = "../certs/ca.imx.crt"};
     struct mg_tls_opts opts = {.ca = tpa_data.ca};
     mg_tls_init(c, &opts);
     MG_INFO(("CLIENT initialized TLS"));
-
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
     //printf("Client received data\n");
@@ -136,8 +134,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     
 
     //End timer 1
-    get_finish_timer();
-    print_timer(1);
+    //get_finish_timer();
+    //print_timer(1);
     
     error_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
 
@@ -154,7 +152,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    int tag = 0;
+    //int tag = 0;
     tpm_challenge chl;
     
     //If PCR10 are empty from tpa db, make tpa send all ima log
@@ -165,13 +163,10 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     }
     
     //Create nonce
-    if(RA_explicit_challenge_create(&chl)!= 0){
+    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
-
-    //Send Explict tag
-    mg_send(c, &tag, sizeof(int));
 
     //Send nonce
     mg_send(c, &chl, sizeof(tpm_challenge));
@@ -203,8 +198,9 @@ int get_paths(int id){
   tpa_data.timestamp = NULL;
   tpa_data.ca = NULL;
   tpa_data.resetCount = 0;
+  tpa_data.ip_addr = NULL;
 
-  int rc = sqlite3_open_v2("file:../../certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -259,7 +255,20 @@ int get_paths(int id){
     tpa_data.ca = malloc((byte + 1) *sizeof(char));
     memcpy(tpa_data.ca, (char *) sqlite3_column_text(res, 7), byte);
     tpa_data.ca[byte] = '\0';
-    printf("%s\n", tpa_data.ca);
+    //printf("%s\n", tpa_data.ca);
+
+    //Agent ip address
+    byte = sqlite3_column_bytes(res, 11);
+    printf("%d\n", byte);
+    if(byte == 0){
+      printf("ERROR: missing ip address in the tpa db");
+      sqlite3_finalize(res);
+      sqlite3_close(db);
+    return -1;
+    }
+    tpa_data.ip_addr = malloc((byte + 1) * sizeof(char));
+    memcpy(tpa_data.ip_addr, (char *) sqlite3_column_text(res, 11), byte);  
+    tpa_data.ip_addr[byte] = '\0';
 
     //Timestamp, could be null    
     byte = sqlite3_column_bytes(res, 8);
@@ -305,6 +314,9 @@ int get_paths(int id){
         //Reset count
         tpa_data.resetCount = sqlite3_column_int(res, 9);
         
+        //Received bytes
+        tpa_data.byte_rcv = sqlite3_column_int(res, 10);
+
       }
     } else {
       //No previus timestamp in the db
@@ -341,26 +353,25 @@ int main(int argc, char *argv[]) {
   printf("verifier_config->db: %s\n", verifier_config.db);
   #endif
 
-  if(argc != 4){
+  if(argc != 3){
     printf("Not enough arguments\n");
     return -1;
   }
   //Start Timer 1
-  get_start_timer();
+  //get_start_timer();
 
-  id = strtol(argv[3], NULL, 10);
-
+  id = strtol(argv[2], NULL, 10);
   if (get_paths(id) != 0){
     printf("Error from tpa.db\n");
     return -1;
   }
 
-  n = strtol(argv[2], NULL, 10);
+  n = strtol(argv[1], NULL, 10);
 
   if(n == 0)
-    snprintf(s_conn, 250, "tcp://%s:8765", argv[1]);
+    snprintf(s_conn, 250, "tcp://%s:8765", tpa_data.ip_addr);
   else if(n == 1)
-    snprintf(s_conn, 250, "tcp://%s:8766", argv[1]);
+    snprintf(s_conn, 250, "tcp://%s:8766", tpa_data.ip_addr);
   else{
     printf("Error wrong parameters TLS: usage 0 no TLS 1 TLS\n");
     return -1;

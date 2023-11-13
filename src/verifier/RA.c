@@ -12,8 +12,13 @@
 
 #include "RA.h"
 
-int RA_explicit_challenge_create(tpm_challenge *chl)
+int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data)
 {
+  if(tpa_data->pcr10_old_sha256 != NULL)
+    chl->send_from_byte = tpa_data->byte_rcv;
+  else
+    chl->send_from_byte = 0;
+  
   return nonce_create(&(chl->nonce_blob));
 }
 
@@ -35,7 +40,7 @@ int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data)
   //rpl->ima_log_size = 56980; //TEST change ima log size TODO
 
   //Start timer 2
-  get_start_timer();
+  //get_start_timer();
 
   //verify quote
   ret = verify_quote(rpl, tpa_data->ak_path,  tpa_data);
@@ -51,11 +56,11 @@ int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data)
   }
 
   //End timer 2
-  get_finish_timer();
-  print_timer(2);
+  //get_finish_timer();
+  ///print_timer(2);
 
   //Start timer 3
-  get_start_timer();
+  //get_start_timer();
 
   //Open the goldenvalues DB
   int rc = sqlite3_open_v2((const char *) tpa_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
@@ -76,9 +81,9 @@ int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data)
   } else {
     printf("Trusted TPA\n");
     //End timer 3
-    get_finish_timer();
-    print_timer(3);
-    save_timer();
+    //get_finish_timer();
+    //print_timer(3);
+    //save_timer();
   }
 
 end:
@@ -105,7 +110,7 @@ int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, Tpa_data *tpa_dat
   //rpl->ima_log_size = 56980; //TEST change ima log size TODO
 
   //Start timer 2
-  get_start_timer();
+  //get_start_timer();
 
   //verify quote
   ret = verify_quote(rpl, (const char *) tpa_data->ak_path,  tpa_data);
@@ -121,11 +126,11 @@ int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, Tpa_data *tpa_dat
   }
 
   //End timer 2
-  get_finish_timer();
-  print_timer(2);
+  //get_finish_timer();
+  //print_timer(2);
 
   //Start timer 3
-  get_start_timer();
+  //get_start_timer();
 
   //Softbindings verify
   ret = PCR9softbindig_verify(rpl, tpa_data);
@@ -155,9 +160,9 @@ int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, Tpa_data *tpa_dat
   } else {
     printf("Trusted TPA\n");
     //End timer 3
-    get_finish_timer();
-    print_timer(3);
-    save_timer();
+    //get_finish_timer();
+    //print_timer(3);
+    //save_timer();
   }
 
 end:
@@ -180,4 +185,6 @@ void RA_free(tpm_challenge_reply *rpl, Tpa_data *tpa_data){
   }
   if(tpa_data->timestamp != NULL)
     free(tpa_data->timestamp);
+  if(tpa_data->ip_addr != NULL)
+    free(tpa_data->ip_addr);
 }

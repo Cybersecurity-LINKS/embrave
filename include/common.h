@@ -48,7 +48,9 @@ typedef struct {
     char *pcr10_old_sha256;
     char *timestamp;
     char *ca;
+    char *ip_addr;
     uint32_t resetCount;
+    uint32_t byte_rcv;
 } Tpa_data;
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context);

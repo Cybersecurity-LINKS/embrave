@@ -35,8 +35,8 @@ def create_table(conn, create_table_sql):
 
 
 def add_row(conn, row):
-    sql = ''' INSERT INTO tpa(id, ak, ak_path, pcr10_sha256, pcr10_sha1, gv_db, tls_pem_path, ca_pem_path, timestamp, resetCount)
-              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '''
+    sql = ''' INSERT INTO tpa(id, ak, ak_path, pcr10_sha256, pcr10_sha1, gv_db, tls_pem_path, ca_pem_path, timestamp, resetCount, byte_rcv, ip_addr)
+              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '''
     cur = conn.cursor()
     cur.execute(sql, row)
     conn.commit()
@@ -70,7 +70,9 @@ def main():
                                         tls_pem_path text NOT NULL,
                                         ca_pem_path text NOT NULL,
                                         timestamp text,
-                                        resetCount integer
+                                        resetCount integer,
+                                        byte_rcv integer,
+                                        ip_addr text
                                     ); """
     
     if len(sys.argv) < 5:
@@ -82,8 +84,9 @@ def main():
     pem_path = sys.argv[3]
     gv_db = sys.argv[4]
     ca_path = sys.argv[5]
+    ipaddr = sys.argv[6]
 
-    row_1 = (None, name, ak_path, None, None, gv_db, pem_path, ca_path, None, None)
+    row_1 = (None, name, ak_path, None, None, gv_db, pem_path, ca_path, None, None, None, ipaddr)
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
 

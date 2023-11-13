@@ -13,9 +13,9 @@
 #include "attester_agent.h"
 
 
-static uint32_t ima_byte_sent = 0;
+//static uint32_t ima_byte_sent = 0;
 
-int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log);
+int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
 int tpa_init(void) {
   // TPM
@@ -100,10 +100,8 @@ int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)
   if(ret != 0) goto end;
 
   //Load IMA log
-  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog);//Real path
+  ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog, chl->send_from_byte);
   
-  //printf("WARNING: IMA LOG DEV PATH\n");
-  //ret = load_ima_log("/home/pi/tpa/binary_runtime_measurements", rpl); //Dev path
 end: 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
@@ -124,24 +122,26 @@ void tpa_free(tpm_challenge_reply *rpl)
   -1 error
  */
 
-int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log)
+int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes)
 {
   FILE *fp;
   size_t read_bytes, buff_sz;
+  uint32_t ima_byte_sent;
   fp = fopen(path, "rb");
 	if (!fp) {
 	  printf("Unable to open IMA file\n");
 		return -1;
 	}
 
-  if(ima_byte_sent != 0 && all_log != 1){
-    int ret = fseek(fp, ima_byte_sent, SEEK_SET);
+  if(all_log != 1){
+    int ret = fseek(fp, from_bytes, SEEK_SET);
     
     if (ret != 0){
       printf("Unable to fseek IMA file\n");
       return -1;
     }
     rpl->wholeLog = 0;
+    ima_byte_sent = from_bytes;
   }
   else {
     rpl->wholeLog = 1;

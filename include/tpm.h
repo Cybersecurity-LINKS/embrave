@@ -44,6 +44,7 @@ typedef struct {
 typedef struct {
     Nonce nonce_blob;
     uint8_t send_wholeLog;
+    uint32_t send_from_byte;
 } tpm_challenge;
 
 typedef struct {

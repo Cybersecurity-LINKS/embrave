@@ -56,12 +56,12 @@ scp pi@192.168.1.12:/home/pi/tpa/Server/certs/server.crt ./Server/certs/
 ### TPA
 Run the following script on the TPA passing as input parameter tcp://listen_ip_no_tls:port tcp://listen_ip_tls:port. Example:
 ```sh
-./TPA_build.sh tcp://192.168.1.12:8765 tcp://192.168.1.12:8766
+sudo ./agent.build/attester_server tcp://192.168.1.12:8765 tcp://192.168.1.12:8766
 ```
 ### RA
 Run the following script on the RA passing as input parameter the IP address of the tpa to attest and 1 for TLS connection or 0 without TLS connection and an integer that rapresents the row of the tpa to attest
 ```sh
-./RA_run.sh 192.168.1.12 1 <id>
+./build/verifier.build/verifier {0,1} <id>
 ```
 ### RA entry freshness 
 to change the maximum validity time of the RA database entry, compile the client by adding the parameter -DFRESH=<time max in seconds> Default: 60s

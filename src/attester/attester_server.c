@@ -30,44 +30,33 @@ static void event_handler(struct mg_connection *c, int ev, void *ev_data, void *
   } else if (ev == MG_EV_READ) {
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
-    int tag;
+    //int tag;
     tpm_challenge chl;
     tpm_challenge_reply rpl;
 
     //Read Tag
-    memcpy(&tag, r->buf, sizeof(int));
-    mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
+    //memcpy(&tag, r->buf, sizeof(int));
+    //mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
     
-    switch (tag){
-    case RA_TYPE_EXPLICIT:
-      //load challenge data from socket
-      load_challenge_request(c,r,&chl);
+    //load challenge data from socket
+    load_challenge_request(c,r,&chl);
       
-      //Compute the challenge
-      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
-        printf("Explicit challenge error\n");
-        c->is_closing = 1;
-        Continue = false;
-        tpa_free(&rpl);
-        break;
-      }
-      //Send the challenge reply
-      if (send_challenge_reply(c, r, &rpl) != 0){
-        printf("Send challenge reply error\n");
-        c->is_closing = 1;
-        Continue = false;
-      }
-
-      tpa_free(&rpl);
-      break;
-    case RA_TYPE_DAA:
-
-      break;
-    default:
-      printf("Unknown tag close connection\n");
+    //Compute the challenge
+    if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
+      printf("Explicit challenge error\n");
       c->is_closing = 1;
-      break; 
+      Continue = false;
+      tpa_free(&rpl);
+      return;
     }
+    //Send the challenge reply
+    if (send_challenge_reply(c, r, &rpl) != 0){
+      printf("Send challenge reply error\n");
+      c->is_closing = 1;
+      Continue = false;
+    }
+
+    tpa_free(&rpl);
     //mg_send(c, r->buf, r->len);  // echo it back
                      // Tell Mongoose we've consumed data
   } else if (ev == MG_EV_CLOSE) {
@@ -94,44 +83,34 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
   } else if (ev == MG_EV_READ) {
     //Challenge Tag arrived to the TPA
     struct mg_iobuf *r = &c->recv;
-    int tag;
+    //int tag;
     tpm_challenge chl;
     tpm_challenge_reply rpl;
 
     //Read Tag
-    memcpy(&tag, r->buf, sizeof(int));
-    mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
+    //memcpy(&tag, r->buf, sizeof(int));
+    //mg_iobuf_del(r,0,sizeof(int)); //remove tag from buffer
 
-    switch (tag){
-    case RA_TYPE_EXPLICIT:
-      //load challenge data from socket
-      load_challenge_request(c,r,&chl);
+    //load challenge data from socket
+    load_challenge_request(c,r,&chl);
       
-      //Compute the challenge
-      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
-        printf("Explicit challenge error\n");
-        c->is_closing = 1;
-        Continue = false;
-        tpa_free(&rpl);
-        break;
-      }
-
-      //Send the challenge reply
-      if (send_challenge_reply(c, r, &rpl) != 0){
-        printf("Send challenge reply error\n");
-        c->is_closing = 1;
-        Continue = false;
-      }
-      tpa_free(&rpl);
-    break;
-    case RA_TYPE_DAA:
-
-    break;
-    default:
-      printf("Unknown tag close connection\n");
+    //Compute the challenge
+    if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
+      printf("Explicit challenge error\n");
       c->is_closing = 1;
-    break; 
+      Continue = false;
+      tpa_free(&rpl);
+      return;
+      }
+
+    //Send the challenge reply
+    if (send_challenge_reply(c, r, &rpl) != 0){
+      printf("Send challenge reply error\n");
+      c->is_closing = 1;
+      Continue = false;
     }
+    tpa_free(&rpl);
+
     //mg_send(c, r->buf, r->len);  // echo it back
                      // Tell Mongoose we've consumed data
   } else if (ev == MG_EV_CLOSE) {
