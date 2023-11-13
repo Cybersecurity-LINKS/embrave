@@ -10,4 +10,4 @@ var=$(openssl dgst -sha256 ${LEMONDIR}/certs/ak.pub.pem)
 sha256=$(echo "${var#*= }")
 
 #create remote attestor binding database
-python3 ./script/verifier_db.py $sha256 ${LEMONDIR}/certs/ak.pub.pem ${LEMONDIR}/certs/server.crt file:${LEMONDIR}/certs/goldenvalues.db ${LEMONDIR}/certs/ca.imx.crt
+python3 ./scripts/verifier_db.py $sha256 ${LEMONDIR}/certs/ak.pub.pem ${LEMONDIR}/certs/server.crt file:${LEMONDIR}/certs/goldenvalues.db ${LEMONDIR}/certs/ca.crt

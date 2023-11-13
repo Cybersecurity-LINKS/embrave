@@ -798,7 +798,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount byte_rcv=@byte_rcv WHERE id = @id ";
+    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount, byte_rcv =@bytercv WHERE id = @id ";
     int idx, idx2, idx3, idx4, idx5, idx6;
     int step;
     time_t ltime;
@@ -836,7 +836,7 @@ int save_pcr10(Tpa_data *tpa){
         idx5 = sqlite3_bind_parameter_index(res, "@resetCount");
         sqlite3_bind_int(res, idx5, tpa->resetCount);
 
-        idx6 = sqlite3_bind_parameter_index(res, "@byte_rcv");
+        idx6 = sqlite3_bind_parameter_index(res, "@bytercv");
         sqlite3_bind_int(res, idx6, tpa->byte_rcv);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
