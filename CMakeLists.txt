@@ -69,7 +69,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDE
 add_executable(attester_server ${sources})
 add_dependencies(attester_server patch_tpm2-tools)
 target_compile_options(attester_server PUBLIC -g  -Wall -fPIC)
-target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto)
+target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread)
 
 #add_custom_target("attester" ALL DEPENDS ${agent_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
 #    COMMAND $(MAKE) -C ${agent_srcdir} O=${agent_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
@@ -83,14 +83,14 @@ target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss
 add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
-file(GLOB_RECURSE sources src/tpm.c src/common.c src/attester/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+file(GLOB_RECURSE sources src/tpm.c src/common.c src/verifier/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 
 add_executable(verifier ${sources})
 add_dependencies(verifier patch_tpm2-tools)
 target_compile_options(verifier PUBLIC -g  -Wall -fPIC)
-target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto)
+target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread)
 
 #add_custom_target("verifier" ALL DEPENDS ${verifier_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
 #    COMMAND $(MAKE) -C ${verifier_srcdir} O=${verifier_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
