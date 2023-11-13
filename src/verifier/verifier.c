@@ -58,8 +58,8 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     
 
     //End timer 1
-    get_finish_timer();
-    print_timer(1);
+    //get_finish_timer();
+    //print_timer(1);
 
     error_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
 
@@ -112,11 +112,9 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
   } else if (ev == MG_EV_CONNECT) {
     MG_INFO(("CLIENT connected"));
 
-    //struct mg_tls_opts opts = {.ca = "../certs/ca.imx.crt"};
     struct mg_tls_opts opts = {.ca = tpa_data.ca};
     mg_tls_init(c, &opts);
     MG_INFO(("CLIENT initialized TLS"));
-
     *i= *i+1;  // do something
   } else if (ev == MG_EV_READ) {
     //printf("Client received data\n");
@@ -135,8 +133,8 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     
 
     //End timer 1
-    get_finish_timer();
-    print_timer(1);
+    //get_finish_timer();
+    //print_timer(1);
     
     error_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
 
@@ -168,9 +166,6 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
       Continue = false;
       return;
     }
-
-    //Send Explict tag
-    //mg_send(c, &tag, sizeof(int));
 
     //Send nonce
     mg_send(c, &chl, sizeof(tpm_challenge));

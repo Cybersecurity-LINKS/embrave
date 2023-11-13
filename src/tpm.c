@@ -752,7 +752,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
 int refresh_tpa_entry(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL WHERE id = @id ";
+    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
     int idx;
     int step;
     
@@ -798,8 +798,8 @@ int refresh_tpa_entry(Tpa_data *tpa){
 int save_pcr10(Tpa_data *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount WHERE id = @id ";
-    int idx, idx2, idx3, idx4, idx5;
+    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount byte_rcv=@byte_rcv WHERE id = @id ";
+    int idx, idx2, idx3, idx4, idx5, idx6;
     int step;
     time_t ltime;
     struct tm *t;
@@ -835,6 +835,9 @@ int save_pcr10(Tpa_data *tpa){
 
         idx5 = sqlite3_bind_parameter_index(res, "@resetCount");
         sqlite3_bind_int(res, idx5, tpa->resetCount);
+
+        idx6 = sqlite3_bind_parameter_index(res, "@byte_rcv");
+        sqlite3_bind_int(res, idx6, tpa->byte_rcv);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -985,6 +988,8 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     bin_2_hash(tpa->pcr10_old_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(tpa->pcr10_old_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
+    //Update the number of recievd bytes
+    tpa->byte_rcv += rply->ima_log_size;
     //Store the PCRs10 for future incremental IMA log
     ret = save_pcr10(tpa);
     if(ret == -1)
