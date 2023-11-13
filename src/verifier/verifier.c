@@ -76,7 +76,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    int tag = 0;
+    //int tag = 0;
     tpm_challenge chl;
 
     //If PCR10 are empty from tpa db, make tpa send all ima log
@@ -87,13 +87,13 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     }
 
     //Create nonce
-    if(RA_explicit_challenge_create(&chl)!= 0){
+    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
 
     //Send Explict tag
-    mg_send(c, &tag, sizeof(int));
+    //mg_send(c, &tag, sizeof(int));
 
     //Send nonce
     mg_send(c, &chl, sizeof(tpm_challenge));
@@ -153,7 +153,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     MG_INFO(("CLIENT error: %s", (char *) ev_data));
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    int tag = 0;
+    //int tag = 0;
     tpm_challenge chl;
     
     //If PCR10 are empty from tpa db, make tpa send all ima log
@@ -164,13 +164,13 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     }
     
     //Create nonce
-    if(RA_explicit_challenge_create(&chl)!= 0){
+    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
 
     //Send Explict tag
-    mg_send(c, &tag, sizeof(int));
+    //mg_send(c, &tag, sizeof(int));
 
     //Send nonce
     mg_send(c, &chl, sizeof(tpm_challenge));
@@ -203,7 +203,7 @@ int get_paths(int id){
   tpa_data.ca = NULL;
   tpa_data.resetCount = 0;
 
-  int rc = sqlite3_open_v2("file:../../certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -304,6 +304,8 @@ int get_paths(int id){
         //Reset count
         tpa_data.resetCount = sqlite3_column_int(res, 9);
         
+        //Received bytes
+        tpa_data.byte_rcv = sqlite3_column_int(res, 10);
       }
     } else {
       //No previus timestamp in the db

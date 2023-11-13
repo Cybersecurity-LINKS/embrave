@@ -12,8 +12,13 @@
 
 #include "RA.h"
 
-int RA_explicit_challenge_create(tpm_challenge *chl)
+int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data)
 {
+  if(tpa_data->pcr10_old_sha256 != NULL)
+    chl->send_from_byte = tpa_data->byte_rcv;
+  else
+    chl->send_from_byte = 0;
+  
   return nonce_create(&(chl->nonce_blob));
 }
 

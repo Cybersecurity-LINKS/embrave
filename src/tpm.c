@@ -87,7 +87,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     
     printf("PCR9softbindig\n");
     //Open the public certificate
-    int ret = openPEM("/home/pi/lemon/certs/server.crt", &pem);
+    int ret = openPEM("/home/ale/Scrivania/lemon/certs/server.crt", &pem);
     if(ret == -1){
         printf("openPEM error\n");
         return -1;
@@ -756,7 +756,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
     int idx;
     int step;
     
-    int rc = sqlite3_open_v2("file../../certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -810,7 +810,7 @@ int save_pcr10(Tpa_data *tpa){
     snprintf(buff, 50, "%d %d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_isdst);
 
     printf("Save PCR10 \n");
-    int rc = sqlite3_open_v2("file:../../certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
