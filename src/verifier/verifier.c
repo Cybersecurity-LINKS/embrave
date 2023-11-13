@@ -27,13 +27,13 @@ static int error_val;
 static bool send_all_log = false;
 static char* temp_buff = NULL;
 static int last_rcv = 0;
-static Ex_challenge_reply rpl;
+static tpm_challenge_reply rpl;
 static Tpa_data tpa_data;
 
 
-int load_challenge_reply( struct mg_iobuf *r, Ex_challenge_reply *rpl);
+int load_challenge_reply( struct mg_iobuf *r, tpm_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
-void print_data(Ex_challenge_reply *rpl);
+void print_data(tpm_challenge_reply *rpl);
 
 static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   int *i = &((struct c_res_s *) fn_data)->i;
@@ -77,7 +77,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
     int tag = 0;
-    Ex_challenge chl;
+    tpm_challenge chl;
 
     //If PCR10 are empty from tpa db, make tpa send all ima log
     if(send_all_log){
@@ -96,7 +96,7 @@ static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn
     mg_send(c, &tag, sizeof(int));
 
     //Send nonce
-    mg_send(c, &chl, sizeof(Ex_challenge));
+    mg_send(c, &chl, sizeof(tpm_challenge));
     //printf("CLIENT sent data\n");
     *i= *i+1;
   }else if (end){
@@ -154,7 +154,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     Continue = false;
   } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
     int tag = 0;
-    Ex_challenge chl;
+    tpm_challenge chl;
     
     //If PCR10 are empty from tpa db, make tpa send all ima log
     if(send_all_log){
@@ -173,7 +173,7 @@ static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void
     mg_send(c, &tag, sizeof(int));
 
     //Send nonce
-    mg_send(c, &chl, sizeof(Ex_challenge));
+    mg_send(c, &chl, sizeof(tpm_challenge));
     //printf("CLIENT sent data\n");
     *i= *i+1;
   }else if (end){
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
   return error_val;
 }
 
-int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
+int load_challenge_reply(struct mg_iobuf *r, tpm_challenge_reply *rpl){
 
   int ret;
   if(r == NULL) return -1;
@@ -461,7 +461,7 @@ int load_challenge_reply(struct mg_iobuf *r, Ex_challenge_reply *rpl){
 }
 
 //Print received data
-void print_data(Ex_challenge_reply *rpl){
+void print_data(tpm_challenge_reply *rpl){
   
   printf("NONCE Received:");
   for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
