@@ -62,9 +62,9 @@ add_custom_target(patch_tpm2-tools ALL DEPENDS ${patch}.applied ${CMAKE_BINARY_D
 add_custom_command(OUTPUT ${agent_wrkdir} PRE_BUILD COMMAND mkdir -p ${agent_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${agent_wrkdir})
-file(GLOB_RECURSE sources src/tpm.c src/common.c src/attester/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+file(GLOB_RECURSE sources src/tpm.c src/common.c src/config_parse.c src/attester/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 
 add_executable(attester_server ${sources})
 add_dependencies(attester_server patch_tpm2-tools)
@@ -83,9 +83,9 @@ target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss
 add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
-file(GLOB_RECURSE sources src/tpm.c src/common.c src/verifier/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 
 add_executable(verifier ${sources})
 add_dependencies(verifier patch_tpm2-tools)

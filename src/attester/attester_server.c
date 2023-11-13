@@ -12,6 +12,7 @@
 
 #include "mongoose.h"
 #include "attester_agent.h"
+#include "config_parse.h"
 
 static bool Continue = true;
 
@@ -223,6 +224,17 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   struct mg_connection *c1;
   int a;
+  struct attester_conf attester_config;
+
+  /* read configuration from cong file */
+  read_config(/* attester */ 0, (void * ) &attester_config);
+  
+  #ifdef VERBOSE
+  printf("attester_config->ip: %s\n", attester_config.ip);
+  printf("attester_config->port: %d\n", attester_config.port);
+  printf("attester_config->tls_port: %d\n", attester_config.tls_port);
+  printf("attester_config->certs_dir: %s\n", attester_config.certs_dir);
+  #endif
 
   if(argc != 3){
     printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");

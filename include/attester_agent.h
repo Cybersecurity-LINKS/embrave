@@ -16,9 +16,7 @@
 
 #include <stdint.h> 
 #include <stdio.h>
-
 #include "tpm.h"
-
 
 int tpa_init(void);
 int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl);

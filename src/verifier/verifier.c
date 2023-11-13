@@ -12,6 +12,7 @@
 
 #include "mongoose.h"
 #include "RA.h"
+#include "config_parse.h"
 
 // client resources
 static struct c_res_s {
@@ -327,6 +328,18 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   char s_conn[250];
   int n, id;
+  struct verifier_conf verifier_config;
+
+  /* read configuration from cong file */
+  read_config(/* verifier */ 1, (void * ) &verifier_config);
+
+  #ifdef VERBOSE
+  printf("verifier_config->ip: %s\n", verifier_config.ip);
+  printf("verifier_config->port: %d\n", verifier_config.port);
+  printf("verifier_config->tls_port: %d\n", verifier_config.tls_port);
+  printf("verifier_config->certs_dir: %s\n", verifier_config.certs_dir);
+  printf("verifier_config->db: %s\n", verifier_config.db);
+  #endif
 
   if(argc != 4){
     printf("Not enough arguments\n");
