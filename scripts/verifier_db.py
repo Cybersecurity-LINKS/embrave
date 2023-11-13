@@ -59,7 +59,7 @@ def read_id(conn, sha256_ak):
 
 
 def main():
-    database = r"certs/tpa.db"
+    database = r"./certs/tpa.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS tpa (
                                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         ak text NOT NULL,

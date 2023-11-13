@@ -44,17 +44,11 @@ def add_row(conn, row):
 
 
 def main():
-    database = r"./Protocols/Explicit/goldenvalues.db"
+    database = r"./certs/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
                                         name text NOT NULL,
                                         PRIMARY KEY (name)
                                     ); """
-    sql_create_projects_table2 = """ CREATE TABLE IF NOT EXISTS golden_values (
-                                        name text NOT NULL,
-                                        hash text NOT NULL,
-                                        PRIMARY KEY (name,hash)
-                                    ); """
-    
     if len(sys.argv) < 2:
         print("Required the name to add in the whitelist")
         sys.exit(1)
@@ -67,17 +61,6 @@ def main():
     #create_table(conn, sql_create_projects_table2)
     add_row(conn, name)
     conn.close
-"""     cur = conn.cursor()
-    cur.execute(''' CREATE INDEX index_name ON golden_values (name, hash); ''')
-    conn.commit() """
-    
-
-"""     cur = conn.cursor()
-    cur.execute(''' ALTER TABLE golden_values ORDER BY name asc; ''')
-    conn.commit()
-
-    conn.close """
-
 
 if __name__ == '__main__':
     main()
