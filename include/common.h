@@ -48,6 +48,7 @@ typedef struct {
     char *pcr10_old_sha256;
     char *timestamp;
     char *ca;
+    char *ip_addr;
     uint32_t resetCount;
     uint32_t byte_rcv;
 } Tpa_data;

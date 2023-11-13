@@ -185,4 +185,6 @@ void RA_free(tpm_challenge_reply *rpl, Tpa_data *tpa_data){
   }
   if(tpa_data->timestamp != NULL)
     free(tpa_data->timestamp);
+  if(tpa_data->ip_addr != NULL)
+    free(tpa_data->ip_addr);
 }

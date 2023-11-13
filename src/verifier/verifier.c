@@ -197,6 +197,7 @@ int get_paths(int id){
   tpa_data.timestamp = NULL;
   tpa_data.ca = NULL;
   tpa_data.resetCount = 0;
+  tpa_data.ip_addr = NULL;
 
   int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
@@ -253,7 +254,20 @@ int get_paths(int id){
     tpa_data.ca = malloc((byte + 1) *sizeof(char));
     memcpy(tpa_data.ca, (char *) sqlite3_column_text(res, 7), byte);
     tpa_data.ca[byte] = '\0';
-    printf("%s\n", tpa_data.ca);
+    //printf("%s\n", tpa_data.ca);
+
+    //Agent ip address
+    byte = sqlite3_column_bytes(res, 11);
+    printf("%d\n", byte);
+    if(byte == 0){
+      printf("ERROR: missing ip address in the tpa db");
+      sqlite3_finalize(res);
+      sqlite3_close(db);
+    return -1;
+    }
+    tpa_data.ip_addr = malloc((byte + 1) * sizeof(char));
+    memcpy(tpa_data.ip_addr, (char *) sqlite3_column_text(res, 11), byte);  
+    tpa_data.ip_addr[byte] = '\0';
 
     //Timestamp, could be null    
     byte = sqlite3_column_bytes(res, 8);
@@ -301,6 +315,7 @@ int get_paths(int id){
         
         //Received bytes
         tpa_data.byte_rcv = sqlite3_column_int(res, 10);
+
       }
     } else {
       //No previus timestamp in the db
@@ -325,26 +340,25 @@ int main(int argc, char *argv[]) {
   char s_conn[250];
   int n, id;
 
-  if(argc != 4){
+  if(argc != 3){
     printf("Not enough arguments\n");
     return -1;
   }
   //Start Timer 1
-  get_start_timer();
+  //get_start_timer();
 
-  id = strtol(argv[3], NULL, 10);
-
+  id = strtol(argv[2], NULL, 10);
   if (get_paths(id) != 0){
     printf("Error from tpa.db\n");
     return -1;
   }
 
-  n = strtol(argv[2], NULL, 10);
+  n = strtol(argv[1], NULL, 10);
 
   if(n == 0)
-    snprintf(s_conn, 250, "tcp://%s:8765", argv[1]);
+    snprintf(s_conn, 250, "tcp://%s:8765", tpa_data.ip_addr);
   else if(n == 1)
-    snprintf(s_conn, 250, "tcp://%s:8766", argv[1]);
+    snprintf(s_conn, 250, "tcp://%s:8766", tpa_data.ip_addr);
   else{
     printf("Error wrong parameters TLS: usage 0 no TLS 1 TLS\n");
     return -1;
