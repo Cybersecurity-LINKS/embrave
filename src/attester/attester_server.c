@@ -206,7 +206,11 @@ int main(int argc, char *argv[]) {
   struct attester_conf attester_config;
 
   /* read configuration from cong file */
-  read_config(/* attester */ 0, (void * ) &attester_config);
+  uint16_t rc;
+  if(rc = read_config(/* attester */ 0, (void * ) &attester_config)){
+    fprintf(stderr, "ERROR: could not read configuration file\n");
+    exit(rc);
+  }
   
   #ifdef VERBOSE
   printf("attester_config->ip: %s\n", attester_config.ip);

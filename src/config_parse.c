@@ -39,16 +39,21 @@ uint16_t read_config(char user, void* config_struct){
     char line[MAX_LINE_LENGTH + 1];
     struct attester_conf* attester_config = NULL;
     struct verifier_conf* verifier_config = NULL;
+
+    if(user != 0 && user != 1){
+        fprintf(stderr, "ERROR: unknown user\n");
+        return (uint16_t) 4;
+    }
     
     if(config_struct == NULL){
         fprintf(stderr, "ERROR: config_struct is NULL\n");
-        exit(4);
+        return (uint16_t) 4;
     }
 
     fd = fopen(CONFIG_FILE_PATH, "r");
     if(fd == NULL){
         fprintf(stderr, "ERROR: failed to open config file\n");
-        exit(3);
+        return (uint16_t) 3;
     }
 
     if(user == 0){
@@ -166,4 +171,6 @@ uint16_t read_config(char user, void* config_struct){
             }
         }
     }
+
+    return (uint16_t) 0;
 }

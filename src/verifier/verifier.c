@@ -343,7 +343,11 @@ int main(int argc, char *argv[]) {
   struct verifier_conf verifier_config;
 
   /* read configuration from cong file */
-  read_config(/* verifier */ 1, (void * ) &verifier_config);
+  uint16_t rc;
+  if(rc = read_config(/* verifier */ 1, (void * ) &verifier_config)){
+    fprintf(stderr, "ERROR: could not read configuration file\n");
+    exit(rc);
+  }
 
   #ifdef VERBOSE
   printf("verifier_config->ip: %s\n", verifier_config.ip);
