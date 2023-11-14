@@ -33,7 +33,7 @@ user:
         - 0: attester
         - 1: verifier
 */
-__uint16_t read_config(char user, void* config_struct){
+uint16_t read_config(char user, void* config_struct){
     FILE* fd;
     char key[MAX_BUF], value[MAX_BUF];
     char line[MAX_LINE_LENGTH + 1];
@@ -98,11 +98,11 @@ __uint16_t read_config(char user, void* config_struct){
                             break;
 
                         case ATTESTER_PORT:
-                            attester_config->port = (__uint32_t) atoi(value);
+                            attester_config->port = (uint32_t) atoi(value);
                             break;
 
                         case ATTESTER_TLS_PORT:
-                            attester_config->tls_port = (__uint32_t) atoi(value);
+                            attester_config->tls_port = (uint32_t) atoi(value);
                             break;
 
                         case ATTESTER_CERTS_DIR:
@@ -140,11 +140,11 @@ __uint16_t read_config(char user, void* config_struct){
                             break;
 
                         case VERIFIER_PORT:
-                            verifier_config->port = (__uint32_t) atoi(value);
+                            verifier_config->port = (uint32_t) atoi(value);
                             break;
 
                         case VERIFIER_TLS_PORT:
-                            verifier_config->tls_port = (__uint32_t) atoi(value);
+                            verifier_config->tls_port = (uint32_t) atoi(value);
                             break;
 
                         case VERIFIER_CERTS_DIR:
