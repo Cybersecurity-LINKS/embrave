@@ -15,6 +15,7 @@
 #include "config_parse.h"
 
 static bool Continue = true;
+static struct attester_conf attester_config;
 
 
 int load_challenge_request(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge *chl);
@@ -75,8 +76,10 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
     MG_INFO(("SERVER accepted a connection"));
     struct mg_tls_opts opts = {
         //.ca = "ss_ca.pem",         // Uncomment to enable two-way SSL
-        .cert = "/home/pi/lemon/certs/server.crt",     // Certificate PEM file
-        .certkey = "/home/pi/lemon/certs/server.key",  // This pem contains both cert and key
+        .cert = attester_config.tls_cert,
+        //.cert = "/home/pi/lemon/certs/server.crt",     // Certificate PEM file
+        .certkey = attester_config.tls_key,
+        //.certkey = "/home/pi/lemon/certs/server.key",  // This pem contains both cert and key
     };
     mg_tls_init(c, &opts);
     MG_INFO(("SERVER initialized TLS"));
@@ -203,20 +206,20 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   struct mg_connection *c1;
   int a;
-  struct attester_conf attester_config;
 
   /* read configuration from cong file */
-  uint16_t rc;
-  if(rc = read_config(/* attester */ 0, (void * ) &attester_config)){
+  if(read_config(/* attester */ 0, (void * ) &attester_config)){
+    int err = errno;
     fprintf(stderr, "ERROR: could not read configuration file\n");
-    exit(rc);
+    exit(err);
   }
   
   #ifdef VERBOSE
   printf("attester_config->ip: %s\n", attester_config.ip);
   printf("attester_config->port: %d\n", attester_config.port);
   printf("attester_config->tls_port: %d\n", attester_config.tls_port);
-  printf("attester_config->certs_dir: %s\n", attester_config.certs_dir);
+  printf("attester_config->tls_cert: %s\n", attester_config.tls_cert);
+  printf("attester_config->tls_key: %s\n", attester_config.tls_key);
   #endif
 
   if(argc != 3){
@@ -225,7 +228,7 @@ int main(int argc, char *argv[]) {
   }
 
   //Check TPM keys and extend PCR9
-  if((a = tpa_init()) != 0) return -1;
+  if((a = tpa_init(&attester_config)) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager

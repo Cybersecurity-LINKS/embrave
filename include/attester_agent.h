@@ -16,9 +16,10 @@
 
 #include <stdint.h> 
 #include <stdio.h>
+#include "config_parse.h"
 #include "tpm.h"
 
-int tpa_init(void);
+int tpa_init(struct attester_conf* conf);
 int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl);
 void tpa_free(tpm_challenge_reply *rpl);
 #endif

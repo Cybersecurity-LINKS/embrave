@@ -79,7 +79,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   return 0;
 }
 
-int PCR9softbindig(ESYS_CONTEXT *esys_context){
+int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context){
     unsigned char *pem = NULL;
     unsigned char *digest_buff = NULL;
     TPMI_DH_PCR pcr_index;
@@ -87,7 +87,7 @@ int PCR9softbindig(ESYS_CONTEXT *esys_context){
     
     printf("PCR9softbindig\n");
     //Open the public certificate
-    int ret = openPEM("/home/ale/Scrivania/lemon/certs/server.crt", &pem);
+    int ret = openPEM(cert, &pem);
     if(ret == -1){
         printf("openPEM error\n");
         return -1;

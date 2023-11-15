@@ -17,7 +17,7 @@
 
 int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
-int tpa_init(void) {
+int tpa_init(struct attester_conf* conf) {
   // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -52,7 +52,7 @@ int tpa_init(void) {
   //Check if PCR9 is zero
   if(ret == 0){
     //PCR9 is zero => softbinding
-    ret = PCR9softbindig(esys_context);
+    ret = PCR9softbindig(conf->tls_cert, esys_context);
     if(ret != 0) goto error;
   } else if(ret == -1){
     goto error;

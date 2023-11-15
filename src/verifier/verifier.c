@@ -31,6 +31,8 @@ static int last_rcv = 0;
 static tpm_challenge_reply rpl;
 static Tpa_data tpa_data;
 
+static struct verifier_conf verifier_config;
+
 
 int load_challenge_reply( struct mg_iobuf *r, tpm_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
@@ -200,7 +202,7 @@ int get_paths(int id){
   tpa_data.resetCount = 0;
   tpa_data.ip_addr = NULL;
 
-  int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -340,20 +342,20 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   char s_conn[250];
   int n, id;
-  struct verifier_conf verifier_config;
 
   /* read configuration from cong file */
-  uint16_t rc;
-  if(rc = read_config(/* verifier */ 1, (void * ) &verifier_config)){
+  if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
+    int err = errno;
     fprintf(stderr, "ERROR: could not read configuration file\n");
-    exit(rc);
+    exit(err);
   }
 
   #ifdef VERBOSE
   printf("verifier_config->ip: %s\n", verifier_config.ip);
   printf("verifier_config->port: %d\n", verifier_config.port);
   printf("verifier_config->tls_port: %d\n", verifier_config.tls_port);
-  printf("verifier_config->certs_dir: %s\n", verifier_config.certs_dir);
+  printf("verifier_config->tls_cert: %s\n", verifier_config.tls_cert);
+  printf("verifier_config->tls_key: %s\n", verifier_config.tls_key);
   printf("verifier_config->db: %s\n", verifier_config.db);
   #endif
 

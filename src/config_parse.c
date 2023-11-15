@@ -3,8 +3,8 @@
 #include <string.h>
 #include "config_parse.h"
 
-char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "certs_dir"};
-char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "certs_dir", "db"};
+char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key"};
+char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "db"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -42,18 +42,21 @@ uint16_t read_config(char user, void* config_struct){
 
     if(user != 0 && user != 1){
         fprintf(stderr, "ERROR: unknown user\n");
-        return (uint16_t) 4;
+        errno = 5;
+        return (uint16_t) -1;
     }
     
     if(config_struct == NULL){
         fprintf(stderr, "ERROR: config_struct is NULL\n");
-        return (uint16_t) 4;
+        errno = 4;
+        return (uint16_t) -1;
     }
 
     fd = fopen(CONFIG_FILE_PATH, "r");
     if(fd == NULL){
         fprintf(stderr, "ERROR: failed to open config file\n");
-        return (uint16_t) 3;
+        errno = 3;
+        return (uint16_t) -1;
     }
 
     if(user == 0){
@@ -110,8 +113,12 @@ uint16_t read_config(char user, void* config_struct){
                             attester_config->tls_port = (uint32_t) atoi(value);
                             break;
 
-                        case ATTESTER_CERTS_DIR:
-                            strcpy(attester_config->certs_dir, value);
+                        case ATTESTER_TLS_CERT:
+                            strcpy(attester_config->tls_cert, value);
+                            break;
+
+                        case ATTESTER_TLS_KEY:
+                            strcpy(attester_config->tls_key, value);
                             break;
 
                         case ATTESTER_NUM_CONFIG_PARAMS:
@@ -152,8 +159,12 @@ uint16_t read_config(char user, void* config_struct){
                             verifier_config->tls_port = (uint32_t) atoi(value);
                             break;
 
-                        case VERIFIER_CERTS_DIR:
-                            strcpy(verifier_config->certs_dir, value);
+                        case VERIFIER_TLS_CERT:
+                            strcpy(verifier_config->tls_cert, value);
+                            break;
+
+                        case VERIFIER_TLS_KEY:
+                            strcpy(verifier_config->tls_key, value);
                             break;
 
                         case VERIFIER_DB:
