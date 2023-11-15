@@ -375,9 +375,9 @@ int main(int argc, char *argv[]) {
   n = strtol(argv[1], NULL, 10);
 
   if(n == 0)
-    snprintf(s_conn, 250, "tcp://%s:8765", tpa_data.ip_addr);
+    snprintf(s_conn, 250, "tcp://%s:%d", tpa_data.ip_addr, verifier_config.port);
   else if(n == 1)
-    snprintf(s_conn, 250, "tcp://%s:8766", tpa_data.ip_addr);
+    snprintf(s_conn, 250, "tcp://%s:%d", tpa_data.ip_addr, verifier_config.tls_port);
   else{
     printf("Error wrong parameters TLS: usage 0 no TLS 1 TLS\n");
     return -1;
