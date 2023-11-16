@@ -205,6 +205,8 @@ int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   struct mg_connection *c1;
+  char s_conn[500];
+  char s_conn1[500];
   int a;
 
   /* read configuration from cong file */
@@ -222,30 +224,29 @@ int main(int argc, char *argv[]) {
   printf("attester_config->tls_key: %s\n", attester_config.tls_key);
   #endif
 
-  if(argc != 3){
-    printf("Error wrong parameters: usage ./TPA ip_1 ip_2\n");
-    return -1;
-  }
-
   //Check TPM keys and extend PCR9
   if((a = tpa_init(&attester_config)) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  // Set log level
   mg_mgr_init(&mgr);        // Initialize event manager
-  c = mg_listen(&mgr, argv[1], event_handler, NULL);  // Create server connection
+
+  snprintf(s_conn, 500, "tcp://%s:%d", attester_config.ip, attester_config.port);
+  snprintf(s_conn1, 500, "tcp://%s:%d", attester_config.ip, attester_config.tls_port);
+
+  c = mg_listen(&mgr, s_conn, event_handler, NULL);  // Create server connection
 
   if (c == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   } 
   //Or TLS server
-  c1 = mg_listen(&mgr, argv[2], event_handler_tls, NULL);  // Create server connection
+  c1 = mg_listen(&mgr, s_conn1, event_handler_tls, NULL);  // Create server connection
   if (c1 == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   }
 
-  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", argv[1], argv[2]);
+  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", s_conn, s_conn1);
 
   while (Continue)
     mg_mgr_poll(&mgr, 1);  // Infinite event loop, blocks for upto 1ms
