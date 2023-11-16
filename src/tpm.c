@@ -39,7 +39,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 int nonce_create(Nonce *nonce_blob)
 {
     if (!RAND_bytes(nonce_blob->buffer, NONCE_SIZE)){
-        printf("Attestor client random generation error\n");
+        fprintf(stderr, "ERROR: Attestor client random generation error\n");
         return -1;
     }
 
@@ -56,7 +56,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   unsigned char *data;
   FILE *fp = fopen(path, "r");
   if(fp == NULL){
-    printf("Could not open the PEM file %s \n", path);
+    fprintf(stderr, "ERROR: Could not open the PEM file %s \n", path);
     return -1;
   }
 
@@ -68,7 +68,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   // read the data from the file 
   data = (unsigned char*) malloc((len_file + 1)*sizeof(char));
   if(data == NULL){
-    printf("malloc error\n");
+    fprintf(stderr, "ERROR: malloc error for reading file %s\n", path);
     return -1;
   }
   fread(data, 1, len_file, fp);
@@ -89,7 +89,7 @@ int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context){
     //Open the public certificate
     int ret = openPEM(cert, &pem);
     if(ret == -1){
-        printf("openPEM error\n");
+        fprintf(stderr, "ERROR: openPEM error for PCR9  soft binding\n");
         return -1;
     }
 
@@ -98,14 +98,14 @@ int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context){
     digest_buff = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
     if(digest_buff == NULL){
         free(pem);
-        printf("malloc error:\n");
+        fprintf(stderr, "ERROR: malloc error\n");
         return -1;
     }
 
     //Digest the certificate
     ret = digest_message(pem, strlen((const char*) pem), 0, digest_buff, NULL);
     if(ret == -1){
-        printf("digest pem error\n");
+        fprintf(stderr, "ERROR: digest pem error\n");
         free(pem);
         free(digest_buff);
         return -1;
@@ -117,7 +117,7 @@ int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context){
     //Set PCR id 9
     bool result = pcr_get_id("9", &pcr_index);
     if (!result) {
-        printf("pcr_get_id error \n");
+        fprintf(stderr, "ERROR: pcr_get_id error \n");
         free(pem);
         free(digest_buff);
         return -1;
@@ -131,7 +131,7 @@ int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context){
     //Extend SHA256 PCR9
     TSS2_RC tss_r = Esys_PCR_Extend(esys_context, pcr_index, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &digest);
     if(tss_r != TSS2_RC_SUCCESS){
-        printf("Could not extend PCR9\n");
+        fprintf(stderr, "ERROR: Could not extend PCR9\n");
         free(pem);
         free(digest_buff);
         return -1;
@@ -154,7 +154,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
     memset(pcr_cmp, 0, SHA256_DIGEST_LENGTH); 
 
     if (!pcr_parse_selections("sha256:9", &pcr_select, NULL)){
-        printf("PCR9 pcr_parse_selections error\n");
+        fprintf(stderr, "ERROR: PCR9 pcr_parse_selections error\n");
         return -1;
     }
 
@@ -180,37 +180,37 @@ int PCR9softbindig_verify(tpm_challenge_reply *rply, Tpa_data * tpa_data)
     //Open the servers's public certificate
     int ret = openPEM((const char*) tpa_data->tls_path, &pem);
     if(ret == -1){
-        printf("openPEM error\n");
+        fprintf(stderr, "ERROR: openPEM error\n");
         return -1;
     }
 
-    //printf("PEM to extend PCR9:\n%s\n", pem);
+    //fprintf(stderr, "ERROR: PEM to extend PCR9:\n%s\n", pem);
 
     digest_buff = malloc (SHA256_DIGEST_LENGTH * sizeof(unsigned char));
     if(digest_buff == NULL){
         free(pem);
-        printf("malloc error:\n");
+        fprintf(stderr, "ERROR: malloc error:\n");
         return -1;
     }
 
     //Digest the servers's public certificate
     ret = digest_message(pem, strlen((const char*) pem), 0, digest_buff, NULL);
     if(ret == -1){
-        printf("digest pem error\n");
+        fprintf(stderr, "ERROR: digest pem error\n");
         free(pem);
         free(digest_buff);
         return -1;
     }
 
     //tpm2_util_hexdump(digest_buff, SHA256_DIGEST_LENGTH);
-    //printf("\n");
+    //fprintf(stderr, "ERROR: \n");
 
     //Reconstrcut the PCR9 extension starting from 0..0
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(u_int8_t));
     memcpy(sha256_concatenated + (SHA256_DIGEST_LENGTH *sizeof(uint8_t)), digest_buff, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
 
     if (digest_message(sha256_concatenated, (SHA256_DIGEST_LENGTH *2 * sizeof(uint8_t)), 0, pcr9_sha256, &sz) != 0){
-        printf("Digest creation error\n");
+        fprintf(stderr, "ERROR: Digest creation error\n");
         return -1;
     }
 
@@ -252,14 +252,14 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     //load AK aut (NULL)
     tool_rc rc = tpm2_util_object_load_auth(ectx, key.handle,key.auth_str, &(key.object), false, TPM2_HANDLE_ALL_W_NV);
     if (rc != tool_rc_success) {
-        printf("Invalid key authorization\n");
+        fprintf(stderr, "ERROR: Invalid key authorization\n");
         return -1;
     }     
 
     //Set pcr to quote (all sha256) 
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
-        printf("pcr_parse_selections failed\n");
-        printf("ERRORE QUI?\n");
+        fprintf(stderr, "ERROR: pcr_parse_selections failed\n");
+        /* printf("ERRORE QUI?\n"); */
         return -1;
     }
 
@@ -284,7 +284,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         rc = tpm2_quote(ectx, &key.object, &in_scheme,&qualification_data, &pcr_select,
         &rply->quoted, &signature, NULL, TPM2_ALG_ERROR);
         if(rc != 0){
-            printf("tpm2 quote error %d\n", rc);
+            fprintf(stderr, "ERROR: tpm2 quote error %d\n", rc);
             return -1;
         }
 
@@ -296,13 +296,13 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         //Convert from TPM2B to TPMS format to validate nonce and pcr digest
         rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
         if (rc != tool_rc_success) {
-            printf("files_tpm2b_attest_to_tpms_attest failed \n");
+            fprintf(stderr, "ERROR: files_tpm2b_attest_to_tpms_attest failed \n");
             return -1;
         }
 
         //Create the pcr digest with the received pcrs
         if (!tpm2_openssl_hash_pcr_banks_le(TPM2_ALG_SHA256, &pcr_select, &rply->pcrs, &pcr_hash)) {
-            printf("Failed to hash PCR values\n");
+            fprintf(stderr, "ERROR: Failed to hash PCR values\n");
             return -1;
         }
 
@@ -318,7 +318,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     //Free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
-        printf("tpm2_quote_free error %d\n", ret);
+        fprintf(stderr, "ERROR: tpm2_quote_free error %d\n", ret);
         return -1;
     }
 
@@ -334,14 +334,14 @@ int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_sel
 
     // Filter out invalid/unavailable PCR selections
     if (!pcr_check_pcr_selection(&cap_data, pcr_select)) {
-        printf("Failed to filter unavailable PCR values for quote!\n");
+        fprintf(stderr, "ERROR: Failed to filter unavailable PCR values for quote!\n");
         return -1;
     }
 
     // Read PCR values from the TPM because the quote doesn't have them!
     tool_rc rc = pcr_read_pcr_values(ectx, pcr_select, pcrs, NULL, TPM2_ALG_ERROR);
     if (rc != tool_rc_success) {
-        printf("Failed to retrieve PCR values related to quote!\n");
+        fprintf(stderr, "ERROR: Failed to retrieve PCR values related to quote!\n");
         return -1;
     }
 
@@ -356,7 +356,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
 
     // Sanity check -- they should at least be same size!
     if (quoteDigest->size != pcr_digest->size) {
-        printf("FATAL ERROR: PCR values failed to match quote's digest!\n");
+        fprintf(stderr, "ERROR: PCR values failed to match quote's digest!\n");
         return -1;
     }
 
@@ -391,21 +391,21 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
 
     bio = BIO_new_file(pem_file_name, "rb");
     if (!bio) {
-        printf("Failed to open AK public key file '%s': %s\n", pem_file_name, ERR_error_string(ERR_get_error(), NULL));
+        fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", pem_file_name, ERR_error_string(ERR_get_error(), NULL));
         return -1;
     }
 
     //Load AK pub key from BIO
     pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
     if (!pkey) {
-        printf("Failed to convert public key from PEM\n");
+        fprintf(stderr, "ERROR: Failed to convert public key from PEM\n");
         OPENSSL_free(bio);
         return -1;
     }
 
     pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
     if (!pkey_ctx) {
-        printf("EVP_PKEY_CTX_new failed\n");
+        fprintf(stderr, "ERROR: EVP_PKEY_CTX_new failed\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         return -1;
@@ -413,7 +413,7 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
 
     //Check if the key is a valid public key
     if(!EVP_PKEY_public_check(pkey_ctx)){
-        printf("check key failed\n");
+        fprintf(stderr, "ERROR: check key failed\n");
         goto err;
     }
 
@@ -421,20 +421,20 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
 
     int rc = EVP_PKEY_verify_init(pkey_ctx);
     if (!rc) {
-        printf("EVP_PKEY_verify_init failed \n");
+        fprintf(stderr, "ERROR: EVP_PKEY_verify_init failed \n");
         goto err;
     }
 
     rc = EVP_PKEY_CTX_set_signature_md(pkey_ctx, md);
     if (!rc) {
-        printf("EVP_PKEY_CTX_set_signature_md failed \n");
+        fprintf(stderr, "ERROR: EVP_PKEY_CTX_set_signature_md failed \n");
         goto err;
     }
 
     //Convert from TPM2B to TPMS format to validate nonce and pcr digest
     tool_rc tmp_rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
     if (tmp_rc != tool_rc_success) {
-        printf("files_tpm2b_attest_to_tpms_attest failed \n");
+        fprintf(stderr, "ERROR: files_tpm2b_attest_to_tpms_attest failed \n");
         goto err;
     }
 
@@ -452,7 +452,7 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
-        printf("Compute message hash failed!\n");
+        fprintf(stderr, "ERROR: Compute message hash failed!\n");
         goto err;
     }
 
@@ -460,9 +460,9 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     rc = EVP_PKEY_verify(pkey_ctx, rply->sig, rply->sig_size, msg_hash.buffer, msg_hash.size);
     if (rc != 1) {
         if (rc == 0) {
-            printf("Quote signature verification failed\n");
+            fprintf(stderr, "ERROR: Quote signature verification failed\n");
         } else {
-            printf("Error %s\n", ERR_error_string(ERR_get_error(), NULL));
+            fprintf(stderr, "ERROR: %s\n", ERR_error_string(ERR_get_error(), NULL));
         }
         goto err;
     }
@@ -470,19 +470,19 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     // Verify the nonce
     if (attest.extraData.size != rply->nonce_blob.size || 
         memcmp(attest.extraData.buffer, rply->nonce_blob.buffer, attest.extraData.size) != 0) {
-        printf("Error validating nonce\n");
+        fprintf(stderr, "ERROR: Error validating nonce\n");
         goto err;
     }
 
     // Define the pcr selection
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
-        printf("pcr_parse_selections failed\n");
+        fprintf(stderr, "ERROR: pcr_parse_selections failed\n");
         goto err;
     } 
 
     //Create the pcr digest with the received pcrs
     if (!tpm2_openssl_hash_pcr_banks_le(TPM2_ALG_SHA256, &pcr_select, &rply->pcrs, &pcr_hash)) {
-        printf("Failed to hash PCR values\n");
+        fprintf(stderr, "ERROR: Failed to hash PCR values\n");
         goto err;
     }
 
@@ -626,7 +626,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     calculated_template_hash = malloc(SHA_DIGEST_LENGTH *sizeof(unsigned char));
     
     if (digest_message(entry_aggregate, template_len, 1, calculated_template_hash, &sz) != 0){
-        printf("Digest creation error\n");
+        fprintf(stderr, "ERROR: Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return -1;
@@ -637,7 +637,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
-        printf("Mismatch template hash agaist calculated one\n");
+        fprintf(stderr, "ERROR: Mismatch template hash agaist calculated one\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return -1;
@@ -652,7 +652,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     //Compute the template digest SHA256
     if (digest_message(entry_aggregate, template_len, 0, template_hash_sha256, &sz) != 0){
-        printf("Digest creation error\n");
+        fprintf(stderr, "ERROR: Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return -1;
@@ -736,13 +736,13 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     //digest
     //SHA256
     if (digest_message(sha256_concatenated, (SHA256_DIGEST_LENGTH *2 * sizeof(uint8_t)), 0, pcr10_sha256, &sz) != 0){
-        printf("Digest creation error\n");
+        fprintf(stderr, "ERROR: Digest creation error\n");
         return -1;
     }
 
     //SHA1
     if (digest_message(sha1_concatenated, (SHA_DIGEST_LENGTH *2 * sizeof(uint8_t)), 1, pcr10_sha1, &sz) != 0){
-        printf("Digest creation error\n");
+        fprintf(stderr, "ERROR: Digest creation error\n");
         return -1;
     }
 
@@ -758,7 +758,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
     
     int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
-        printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -780,7 +780,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Golden value found, IMA row OK
-        printf("error sql update\n");
+        fprintf(stderr, "ERROR: error sql update\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         sqlite3_close(db);
@@ -812,7 +812,7 @@ int save_pcr10(Tpa_data *tpa){
     printf("Save PCR10 \n");
     int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
-        printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -848,7 +848,7 @@ int save_pcr10(Tpa_data *tpa){
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
         //Golden value found, IMA row OK
-        printf("error sql insert pcr10\n");
+        fprintf(stderr, "ERROR: error sql insert pcr10\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
         sqlite3_close(db);
@@ -881,7 +881,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     UINT16 sz1 = (UINT16) SHA_DIGEST_LENGTH;
 
     if((rply->ima_log == NULL && rply->ima_log_size > 0) || (rply->ima_log_size < 0) || (db == NULL)){
-        printf("verify_ima_log bad input\n");
+        fprintf(stderr, "ERROR: verify_ima_log bad input\n");
         return -1;
     }
 
@@ -906,7 +906,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         goto PCR10;
 
     } else if (rply->ima_log_size == 0 && tpa->pcr10_old_sha256 == NULL && tpa->pcr10_old_sha1 == NULL) {
-        printf("No IMA log received but no old PCR10 in the tpa db error\n");
+        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 in the tpa db error\n");
         goto error;
     }
     
@@ -921,7 +921,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
     if(strcmp(event_name, "ima-ng") != 0){
         //printf("%s\n", event_name);
-        printf("Unknown IMA template\n");
+        fprintf(stderr, "ERROR: Unknown IMA template\n");
         return -1;
     }//other template here
 
@@ -931,13 +931,13 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
         if (ret == 1){
             //Error in the IMA log so skip the golden value verification
             if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
-                printf("pcr10 digest error\n");
+                fprintf(stderr, "ERROR: pcr10 digest error\n");
                 goto error;
             }
             continue;
         } else if(ret == -1){
             free(path_name);
-            printf("Error during read_ima_log_row\n");
+            fprintf(stderr, "ERROR: Error during read_ima_log_row\n");
             goto error;
         }
 
@@ -951,7 +951,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
 
         //Compute PCR10
         if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
-            printf("pcr10 digest error\n");
+            fprintf(stderr, "ERROR: pcr10 digest error\n");
             free(path_name);
             goto error;
         }
@@ -1060,7 +1060,7 @@ void print_signature(UINT16* size, BYTE *sig){
 BYTE * copy_signature(UINT16* size){
     BYTE *sig = tpm2_convert_sig(size, signature);
     if (!sig) {
-        printf("tpm2_convert_sig error\n");
+        fprintf(stderr, "ERROR: tpm2_convert_sig error\n");
         return NULL;
     }
     return sig;

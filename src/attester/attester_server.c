@@ -202,11 +202,11 @@ void print_sent_data(tpm_challenge_reply *rpl){
 }
 
 int main(int argc, char *argv[]) {
-  struct mg_mgr mgr;  // Event manager
+  struct mg_mgr mgr;  /* Event manager */
   struct mg_connection *c;
-  struct mg_connection *c1;
+  struct mg_connection *c_tls;
   char s_conn[500];
-  char s_conn1[500];
+  char s_conn_tls[500];
   int a;
 
   /* read configuration from cong file */
@@ -224,34 +224,35 @@ int main(int argc, char *argv[]) {
   printf("attester_config->tls_key: %s\n", attester_config.tls_key);
   #endif
 
-  //Check TPM keys and extend PCR9
+  /* Check TPM keys and extend PCR9 */
   if((a = tpa_init(&attester_config)) != 0) return -1;
 
-  mg_log_set(MG_LL_INFO);  // Set log level
-  mg_mgr_init(&mgr);        // Initialize event manager
+  mg_log_set(MG_LL_INFO);  /* Set log level */
+  mg_mgr_init(&mgr);        /* Initialize event manager */
 
   snprintf(s_conn, 500, "tcp://%s:%d", attester_config.ip, attester_config.port);
-  snprintf(s_conn1, 500, "tcp://%s:%d", attester_config.ip, attester_config.tls_port);
+  snprintf(s_conn_tls, 500, "tcp://%s:%d", attester_config.ip, attester_config.tls_port);
 
-  c = mg_listen(&mgr, s_conn, event_handler, NULL);  // Create server connection
+  c = mg_listen(&mgr, s_conn, event_handler, NULL);  /* Create server connection */
 
   if (c == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
-  } 
-  //Or TLS server
-  c1 = mg_listen(&mgr, s_conn1, event_handler_tls, NULL);  // Create server connection
-  if (c1 == NULL) {
+  }
+
+  /* Or TLS server */
+  c_tls = mg_listen(&mgr, s_conn_tls, event_handler_tls, NULL);  /* Create server connection */
+  if (c_tls == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   }
 
-  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", s_conn, s_conn1);
+  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", s_conn, s_conn_tls);
 
   while (Continue)
-    mg_mgr_poll(&mgr, 1);  // Infinite event loop, blocks for upto 1ms
-                             // unless there is network activity
-  mg_mgr_free(&mgr);         // Free resources
+    mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
+                              unless there is network activity */
+  mg_mgr_free(&mgr);         /* Free resources */
   return 0;
 }
 

@@ -30,21 +30,23 @@ int tpa_init(struct attester_conf* conf) {
   //tss_r = Tss2_TctiLdr_Initialize("NULL", &tcti_context);
   tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize tcti context\n");
+    fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;
   }
   
   tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
   if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize esys context\n");
+    fprintf(stderr, "ERROR: Could not initialize esys context\n");
     Tss2_TctiLdr_Finalize (&tcti_context);
     return -1;
   }
 
-  snprintf((char *)ek_handle, HANDLE_SIZE, "%s", "0x81000003");
-  snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
+  /* snprintf((char *)ek_handle, HANDLE_SIZE, "%s", "0x81000003"); */
+  /* snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004"); */
+  memcpy((void *) ek_handle, (void *) "0x81000003", HANDLE_SIZE);
+  memcpy((void *) ak_handle, (void *) "0x81000004", HANDLE_SIZE);
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
-    printf("Could not initialize the TPM Keys\n");
+    fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");
     goto error;
   }
 
@@ -84,13 +86,13 @@ int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)
 
   tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize tcti context\n");
+    fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;
   }
 
   tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
   if (tss_r != TSS2_RC_SUCCESS) {
-    printf("Could not initialize esys context\n");
+    fprintf(stderr, "ERROR: Could not initialize esys context\n");
     Tss2_TctiLdr_Finalize (&tcti_context);
     return -1;
   }
@@ -129,7 +131,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   uint32_t ima_byte_sent;
   fp = fopen(path, "rb");
 	if (!fp) {
-	  printf("Unable to open IMA file\n");
+	  fprintf(stderr, "ERROR: Unable to open IMA file\n");
 		return -1;
 	}
 
@@ -137,7 +139,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
     int ret = fseek(fp, from_bytes, SEEK_SET);
     
     if (ret != 0){
-      printf("Unable to fseek IMA file\n");
+      fprintf(stderr, "ERROR: Unable to fseek IMA file\n");
       return -1;
     }
     rpl->wholeLog = 0;
@@ -166,11 +168,11 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          printf("No need to send the IMA log\n");
+          fprintf(stderr, "ERROR: No need to send the IMA log\n");
           break;
         }
       } else {
-        printf("Error reading the IMA log\n");
+        fprintf(stderr, "ERROR: Error reading the IMA log\n");
         free(rpl->ima_log);
         fclose(fp);
         return -1;
@@ -181,7 +183,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
     if(buff_sz < rpl->ima_log_size + read_bytes){
       rpl->ima_log = (unsigned char *)realloc(rpl->ima_log, 2 * buff_sz);
       if (rpl->ima_log == NULL) {
-        printf("Error realloc the IMA log buffer\n");
+        fprintf(stderr, "ERROR: Error realloc the IMA log buffer\n");
         fclose(fp);
         return -1;
       }
