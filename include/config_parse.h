@@ -8,10 +8,10 @@
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 5
-#define VERIFIER_NUM_CONFIG_PARAMS 6
+#define VERIFIER_NUM_CONFIG_PARAMS 7
 
 enum attester_keys_config{ATTESTER_IP, ATTESTER_PORT, ATTESTER_TLS_PORT, ATTESTER_TLS_CERT, ATTESTER_TLS_KEY};
-enum verifier_keys_config{VERIFIER_IP, VERIFIER_PORT, VERIFIER_TLS_PORT, VERIFIER_TLS_CERT, VERIFIER_TLS_KEY, VERIFIER_DB};
+enum verifier_keys_config{VERIFIER_IP, VERIFIER_PORT, VERIFIER_TLS_PORT, VERIFIER_TLS_CERT, VERIFIER_TLS_KEY, VERIFIER_TLS_CERT_CA, VERIFIER_DB};
 
 struct attester_conf {
     uint32_t port;
@@ -26,6 +26,7 @@ struct verifier_conf {
     uint32_t port;
     uint32_t tls_port;
     char ip[MAX_BUF];
+    char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
 };

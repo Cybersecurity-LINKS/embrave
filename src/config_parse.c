@@ -4,7 +4,7 @@
 #include "config_parse.h"
 
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key"};
-char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "db"};
+char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -165,6 +165,10 @@ uint16_t read_config(char user, void* config_struct){
 
                         case VERIFIER_TLS_KEY:
                             strcpy(verifier_config->tls_key, value);
+                            break;
+
+                        case VERIFIER_TLS_CERT_CA:
+                            strcpy(verifier_config->tls_cert_ca, value);
                             break;
 
                         case VERIFIER_DB:
