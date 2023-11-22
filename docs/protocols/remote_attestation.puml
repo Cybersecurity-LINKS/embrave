@@ -1,0 +1,27 @@
+@startuml remote_attestation
+title
+Remote Attestation protocol
+end title
+
+autonumber
+
+box "Platform"
+participant TPM
+participant "Attester\nAgent" as attester_agent
+endbox
+participant "Verifier" as verifier
+
+loop
+verifier->attester_agent: Attestation request (PCRs, nonce)
+attester_agent->TPM: Load EK
+TPM->attester_agent: (EK_handle, EK_pub)
+attester_agent->TPM: Load AK
+TPM->attester_agent: (AK_handle, AK_pub)
+attester_agent->TPM: tpm_quote (PCRs, nonce)
+TPM->attester_agent: sign(AK_priv, Quote)
+attester_agent<-attester_agent: Collect IMA log
+attester_agent->verifier: sign(AK_priv, Quote), IMA log
+verifier->verifier: Verfiy quote signature
+verifier->verifier: Verify IMA log integrity
+verifier->verifier: Veryfy IMA log against the whitelist
+end

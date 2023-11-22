@@ -8,7 +8,7 @@
 ### Check installation
 ```
 (.venv) $ sphinx-build --version
-sphinx-build 4.0.2
+sphinx-build 7.2.6
 ```
 
 ## Build docs

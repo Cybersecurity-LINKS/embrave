@@ -1,0 +1,22 @@
+@startuml revocation
+title
+Revocation protocol
+end title
+
+autonumber
+
+box "Platform"
+participant TPM
+participant "Attester\nAgent" as attester_agent
+endbox
+participant "Verifier" as verifier
+
+attester_agent->verifier: Integrity proof
+verifier->verifier: Verify integrity proof
+note left
+The Integrity verification fails
+end note
+verifier->CA: Request revocation for AK cert
+CA->CA: revoke AK_cert
+CA->verifier: Notify AK_cert revocation
+verifier->verifier: Stop Remote Attestation process

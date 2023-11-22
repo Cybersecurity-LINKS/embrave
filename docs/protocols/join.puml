@@ -1,4 +1,7 @@
 @startuml join
+title
+Join protocol
+end title
 autonumber
 
 box "Platform"
