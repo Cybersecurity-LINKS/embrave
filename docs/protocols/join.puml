@@ -1,0 +1,52 @@
+@startuml join
+autonumber
+
+box "Platform"
+participant TPM
+participant "Attester\nAgent" as attester_agent
+endbox
+participant "Join\nService" as join_service
+
+== LAK creation ==
+TPM<-attester_agent: tpm_createak
+TPM<-TPM:  Generate LAK
+
+== Start Join protocol ==
+TPM<-attester_agent: request EK_cert
+TPM->attester_agent: EK_cert
+attester_agent->join_service: request to join
+note right
+The attester notifies its presence and
+get the informatin to obtain a certificate
+end note
+join_service->attester_agent: CA info
+
+== Certificate issuing ==
+attester_agent->CA: LAK csr, EK cert
+CA->CA: validate EK_cert
+note right
+TPM is authentic (validation of the EK certificate OK)
+end note
+CA->CA: challenge = enc(EK_pub, nonce, LAK_pub)
+note right
+LAK is resident on the same TPM of
+the EK and the TPM posses the EK_priv
+end note
+attester_agent<-CA: challenge
+TPM<-attester_agent: tpm_activate_credential
+note left
+tpm_activate credential verifies
+the possession of AK_priv, EK_priv
+and verifies that they are in the
+same TPM
+end note
+TPM<-TPM: dec(EK_priv, challenge)
+TPM->attester_agent: nonce
+attester_agent->CA: nonce
+CA->CA: issue LAK_cert
+note right
+The CA verify the posses of the keys
+and emits the LAK certitfacte
+end note
+CA->attester_agent: LAK_cert
+@enduml
