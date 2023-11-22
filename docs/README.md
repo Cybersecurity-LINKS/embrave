@@ -12,6 +12,6 @@ sphinx-build 4.0.2
 ```
 
 ## Build docs
-- ```(.venv) $ sphinx-build -M html source/ build/```
+- ```(.venv) $ make html```
 - The docs will be available in the ```build``` directory
 - Open in browser the file ```index.html```
