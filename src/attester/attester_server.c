@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
   #endif
 
   /* Check TPM keys and extend PCR9 */
-  if((a = tpa_init(&attester_config)) != 0) return -1;
+  if((a = attester_init(&attester_config)) != 0) return -1;
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */

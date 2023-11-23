@@ -11,13 +11,13 @@
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include "attester_agent.h"
-
+#include "tpm_ek.h"
 
 //static uint32_t ima_byte_sent = 0;
 
 int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
-int tpa_init(struct attester_conf* conf) {
+int attester_init(struct attester_conf* conf) {
   // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -27,8 +27,8 @@ int tpa_init(struct attester_conf* conf) {
   int ret;
   fprintf(stdout, "Init TPA\n");
   //tss_r = Tss2_TctiLdr_Initialize("swtpm", &tcti_context);
-  //tss_r = Tss2_TctiLdr_Initialize("NULL", &tcti_context);
-  tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
+  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
+  //tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;
@@ -45,6 +45,13 @@ int tpa_init(struct attester_conf* conf) {
   /* snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004"); */
   memcpy((void *) ek_handle, (void *) "0x81000003", HANDLE_SIZE);
   memcpy((void *) ak_handle, (void *) "0x81000004", HANDLE_SIZE);
+
+  /* tpm_createek */
+  _create_ek(esys_context);
+
+  /* tpm_createak */
+  //_create_ak(esys_context);
+
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");
     goto error;

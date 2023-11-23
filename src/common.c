@@ -106,10 +106,13 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, u
 
     for (int i = 0; i < capabilityData->data.handles.count; i++) {
       snprintf(handle_hex, HANDLE_SIZE, "0x%X", capabilityData->data.handles.handle[i]);
-      if(strcmp((char *) ek_handle, handle_hex) == 0) h1 = 1;
-      if(strcmp((char *) ak_handle, handle_hex) == 0) h2 = 1;
+      if(memcmp((void *) ek_handle, handle_hex, HANDLE_SIZE) == 0) h1 = 1;
+      if(memcmp((void *) ak_handle, handle_hex, HANDLE_SIZE) == 0) h2 = 1;
     }
     free(capabilityData);
+
+    fprintf(stdout, "EK: %d, AK: %d\n", h1, h2);
+
     if(h1 && h2)
       return 0;
     return -1;
