@@ -70,7 +70,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 add_executable(attester_server ${sources})
 add_dependencies(attester_server patch_tpm2-tools)
 target_compile_options(attester_server PUBLIC -g  -Wall -fPIC)
-target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread)
+target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread -lcurl)
 
 #add_custom_target("attester" ALL DEPENDS ${agent_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
 #    COMMAND $(MAKE) -C ${agent_srcdir} O=${agent_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
