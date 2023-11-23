@@ -28,15 +28,16 @@ join_service->attester_agent: CA info
 attester_agent->CA: LAK csr, EK cert
 CA->CA: validate EK_cert
 note right
-TPM is authentic (validation of the EK certificate OK)
+TPM is authentic
+(validation of the EK certificate OK)
 end note
-CA->CA: challenge = enc(EK_pub, nonce, LAK_pub)
-note right
+CA->CA: tpm_makecredential\nchallenge = enc(EK_pub, nonce, LAK_pub)
+/'note right
 LAK is resident on the same TPM of
 the EK and the TPM posses the EK_priv
-end note
+end note'/
 attester_agent<-CA: challenge
-TPM<-attester_agent: tpm_activate_credential
+TPM<-attester_agent: tpm_activatecredential
 note left
 tpm_activate credential verifies
 the possession of AK_priv, EK_priv

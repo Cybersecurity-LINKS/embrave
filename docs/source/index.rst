@@ -7,14 +7,17 @@ Welcome to lemon's documentation!
 =================================
 
 .. toctree::
+   overview
+   protocols
+   quick_start
    :maxdepth: 2
    :caption: Contents:
 
 
 
-Indices and tables
-==================
+.. Indices and tables
+   ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
