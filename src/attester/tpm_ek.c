@@ -434,7 +434,7 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
         }
     }
 
-    return tool_rc_success;
+    rc = tool_rc_success;
 
 out:
     for (i = 0; i < ARRAY_LEN(sessions); i++) {

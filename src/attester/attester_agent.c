@@ -50,7 +50,7 @@ int attester_init(struct attester_conf* conf) {
   _create_ek(esys_context);
 
   /* tpm_createak */
-  //_create_ak(esys_context);
+  _create_ak(esys_context);
 
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");

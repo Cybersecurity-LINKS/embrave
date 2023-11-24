@@ -33,6 +33,9 @@ tool_rc init_ak_public(TPMI_ALG_HASH name_alg, TPM2B_PUBLIC *public, struct crea
 tool_rc _create_ak(ESYS_CONTEXT *ectx){
 
     struct createak_context ctx = {
+        .ek = {
+            .ctx_arg = "0x81000003"
+        },
         .ak = {
             .in = {
                 .alg = {
@@ -42,13 +45,60 @@ tool_rc _create_ak(ESYS_CONTEXT *ectx){
                 },
             },
             .out = {
-                .pub_fmt = pubkey_format_tss
+                .pub_file = "ak.pub.pem",
+                .name_file = "ak.name",
+                .pub_fmt = pubkey_format_pem,
+                .ctx_file = "ak.ctx"
             },
         },
         .flags = { 0 },
     };
 
-    tool_rc rc = tool_rc_general_error;
+    if (ctx.flags.f && !ctx.ak.out.pub_file) {
+        LOG_ERR("Please specify an output file name when specifying a format");
+        return tool_rc_option_error;
+    }
+
+    if (!ctx.ak.out.ctx_file) {
+        LOG_ERR("Expected option -c");
+        return tool_rc_option_error;
+    }
+
+    tool_rc rc = tpm2_util_object_load(ectx, ctx.ek.ctx_arg, &ctx.ek.ek_ctx,
+            TPM2_HANDLE_ALL_W_NV);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+    if (!ctx.ek.ek_ctx.tr_handle) {
+        rc = tpm2_util_sys_handle_to_esys_handle(ectx, ctx.ek.ek_ctx.handle,
+                &ctx.ek.ek_ctx.tr_handle);
+        if (rc != tool_rc_success) {
+            LOG_ERR("Converting ek_ctx TPM2_HANDLE to ESYS_TR");
+            return rc;
+        }
+    }
+
+    rc = tpm2_auth_util_from_optarg(NULL, ctx.ek.auth_str, &ctx.ek.session,
+            true);
+    if (rc != tool_rc_success) {
+        LOG_ERR("Invalid endorse authorization");
+        return rc;
+    }
+
+    tpm2_session *tmp;
+    rc = tpm2_auth_util_from_optarg(NULL, ctx.ak.auth_str, &tmp, true);
+    if (rc != tool_rc_success) {
+        LOG_ERR("Invalid AK authorization");
+        return rc;
+    }
+
+    const TPM2B_AUTH *auth = tpm2_session_get_auth_value(tmp);
+    ctx.ak.in.in_sensitive.sensitive.userAuth = *auth;
+
+    tpm2_session_close(&tmp);
+
+    rc = tool_rc_general_error;
 
     TPML_PCR_SELECTION creation_pcr = { .count = 0 };
     TPM2B_DATA outside_info = TPM2B_EMPTY_INIT;
