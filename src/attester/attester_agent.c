@@ -12,6 +12,7 @@
 
 #include "attester_agent.h"
 #include "tpm_ek.h"
+#include "tpm_ak.h"
 
 //static uint32_t ima_byte_sent = 0;
 
@@ -51,6 +52,7 @@ int attester_init(struct attester_conf* conf) {
 
   /* tpm_createak */
   _create_ak(esys_context);
+  _evictcontrol(esys_context);
 
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");

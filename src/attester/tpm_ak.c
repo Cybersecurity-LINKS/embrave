@@ -39,9 +39,9 @@ tool_rc _create_ak(ESYS_CONTEXT *ectx){
         .ak = {
             .in = {
                 .alg = {
-                    .type = "rsa2048",
-                    .digest = "sha256",
-                    .sign = "null"
+                    .type = "ecc", // Elliptical Curve, defaults to ecc256 // "rsa2048",
+                    .digest = "sha256", // possible addition of checking is sha3 is supported by the installed TPM
+                    .sign = "null" 
                 },
             },
             .out = {
@@ -54,15 +54,15 @@ tool_rc _create_ak(ESYS_CONTEXT *ectx){
         .flags = { 0 },
     };
 
-    if (ctx.flags.f && !ctx.ak.out.pub_file) {
+    /* if (ctx.flags.f && !ctx.ak.out.pub_file) {
         LOG_ERR("Please specify an output file name when specifying a format");
         return tool_rc_option_error;
-    }
+    } */
 
-    if (!ctx.ak.out.ctx_file) {
+    /* if (!ctx.ak.out.ctx_file) {
         LOG_ERR("Expected option -c");
         return tool_rc_option_error;
-    }
+    } */
 
     tool_rc rc = tpm2_util_object_load(ectx, ctx.ek.ctx_arg, &ctx.ek.ek_ctx,
             TPM2_HANDLE_ALL_W_NV);
@@ -336,4 +336,158 @@ out_session:
 
     return rc;
 
+}
+
+tool_rc _evictcontrol(ESYS_CONTEXT *ectx){
+
+    struct tpm_evictcontrol_ctx ctx = {
+        .to_persist_key.ctx_path = "ak.ctx",
+        .auth_hierarchy.ctx_path="o",
+        .out_tr = ESYS_TR_NONE,
+        .parameter_hash_algorithm = TPM2_ALG_ERROR,
+    };
+
+     bool result = tpm2_util_string_to_uint32("0x81000004", &ctx.persist_handle);
+    if (!result) {
+        LOG_ERR("Could not convert persistent handle to a number, got: \"%s\"",
+            "0x81000004");
+        return false;
+    }
+    ctx.is_persistent_handle_specified = true;
+
+    /*
+     * 1. Object and auth initializations
+     */
+
+    /*
+     * 1.a Add the new-auth values to be set for the object.
+     */
+
+    /*
+     * 1.b Add object names and their auth sessions
+     */
+
+    /* Object #1 */
+    tool_rc rc = tpm2_util_object_load_auth(ectx, ctx.auth_hierarchy.ctx_path,
+            ctx.auth_hierarchy.auth_str, &ctx.auth_hierarchy.object, false,
+            TPM2_HANDLE_FLAGS_O | TPM2_HANDLE_FLAGS_P);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+    /* Object #2 */
+    rc = tpm2_util_object_load(ectx, ctx.to_persist_key.ctx_path,
+        &ctx.to_persist_key.object, TPM2_HANDLE_ALL_W_NV);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+    /*
+     * 2. Restore auxiliary sessions
+     */
+
+    /*
+     * 3. Command specific initializations
+     */
+    if (ctx.to_persist_key.object.handle >> TPM2_HR_SHIFT
+            == TPM2_HT_PERSISTENT) {
+        ctx.persist_handle = ctx.to_persist_key.object.handle;
+        ctx.is_persistent_handle_specified = true;
+    }
+
+    /* If we've been given a handle or context object to persist and not an
+     * explicit persistent handle to use, find an available vacant handle in
+     * the persistent namespace and use that.
+     *
+     * XXX: We need away to figure out of object is persistent and skip it.
+     */
+    if (ctx.to_persist_key.ctx_path && !ctx.is_persistent_handle_specified) {
+        bool is_platform = ctx.auth_hierarchy.object.handle == TPM2_RH_PLATFORM;
+        rc = tpm2_capability_find_vacant_persistent_handle(ectx,
+                is_platform, &ctx.persist_handle);
+        if (rc != tool_rc_success) {
+            return rc;
+        }
+        /* we searched and found a persistent handle, so mark that peristent handle valid */
+        ctx.is_persistent_handle_specified = true;
+    }
+
+    /* if (ctx.output_arg && !ctx.is_persistent_handle_specified) {
+        LOG_ERR("Cannot specify -o without using a persistent handle");
+        return tool_rc_option_error;
+    } */
+
+    /*
+     * 4. Configuration for calculating the pHash
+     */
+
+    /*
+     * 4.a Determine pHash length and alg
+     */
+    tpm2_session *all_sessions[MAX_SESSIONS] = {
+        ctx.auth_hierarchy.object.session,
+        0,
+        0
+    };
+
+    const char **cphash_path = ctx.cp_hash_path ? &ctx.cp_hash_path : 0;
+
+    ctx.parameter_hash_algorithm = tpm2_util_calculate_phash_algorithm(ectx,
+        cphash_path, &ctx.cp_hash, 0, 0, all_sessions);
+
+    /*
+     * 4.b Determine if TPM2_CC_<command> is to be dispatched
+     */
+    ctx.is_command_dispatch = ctx.cp_hash_path ? false : true;
+
+    rc = tpm2_evictcontrol(ectx, &ctx.auth_hierarchy.object,
+        &ctx.to_persist_key.object, ctx.persist_handle, &ctx.out_tr,
+        &ctx.cp_hash, ctx.parameter_hash_algorithm);
+
+    /*
+     * 1. Outputs that do not require TPM2_CC_<command> dispatch
+     */
+    bool is_file_op_success = true;
+    if (ctx.cp_hash_path) {
+        is_file_op_success = files_save_digest(&ctx.cp_hash, ctx.cp_hash_path);
+
+        if (!is_file_op_success) {
+            return tool_rc_general_error;
+        }
+    }
+
+    rc = tool_rc_success;
+    if (!ctx.is_command_dispatch) {
+        return rc;
+    }
+
+    /*
+     * 2. Outputs generated after TPM2_CC_<command> dispatch
+     */
+
+    /*
+     * Only Close a TR object if it's still resident in the TPM.
+     * When these handles match, evictcontrol flushed it from the TPM.
+     * It's evicted when ESAPI sends back a none handle on evictcontrol.
+     *
+     * XXX: This output is wrong because we can't determine what handle was
+     * evicted on ESYS_TR input.
+     *
+     * See bug: https://github.com/tpm2-software/tpm2-tools/issues/1816
+     */
+    tpm2_tool_output("persistent-handle: 0x%x\n", ctx.persist_handle);
+
+    bool is_evicted = (ctx.out_tr == ESYS_TR_NONE);
+    tpm2_tool_output("action: %s\n", is_evicted ? "evicted" : "persisted");
+
+    tool_rc tmp_rc = tool_rc_success;
+    if (ctx.output_arg) {
+        tmp_rc = files_save_ESYS_TR(ectx, ctx.out_tr, ctx.output_arg);
+    }
+
+    if (!is_evicted) {
+        rc = tpm2_close(ectx, &ctx.out_tr);
+    }
+
+    return (tmp_rc == tool_rc_success) ? rc : tmp_rc;
 }

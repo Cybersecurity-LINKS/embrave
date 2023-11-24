@@ -50,38 +50,6 @@ struct createek_context {
     bool find_persistent_handle;
 };
 
-/* AK context */
-struct createak_context {
-    struct {
-        const char *ctx_arg;
-        tpm2_loaded_object ek_ctx;
-        tpm2_session *session;
-        char *auth_str;
-    } ek;
-    struct {
-        struct {
-            TPM2B_SENSITIVE_CREATE in_sensitive;
-            struct {
-                const char *type;
-                const char *digest;
-                const char *sign;
-            } alg;
-        } in;
-        struct {
-            const char *ctx_file;
-            tpm2_convert_pubkey_fmt pub_fmt;
-            const char *pub_file;
-            const char *name_file;
-            const char *priv_file;
-            const char *qname_file;
-        } out;
-        char *auth_str;
-    } ak;
-    struct {
-        UINT8 f :1;
-    } flags;
-};
-
 tool_rc _create_ek(ESYS_CONTEXT *ectx);
 
 #endif

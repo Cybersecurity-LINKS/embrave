@@ -14,6 +14,9 @@
 #include "tpm2_auth_util.h"
 #include "tpm2_convert.h"
 #include "tpm2_tool.h"
+#include "tpm2_capability.h"
+
+#define MAX_SESSIONS 3
 
 #define ATTRS  \
     TPMA_OBJECT_RESTRICTED|TPMA_OBJECT_USERWITHAUTH| \
@@ -82,6 +85,7 @@ static const TPM2B_DIGEST policy_c_sm3_256 = {
         0xe1, 0x1d }
 };
 
+/* AK context */
 struct createak_context {
     struct {
         const char *ctx_arg;
@@ -113,6 +117,40 @@ struct createak_context {
     } flags;
 };
 
+struct tpm_evictcontrol_ctx {
+    /*
+     * Inputs
+     */
+    struct {
+        const char *ctx_path;
+        const char *auth_str;
+        tpm2_loaded_object object;
+    } auth_hierarchy;
+
+    struct {
+        char *ctx_path;
+        tpm2_loaded_object object;
+    } to_persist_key;
+
+    TPMI_DH_PERSISTENT persist_handle;
+    bool is_persistent_handle_specified;
+
+    /*
+     * Outputs
+     */
+    const char *output_arg;
+    ESYS_TR out_tr;
+
+    /*
+     * Parameter hashes
+     */
+    const char *cp_hash_path;
+    TPM2B_DIGEST cp_hash;
+    bool is_command_dispatch;
+    TPMI_ALG_HASH parameter_hash_algorithm;
+};
+
 tool_rc _create_ak(ESYS_CONTEXT *ectx);
+tool_rc _evictcontrol(ESYS_CONTEXT *ectx);
 
 #endif

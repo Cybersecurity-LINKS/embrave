@@ -98,10 +98,10 @@ static const alg_map *lookup_alg_map(const char *alg) {
 tool_rc init_ek_public(const char *key_alg, TPM2B_PUBLIC *public) {
     const alg_map *m = lookup_alg_map(key_alg);
 
-    if (!m) {
+    /* if (!m) {
         LOG_ERR("Invalid key algorithm, got \"%s\"", key_alg);
         return tool_rc_unsupported;
-    }
+    } */
 
     tool_rc rc = tpm2_alg_util_public_init(m->alg, m->namealg, NULL, NULL,
                                            m->attrs, public);
@@ -320,10 +320,10 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
        &ctx.auth_ek.object.session,
     };
 
-    if (ctx.flags.f && !ctx.out_file_path) {
+    /* if (ctx.flags.f && !ctx.out_file_path) {
         LOG_ERR("Please specify an output file name when specifying a format");
         return tool_rc_option_error;
-    }
+    } */
 
     /* if (!ctx.auth_ek.ctx_path) {
         LOG_ERR("Expected option -c");
@@ -331,24 +331,24 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
     } */
 
     bool ret;
-    if (!strcmp(ctx.auth_ek.ctx_path, "-")) {
-        /* If user passes a handle of '-' we try and find a vacant slot for
-         * to use and tell them what it is.
-         */
-        rc = tpm2_capability_find_vacant_persistent_handle(ectx,
-                false, &ctx.auth_ek.object.handle);
-        if (rc != tool_rc_success) {
-            LOG_ERR("handle/-H passed with a value '-' but unable to find a"
-                    " vacant persistent handle!");
-            goto out;
-        }
-        tpm2_tool_output("persistent-handle: 0x%x\n", ctx.auth_ek.object.handle);
-    } else {
+    //if (!strcmp(ctx.auth_ek.ctx_path, "-")) {
+    //    /* If user passes a handle of '-' we try and find a vacant slot for
+    //     * to use and tell them what it is.
+    //     */
+    //    rc = tpm2_capability_find_vacant_persistent_handle(ectx,
+    //            false, &ctx.auth_ek.object.handle);
+    //    if (rc != tool_rc_success) {
+    //        LOG_ERR("handle/-H passed with a value '-' but unable to find a"
+    //                " vacant persistent handle!");
+    //        goto out;
+    //    }
+    //    tpm2_tool_output("persistent-handle: 0x%x\n", ctx.auth_ek.object.handle);
+    //} else {
         /* best attempt to convert what they have us to a handle, if it's not
          * a handle then we assume its a path to a context file */
         ret = tpm2_util_string_to_uint32(ctx.auth_ek.ctx_path, &ctx.auth_ek.object.handle);
         UNUSED(ret);
-    }
+    //}
 
     rc = tpm2_util_object_load_auth(ectx, "owner",
         ctx.auth_owner_hierarchy.auth_str, &ctx.auth_owner_hierarchy.object,
@@ -402,7 +402,7 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
         return rc;
     }
 
-    if (ctx.auth_ek.object.handle) {
+    //if (ctx.auth_ek.object.handle) {
 
         rc = tpm2_ctx_mgmt_evictcontrol(ectx, ESYS_TR_RH_OWNER,
                 ctx.auth_owner_hierarchy.object.session, ctx.objdata.out.handle,
@@ -416,23 +416,23 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
         if (rc != tool_rc_success) {
             return rc;
         }
-    } else {
-        /* If it wasn't persistent, save a context for future tool interactions */
-        tool_rc rc = files_save_tpm_context_to_path(ectx,
-                ctx.objdata.out.handle, ctx.auth_ek.ctx_path);
-        if (rc != tool_rc_success) {
-            LOG_ERR("Error saving tpm context for handle");
-            return rc;
-        }
-    }
+    //} else {
+    //    /* If it wasn't persistent, save a context for future tool interactions */
+    //    tool_rc rc = files_save_tpm_context_to_path(ectx,
+    //            ctx.objdata.out.handle, ctx.auth_ek.ctx_path);
+    //    if (rc != tool_rc_success) {
+    //        LOG_ERR("Error saving tpm context for handle");
+    //        return rc;
+    //    }
+    //}
 
-    if (ctx.out_file_path) {
-        bool ok = tpm2_convert_pubkey_save(ctx.objdata.out.public, ctx.format,
-                ctx.out_file_path);
-        if (!ok) {
-            return tool_rc_general_error;
-        }
-    }
+    //if (ctx.out_file_path) {
+    //    bool ok = tpm2_convert_pubkey_save(ctx.objdata.out.public, ctx.format,
+    //            ctx.out_file_path);
+    //    if (!ok) {
+    //        return tool_rc_general_error;
+    //    }
+    //}
 
     rc = tool_rc_success;
 
