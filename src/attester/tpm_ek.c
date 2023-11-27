@@ -288,7 +288,7 @@ tool_rc create_ek_handle(ESYS_CONTEXT *ectx, struct createek_context *ctx) {
     return tool_rc_success;
 }
 
-tool_rc _create_ek(ESYS_CONTEXT *ectx){
+tool_rc _create_ek(ESYS_CONTEXT *ectx, const char* algo){
 
     struct createek_context ctx = {
         .auth_ek = {
@@ -305,6 +305,9 @@ tool_rc _create_ek(ESYS_CONTEXT *ectx){
         .flags = { 0 },
         .find_persistent_handle = false
     };
+
+    if(!strcmp(algo, "ecc"))
+        ctx.key_alg = algo;
 
     size_t i;
     tool_rc rc = tool_rc_general_error;

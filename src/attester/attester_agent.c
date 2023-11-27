@@ -50,35 +50,39 @@ int attester_init(struct attester_conf* conf) {
 
   /* check certificate algo for saved ek certificates */
   unsigned char rc = check_ek_cert_algo(esys_context);
+  char *algo = NULL;
   switch (rc)
   {
   case RSA_CHECK:
-    printf("RSA certificate found in tpm nv ram\n");
+    algo = "rsa";
+    fprintf(stdout, "RSA certificate found in tpm nv ram\n");
     break;
   
   case ECC_CHECK:
-    printf("ECC certificate found in tpm nv ram\n");
+    algo = "ecc";
+    fprintf(stdout, "ECC certificate found in tpm nv ram\n");
     break;
 
   case ECC_AND_RSA_CHECK:
-    printf("ECC and RSA certificates found in tpm nv ram\n");
+    algo = "ecc";
+    fprintf(stdout, "ECC and RSA certificates found in tpm nv ram\n");
     break;
 
   case NO_CERT_CHECK:
-    printf("No certificate found in tpm nv ram\n");
+    fprintf(stdout, "No certificate found in tpm nv ram\n");
     break;
 
   case ERR_CHECK:
-    printf("Error retriving certificates from tpm nv ram\n");
+    fprintf(stderr, "ERROR: Error retriving certificates from tpm nv ram\n");
     break;
 
   default:
-    printf("Unknown returned code\n");
+    fprintf(stdout, "Unknown returned code\n");
     break;
   }
 
   /* tpm_createek */
-  _create_ek(esys_context);
+  _create_ek(esys_context, algo);
 
   /* tpm_createak */
   _create_ak(esys_context);
