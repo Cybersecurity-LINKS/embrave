@@ -13,6 +13,7 @@
 #include "attester_agent.h"
 #include "tpm_ek.h"
 #include "tpm_ak.h"
+#include "ek_cert.h"
 
 //static uint32_t ima_byte_sent = 0;
 
@@ -47,12 +48,44 @@ int attester_init(struct attester_conf* conf) {
   memcpy((void *) ek_handle, (void *) "0x81000003", HANDLE_SIZE);
   memcpy((void *) ak_handle, (void *) "0x81000004", HANDLE_SIZE);
 
+  /* check certificate algo for saved ek certificates */
+  unsigned char rc = check_ek_cert_algo(esys_context);
+  switch (rc)
+  {
+  case RSA_CHECK:
+    printf("RSA certificate found in tpm nv ram\n");
+    break;
+  
+  case ECC_CHECK:
+    printf("ECC certificate found in tpm nv ram\n");
+    break;
+
+  case ECC_AND_RSA_CHECK:
+    printf("ECC and RSA certificates found in tpm nv ram\n");
+    break;
+
+  case NO_CERT_CHECK:
+    printf("No certificate found in tpm nv ram\n");
+    break;
+
+  case ERR_CHECK:
+    printf("Error retriving certificates from tpm nv ram\n");
+    break;
+
+  default:
+    printf("Unknown returned code\n");
+    break;
+  }
+
   /* tpm_createek */
   _create_ek(esys_context);
 
   /* tpm_createak */
   _create_ak(esys_context);
   _evictcontrol(esys_context);
+
+  /* tpm_getekcertificate */
+  get_ek_certificates(esys_context);
 
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");

@@ -1,43 +1,44 @@
 #include "ek_cert.h"
 
-    #define EK_SERVER_INTEL "https://ekop.intel.com/ekcertservice/"
-    #define EK_SERVER_AMD "https://ftpm.amd.com/pki/aia/"
+#define EK_SERVER_INTEL "https://ekop.intel.com/ekcertservice/"
+#define EK_SERVER_AMD "https://ftpm.amd.com/pki/aia/"
 
-    static char *base64_decode(char **split, unsigned int cert_length) ;
-    static tool_rc process_input(ESYS_CONTEXT *ectx);
-    static tool_rc get_ek_certificates(ESYS_CONTEXT *ectx);
+static char *base64_decode(char **split, unsigned int cert_length) ;
 
-    static tpm_getekcertificate_ctx ctx = {
-        .is_tpm2_device_active = true,
-        .is_cert_on_nv = true,
-        .cert_count = 0,
-        .encoding = ENC_AUTO,
-       // .ec_cert_path_1 = "/etc/tc/ek.pub.pem",
-    };
+static tpm_getekcertificate_ctx ctx = {
+    .is_tpm2_device_active = true,
+    .is_cert_on_nv = true,
+    .cert_count = 0,
+    .encoding = ENC_AUTO,
+    .ec_cert_path_1 = "ek.cert.pem",
+    .ec_cert_path_2 = "ek.cert.pem.2"
+};
 
-    void free_ctx(void){
+tool_rc free_ctx(void){
 
-        if (ctx.ec_cert_file_handle_1) {
-            fclose(ctx.ec_cert_file_handle_1);
-        }
-
-        if (ctx.rsa_cert_buffer) {
-            free(ctx.rsa_cert_buffer);
-        }
-
-        if (ctx.ecc_cert_buffer) {
-            free(ctx.ecc_cert_buffer);
-        }
-
-        if (ctx.out_public) {
-            free(ctx.out_public);
-        }
-
+    if (ctx.ec_cert_file_handle_1) {
+        fclose(ctx.ec_cert_file_handle_1);
     }
+
+    if (ctx.ec_cert_file_handle_2) {
+        fclose(ctx.ec_cert_file_handle_2);
+    }
+
+    if (ctx.rsa_cert_buffer) {
+        free(ctx.rsa_cert_buffer);
+    }
+
+    if (ctx.ecc_cert_buffer) {
+        free(ctx.ecc_cert_buffer);
+    }
+
+    return tool_rc_success;
+}
 
 #define PEM_BEGIN_CERT_LINE "\n-----BEGIN CERTIFICATE-----\n"
 #define PEM_END_CERT_LINE "\n-----END CERTIFICATE-----\n"
-bool save_cert(void) {
+
+tool_rc save_cert(void) {
 
     /*
      * Check if the cert is from INTC based on certificated data containing
@@ -108,44 +109,43 @@ bool save_cert(void) {
         }
     }
 
-
-
     return tool_rc_success;
 }
 
-    bool retrieve_ek_cert(ESYS_CONTEXT *ectx, char * ek_cert_path){
-        tool_rc rc ;
+/* bool retrieve_ek_cert(ESYS_CONTEXT *ectx, char * ek_cert_path){
+    tool_rc rc ;
 
-        if(!ek_cert_path){
-            printf("Error no path\n");
-            return -1;
-        }
-        //intel??
+    if(!ek_cert_path){
+        printf("Error no path\n");
+        return -1;
+    }
+    //intel??
 
-        process_input(ectx);
+    process_input(ectx);
 
-        ctx.ec_cert_file_handle_1 = fopen(ek_cert_path, "wb");
-        if (!ctx.ec_cert_file_handle_1) {
-            printf("Could not open file for writing: \"%s\"", ek_cert_path);
-            return -1;
-        }
-
-        rc = get_ek_certificates(ectx);
-        if (rc != tool_rc_success) {
-            return rc;
-        }
-
-        free_ctx();
-
-        return true;
-
+    ctx.ec_cert_file_handle_1 = fopen(ek_cert_path, "wb");
+    if (!ctx.ec_cert_file_handle_1) {
+        printf("Could not open file for writing: \"%s\"", ek_cert_path);
+        return -1;
     }
 
-    static char *get_ek_server_address(void) {
+    rc = get_ek_certificates(ectx);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
+
+    free_ctx();
+
+    return true;
+
+} */
+
+char *get_ek_server_address(void) {
     if (ctx.ek_server_addr) // set by CLI
     {
         return ctx.ek_server_addr;
     }
+
     switch (ctx.manufacturer) {
         case VENDOR_INTEL:
             return EK_SERVER_INTEL;
@@ -159,7 +159,7 @@ bool save_cert(void) {
 
 #define AMD_EK_URI_LEN 16 // AMD EK takes first 16 hex chars of hash
 
-static unsigned char *hash_ek_public(void) {
+unsigned char *hash_ek_public(void) {
 
     unsigned char *hash = (unsigned char*) malloc(SHA256_DIGEST_LENGTH);
     if (!hash) {
@@ -319,7 +319,7 @@ evperr:
     return NULL;
 }
 
-static char *base64_encode(const unsigned char* buffer)
+char *base64_encode(const unsigned char* buffer)
 {
     BIO *bio, *b64;
     BUF_MEM *buffer_pointer;
@@ -374,7 +374,7 @@ static char *base64_encode(const unsigned char* buffer)
 
 #define NULL_TERM_LEN 1 // '\0'
 
-static char *encode_ek_public_amd(void) {
+char *encode_ek_public_amd(void) {
     unsigned char *hash = hash_ek_public();
     if (!hash) {
         LOG_ERR("EK hash is null");
@@ -389,7 +389,7 @@ static char *encode_ek_public_amd(void) {
     return hash_str;
 }
 
-static char *encode_ek_public_intel(void) {
+char *encode_ek_public_intel(void) {
     unsigned char *hash = hash_ek_public();
     char *b64 = base64_encode(hash);
     free(hash);
@@ -399,7 +399,7 @@ static char *encode_ek_public_intel(void) {
     return b64;
 }
 
-static char *encode_ek_public(void) {
+char *encode_ek_public(void) {
     if (ctx.encoding == ENC_AMD) {
         return encode_ek_public_amd();
     } else {
@@ -410,7 +410,7 @@ static char *encode_ek_public(void) {
  * As only one cert is downloaded at a time, we can simply use
  * rsa_cert_buffer for either RSA EK cert or ECC EK cert.
  */
-static size_t writecallback(char *contents, size_t size, size_t nitems,
+size_t writecallback(char *contents, size_t size, size_t nitems,
     void *userdata) {
     UNUSED(userdata);
     const size_t chunk_size = size * nitems;
@@ -436,7 +436,7 @@ static size_t writecallback(char *contents, size_t size, size_t nitems,
     return chunk_size;
 }
 
-static bool retrieve_web_endorsement_certificate(char *uri) {
+bool retrieve_web_endorsement_certificate(char *uri) {
 
     #define PATH_JOIN_CHAR_LEN 1            // '/'
     size_t len = strlen(ctx.ek_server_addr) + strlen(uri) + NULL_TERM_LEN +
@@ -549,7 +549,7 @@ out_memory:
     return ret;
 }
 
-static bool get_web_ek_certificate(void) {
+bool get_web_ek_certificate(void) {
 
     if (ctx.SSL_NO_VERIFY) {
         LOG_WARN("TLS communication with the said TPM manufacturer server setup"
@@ -647,7 +647,7 @@ get_tpm_properties_out:
     return rc;
 }
 
-static tool_rc nv_read(ESYS_CONTEXT *ectx, TPMI_RH_NV_INDEX nv_index) {
+tool_rc nv_read(ESYS_CONTEXT *ectx, TPMI_RH_NV_INDEX nv_index) {
 
     /*
      * Typical NV Index holding EK certificate has an empty auth
@@ -695,7 +695,7 @@ nv_read_out:
     return rc;
 }
 
-static tool_rc get_nv_ek_certificate(ESYS_CONTEXT *ectx) {
+tool_rc get_nv_ek_certificate(ESYS_CONTEXT *ectx) {
 
     if (!ctx.is_cert_on_nv) {
         LOG_ERR("TCG specified location for EK certs aren't defined.");
@@ -736,7 +736,7 @@ static tool_rc get_nv_ek_certificate(ESYS_CONTEXT *ectx) {
     return rc;
 }
 
-static tool_rc print_intel_ek_certificate_warning(void) {
+tool_rc print_intel_ek_certificate_warning(void) {
 
     if (ctx.manufacturer == VENDOR_INTEL &&
     ctx.is_tpmgeneratedeps && !ctx.is_cert_on_nv) {
@@ -752,41 +752,48 @@ static tool_rc print_intel_ek_certificate_warning(void) {
     return tool_rc_success;
 }
 
-static tool_rc get_ek_certificates(ESYS_CONTEXT *ectx) {
+tool_rc get_ek_certificates(ESYS_CONTEXT *ectx) {
 
-    tool_rc rc = tool_rc_success;
-    if (ctx.is_cert_on_nv) {
-        rc = get_nv_ek_certificate(ectx);
-        if (rc == tool_rc_success) {
-            return rc;
-        } else {
-            LOG_WARN("EK certificate not found on NV");
-            ctx.is_cert_on_nv = false;
-        }
-    }
 
-    /*
-     * Following is everything applicable to ctx.is_cert_on_nv = false.
-     */
-    if (!ctx.ek_path) {
+    if (!ctx.ek_path && !ctx.is_cert_on_nv) {
         LOG_ERR("Must specify the EK public key path");
         return tool_rc_option_error;
     }
 
-    if (ctx.cert_count > 1) {
-        LOG_ERR("Specify one output path for EK cert file per EK public key");
+    if (!ctx.ek_server_addr && !ctx.is_cert_on_nv) {
+        LOG_ERR("Must specify a valid remote server url!");
         return tool_rc_option_error;
     }
 
-    bool retval = get_web_ek_certificate();
-    if (!retval) {
-        return tool_rc_general_error;
+    tool_rc rc = tool_rc_success;
+    if (ctx.is_tpm2_device_active) {
+        rc = get_tpm_properties(ectx);
+        if (rc != tool_rc_success) {
+            LOG_ERR("Could not load TPM properties");
+            return rc;
+        }
     }
 
-    return tool_rc_success;
-}
-
-static tool_rc process_input(ESYS_CONTEXT *ectx) {
+    /* read ecc certificate if present */
+    if (ctx.ec_cert_path_2 && ctx.is_ecc_ek_cert_nv_location_defined) {
+        ctx.ec_cert_file_handle_2 = fopen(ctx.ec_cert_path_2, "wb");
+        if (!ctx.ec_cert_file_handle_2) {
+            LOG_ERR("Could not open file for writing: \"%s\"",
+                ctx.ec_cert_path_2);
+            return tool_rc_general_error;
+        }
+    }
+    else {
+        /* read rsa certificate if the ecc one is not present */
+        if (ctx.ec_cert_path_1) {
+            ctx.ec_cert_file_handle_1 = fopen(ctx.ec_cert_path_1, "wb");
+            if (!ctx.ec_cert_file_handle_1) {
+                LOG_ERR("Could not open file for writing: \"%s\"",
+                    ctx.ec_cert_path_1);
+                return tool_rc_general_error;
+            }
+        }
+    }
 
     if (ctx.ek_path) {
         ctx.out_public = malloc(sizeof(*ctx.out_public));
@@ -798,18 +805,56 @@ static tool_rc process_input(ESYS_CONTEXT *ectx) {
         }
     }
 
-    tool_rc rc = tool_rc_success;
-    if (ctx.is_tpm2_device_active) {
-        rc = get_tpm_properties(ectx);
+    rc = print_intel_ek_certificate_warning();
+    if (rc != tool_rc_success) {
+        LOG_ERR("error in print_intel_ek_warning");
+        return rc;
+    }
+
+    if (ctx.is_cert_on_nv) {
+        rc = get_nv_ek_certificate(ectx);
         if (rc != tool_rc_success) {
-            return rc;
+            LOG_WARN("EK certificate not found on NV");
+            ctx.is_cert_on_nv = false;
         }
     }
 
-    return print_intel_ek_certificate_warning();
+    /*
+     * Following is everything applicable to ctx.is_cert_on_nv = false.
+     */
+    if(!ctx.is_cert_on_nv){
+        if (!ctx.ek_path) {
+            LOG_ERR("Must specify the EK public key path");
+            return tool_rc_option_error;
+        }
+
+        if (ctx.cert_count > 1) {
+            LOG_ERR("Specify one output path for EK cert file per EK public key");
+            return tool_rc_option_error;
+        }
+
+        bool retval = get_web_ek_certificate();
+        if (!retval) {
+            return tool_rc_general_error;
+        }
+    }
+
+    rc = save_cert();
+    if(rc != tool_rc_success){
+        LOG_ERR("Could not save certificates on file");
+        return tool_rc_general_error;
+    }
+
+    rc = free_ctx();
+    if(rc != tool_rc_success){
+        LOG_ERR("Could not correctly free the context");
+        return tool_rc_general_error;
+    }
+
+    return tool_rc_success;
 }
 
-static char *base64_decode(char **split, unsigned int cert_length) {
+char *base64_decode(char **split, unsigned int cert_length) {
 
     *split += strlen("certficate\" : ");
     char *final_string = NULL;
@@ -836,4 +881,49 @@ static char *base64_decode(char **split, unsigned int cert_length) {
     }
 
     return final_string;
+}
+
+unsigned char check_ek_cert_algo(ESYS_CONTEXT *ectx){
+    TPMI_YES_NO more_data;
+    TPMS_CAPABILITY_DATA *capability_data;
+    tool_rc rc = tool_rc_success;
+    unsigned char ret = ERR_CHECK;
+
+    rc = tpm2_getcap(ectx, TPM2_CAP_HANDLES,
+        tpm2_util_hton_32(TPM2_HT_NV_INDEX), TPM2_PT_NV_INDEX_MAX, NULL,
+        &capability_data);
+    if (rc != tool_rc_success) {
+        LOG_ERR("Failed to read capability data for NV indices.");
+        goto func_out;
+    }
+
+    if (capability_data->data.handles.count == 0) {
+        ret = NO_CERT_CHECK;
+        goto func_out;
+    }
+
+    UINT32 i;
+    for (i = 0; i < capability_data->data.handles.count; i++) {
+        TPMI_RH_NV_INDEX index = capability_data->data.handles.handle[i];
+        if (index == RSA_EK_CERT_NV_INDEX) {
+            if(ret == ECC_CHECK){
+                ret = ECC_AND_RSA_CHECK;
+            }
+            else {
+                ret = RSA_CHECK;
+            }
+        }
+        if (index == ECC_EK_CERT_NV_INDEX) {
+            if(ret == RSA_CHECK){
+                ret = ECC_AND_RSA_CHECK;
+            }
+            else {
+                ret = ECC_CHECK;
+            }
+        }
+    }
+
+func_out:
+    free(capability_data);
+    return ret;
 }

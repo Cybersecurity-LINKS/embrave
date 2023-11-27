@@ -68,10 +68,10 @@ struct tpm_getekcertificate_ctx {
     bool is_tpmgeneratedeps;
     // Certficate data handling
     uint8_t cert_count;
-    //char *ec_cert_path_1;
+    char *ec_cert_path_1;
     FILE *ec_cert_file_handle_1;
-    //char *ec_cert_path_2;
-    //FILE *ec_cert_file_handle_2;
+    char *ec_cert_path_2;
+    FILE *ec_cert_file_handle_2;
     unsigned char *rsa_cert_buffer;
     size_t rsa_cert_buffer_size;
     unsigned char *ecc_cert_buffer;
@@ -93,6 +93,13 @@ enum ek_nv_index {
     ECC_EK_CERT_NV_INDEX = 0x01C0000A
 };
 
-bool retrieve_ek_cert(ESYS_CONTEXT *ectx, char * ek_cert_path);
+#define ECC_CHECK 0
+#define RSA_CHECK 1
+#define ECC_AND_RSA_CHECK 2
+#define NO_CERT_CHECK 3
+#define ERR_CHECK 4
+
+tool_rc get_ek_certificates(ESYS_CONTEXT *ectx);
+unsigned char check_ek_cert_algo(ESYS_CONTEXT *ectx);
 
 #endif
