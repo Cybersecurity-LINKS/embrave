@@ -30,7 +30,7 @@ tool_rc init_ak_public(TPMI_ALG_HASH name_alg, TPM2B_PUBLIC *public, struct crea
     return tpm2_alg_util_public_init(alg, name_halg, NULL, NULL, ATTRS, public);
 }
 
-tool_rc _create_ak(ESYS_CONTEXT *ectx){
+tool_rc attester_create_ak(ESYS_CONTEXT *ectx){
 
     struct createak_context ctx = {
         .ek = {
@@ -338,7 +338,7 @@ out_session:
 
 }
 
-tool_rc _evictcontrol(ESYS_CONTEXT *ectx){
+tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx){
 
     struct tpm_evictcontrol_ctx ctx = {
         .to_persist_key.ctx_path = "ak.ctx",

@@ -50,6 +50,6 @@ struct createek_context {
     bool find_persistent_handle;
 };
 
-tool_rc _create_ek(ESYS_CONTEXT *ectx, const char *algo);
+tool_rc attester_create_ek(ESYS_CONTEXT *ectx, const char *algo);
 
 #endif

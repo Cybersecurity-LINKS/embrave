@@ -82,11 +82,11 @@ int attester_init(struct attester_conf* conf) {
   }
 
   /* tpm_createek */
-  _create_ek(esys_context, algo);
+  attester_create_ek(esys_context, algo);
 
   /* tpm_createak */
-  _create_ak(esys_context);
-  _evictcontrol(esys_context);
+  attester_create_ak(esys_context);
+  attester_evictcontrol(esys_context);
 
   /* tpm_getekcertificate */
   get_ek_certificates(esys_context);

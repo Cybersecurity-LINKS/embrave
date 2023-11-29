@@ -150,7 +150,7 @@ struct tpm_evictcontrol_ctx {
     TPMI_ALG_HASH parameter_hash_algorithm;
 };
 
-tool_rc _create_ak(ESYS_CONTEXT *ectx);
-tool_rc _evictcontrol(ESYS_CONTEXT *ectx);
+tool_rc attester_create_ak(ESYS_CONTEXT *ectx);
+tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx);
 
 #endif

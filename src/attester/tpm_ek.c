@@ -288,7 +288,7 @@ tool_rc create_ek_handle(ESYS_CONTEXT *ectx, struct createek_context *ctx) {
     return tool_rc_success;
 }
 
-tool_rc _create_ek(ESYS_CONTEXT *ectx, const char* algo){
+tool_rc attester_create_ek(ESYS_CONTEXT *ectx, const char* algo){
 
     struct createek_context ctx = {
         .auth_ek = {
