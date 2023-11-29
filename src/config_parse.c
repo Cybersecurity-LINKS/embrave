@@ -5,6 +5,7 @@
 
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
+char* ca_params[CA_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -28,10 +29,22 @@ enum verifier_keys_config verifier_parse_key(char* key){
     return (enum verifier_keys_config) i;
 }
 
+enum ca_keys_config ca_parse_key(char* key){
+    int i = 0;
+
+    for(i=0; i<CA_NUM_CONFIG_PARAMS; i++){
+        if(!strcmp(key, ca_params[i]))
+            return (enum ca_keys_config) i;
+    }
+
+    return (enum ca_keys_config) i;
+}
+
 /*
 user: 
         - 0: attester
         - 1: verifier
+        - 2: ca
 */
 uint16_t read_config(char user, void* config_struct){
     FILE* fd;
@@ -39,8 +52,9 @@ uint16_t read_config(char user, void* config_struct){
     char line[MAX_LINE_LENGTH + 1];
     struct attester_conf* attester_config = NULL;
     struct verifier_conf* verifier_config = NULL;
+    struct ca_conf* ca_config = NULL;
 
-    if(user != 0 && user != 1){
+    if(user != 0 && user != 1 && user != 2){
         fprintf(stderr, "ERROR: unknown user\n");
         errno = 5;
         return (uint16_t) -1;
@@ -59,11 +73,23 @@ uint16_t read_config(char user, void* config_struct){
         return (uint16_t) -1;
     }
 
-    if(user == 0){
+    /* select which component needs the configuration */
+    switch (user)
+    {
+    case 0:
         attester_config = (struct attester_conf*) config_struct;
-    }
-    if(user == 1){
+        break;
+
+    case 1:
         verifier_config = (struct verifier_conf*) config_struct;
+        break;
+
+    case 2:
+        ca_config = (struct ca_conf*) config_struct;
+        break;
+
+    default:
+        break;
     }
 
     while(fgets(line, MAX_LINE_LENGTH, fd)){
@@ -176,6 +202,60 @@ uint16_t read_config(char user, void* config_struct){
                             break;
 
                         case VERIFIER_NUM_CONFIG_PARAMS:
+                            //unknown param
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            /* CA section management */
+            if(user == 2 && !strcmp(section, "CA")){
+                while(fgets(line, MAX_LINE_LENGTH, fd)){
+                    /* comment or new line found */
+                    if(line[0] == '#' || line[0] == '\n')
+                        continue;
+
+                    if(line[0] == '['){
+                        break;
+                    }
+
+                    sscanf(line, "%s = %s", key, value);
+
+                    enum ca_keys_config param = ca_parse_key(key);
+
+                    switch(param){
+                        case CA_IP:
+                            strcpy(ca_config->ip, value);
+                            break;
+
+                        case CA_PORT:
+                            ca_config->port = (uint32_t) atoi(value);
+                            break;
+
+                        case CA_TLS_PORT:
+                            ca_config->tls_port = (uint32_t) atoi(value);
+                            break;
+
+                        case CA_TLS_CERT:
+                            strcpy(ca_config->tls_cert, value);
+                            break;
+
+                        case CA_TLS_KEY:
+                            strcpy(ca_config->tls_key, value);
+                            break;
+
+                        case CA_TLS_CERT_CA:
+                            strcpy(ca_config->tls_cert_ca, value);
+                            break;
+
+                        case CA_DB:
+                            strcpy(ca_config->db, value);
+                            break;
+
+                        case CA_NUM_CONFIG_PARAMS:
                             //unknown param
                             break;
 
