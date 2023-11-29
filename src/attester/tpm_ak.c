@@ -40,7 +40,7 @@ tool_rc _create_ak(ESYS_CONTEXT *ectx){
             .in = {
                 .alg = {
                     .type = "ecc", // Elliptical Curve, defaults to ecc256 // "rsa2048",
-                    .digest = "sha256", // possible addition of checking is sha3 is supported by the installed TPM
+                    .digest = "sha256", // possible addition of checking if sha3 is supported by the installed TPM
                     .sign = "null" 
                 },
             },

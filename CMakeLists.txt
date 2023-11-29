@@ -5,8 +5,10 @@ set(tpm2-tools_srcdir ${CMAKE_SOURCE_DIR}/lib/tpm2-tools)
 set(patchdir ${CMAKE_SOURCE_DIR}/patches)
 set(agent_srcdir ${CMAKE_SOURCE_DIR}/src/attester)
 set(verifier_srcdir ${CMAKE_SOURCE_DIR}/src/verifier)
+set(ca_srcdir ${CMAKE_SOURCE_DIR}/src/ca)
 set(agent_wrkdir ${CMAKE_BINARY_DIR}/agent.build)
 set(verifier_wrkdir ${CMAKE_BINARY_DIR}/verifier.build)
+set(ca_wrkdir ${CMAKE_BINARY_DIR}/ca.build)
 
 ###############################################################################
 ## MACROS
@@ -84,7 +86,7 @@ target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss
 add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
-file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/tools/tpm2_tool.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 
@@ -97,3 +99,19 @@ target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-
 #    COMMAND $(MAKE) -C ${verifier_srcdir} O=${verifier_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
 #    COMMENT "Building verifier"
 #)
+
+###############################################################################
+## CA
+###############################################################################
+
+add_custom_command(OUTPUT ${ca_wrkdir} PRE_BUILD COMMAND mkdir -p ${ca_wrkdir})
+
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ca_wrkdir})
+file(GLOB_RECURSE sources sources src/config_parse.c src/ca/*.c lib/sqlite3/* lib/mongoose/*)
+include_directories("include" "lib/mongoose" "lib/sqlite3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+
+add_executable(ca ${sources})
+#add_dependencies(verifier patch_tpm2-tools)
+target_compile_options(ca PUBLIC -g  -Wall -fPIC)
+target_link_libraries(ca -lssl -lcrypto -pthread) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
