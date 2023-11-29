@@ -959,18 +959,26 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
     }
     printf("IMA log verification OK\n");
     
-/*     tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
-    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");  */
+
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
     //digests[i] i = pcrid mod 8 => 10 mod 8 2
+/*     printf("Compued pcrs10 OK\n");
+    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\n");
+    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");
+
+    printf("Computed pcrs10 OK\n");
+    tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\n");
+    tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n"); */
 
     //Compare PCR10 with the received one
 PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
-            || memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
+            && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
         
         printf("PCR10 calculation mismatch, PCRS10:\n");
         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
