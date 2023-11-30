@@ -154,12 +154,17 @@ paths:
         - Attester Agent
       summary: Integrity proof request from a Verifier
       parameters:
-        - in: path
+        - in: query
           name: nonce
           schema:
             type: string
           required: true
           description: Nonce for the attestation request
+        - in: query
+          name: bytes
+          schema:
+            type: integer
+          description: Bytes of the IMA log already validated
       responses:
         '200':
           description: Attester Agent send the tpm_quote and IMA log
@@ -171,6 +176,13 @@ paths:
                   tpm_quote:
                     type: string
                     description: TPM quote
+                  pcrs:
+                    type: string
+                    description: PCRs value
                   ima_log:
                     type: string
                     description: IMA log (Base64 encoded)
+              example:
+                tpm_quote: bGlas...yrreay4=
+                pcrs: bGtls...ttAA5=
+                ima_log: bFlla...ccDrB=
