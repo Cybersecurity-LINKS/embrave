@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: Lemon APIs
+  description: |-
+    List of REST APIs exposed by Lemon components.
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: apiteam@swagger.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 0.1.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+
+tags:
+  - name: Join Service
+  - name: Attester Agent
+  - name: CA
+
+####### Join Service ########
+paths:
+  /api/info:
+    get:
+      tags:
+        - Join Service
+      summary: New device request framework info
+      responses:
+        '200':
+          description: Send CA information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ca_address:
+                    type: string
+              example:
+                ca_address: 10.12.1.56:4056
+  /api/join:
+    post:
+      tags:
+        - Join Service
+      summary: New device join the framework
+      requestBody:
+        description: Send device hello
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - uuid
+                - ip
+                - port
+              properties:
+                uuid:
+                  type: string
+                  description: Attester agent uuid
+                address:
+                  type: string
+                  description: <ip>:<port> of the attester that is joining
+              example:
+                uuid: 91815714-b145-4a7d-8e4f-cfff1a76ff39
+                address: 192.168.1.34:5090
+      responses:
+        '200':
+          description: Send CA information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+              example:
+                address: 10.12.1.56:4056
+
+####### CA ########
+  /api/certificate_request:
+    post:
+      tags:
+        - CA
+      summary: New device requests AK certificate
+      requestBody:
+        description: Send device AK csr and EK certificate
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ak_csr
+                - ek_cert
+              properties:
+                ak_csr:
+                  type: string
+                  description: Attestation Key (AK) certificate request
+                ek_cert:
+                  type: string
+                  description: Endorsemnt Key (EK) certificate
+              example:
+                ak_csr: MIIE3DCC ... AYxezbEF
+                ek_cert: MIIB6jCC ... Jq4lLH5I=
+      responses:
+        '200':
+          description: Send TPM challenge (tpm2_makecredential) for tpm2_activatecredential
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    type: string
+                    description: Base64 blob
+              example:
+                challenge: bGl...yay4=
+  /api/nonce:
+    post:
+      tags:
+        - CA
+      summary: New device send back the computed nonce to obtain the corresponding LAK certificate
+      requestBody:
+        description: Send computed nonce
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nonce
+              properties:
+                nonce:
+                  type: string
+                  description: Nonce computed (Base64 encoded)
+              example:
+                nonce: MIIB ... JLH5I=
+      responses:
+        '200':
+          description: Send to the Attester Agent the issued LAK certificate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ak_cert:
+                    type: string
+                    description: LAK certificate
+              example:
+                ak_cert: bGl...yay4=
+
+####### Join Service ########
+  /api/quote:
+    get:
+      tags:
+        - Attester Agent
+      summary: Integrity proof request from a Verifier
+      parameters:
+        - in: path
+          name: nonce
+          schema:
+            type: string
+          required: true
+          description: Nonce for the attestation request
+      responses:
+        '200':
+          description: Attester Agent send the tpm_quote and IMA log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tpm_quote:
+                    type: string
+                    description: TPM quote
+                  ima_log:
+                    type: string
+                    description: IMA log (Base64 encoded)
