@@ -130,15 +130,15 @@ int load_challenge_request(struct mg_connection *c,struct mg_iobuf *r, tpm_chall
   //chl = (tpm_challenge *) r->buf;
   memcpy(chl, r->buf, sizeof(tpm_challenge));
   mg_iobuf_del(r,0,sizeof(tpm_challenge));
-  if(chl == NULL && chl->nonce_blob.buffer == NULL && chl->nonce_blob.size != NONCE_SIZE){
+  if(chl == NULL && chl->nonce == NULL){
     printf("Transmission challenge data error \n");
     return -1;
   }
 
-#ifdef debug
+#ifdef VERBOSE
   printf("NONCE Received:");
-  for(int i= 0; i< (int) chl->nonce_blob.size; i++)
-    printf("%02X", chl->nonce_blob.buffer[i]);
+  for(int i= 0; i< (int) NONCE_SIZE * sizeof(uint8_t); i++)
+    printf("%02X", chl->nonce);
   printf("\n");
   printf("Send all IMA LOG? %d\n", chl->send_wholeLog);
 #endif
@@ -155,7 +155,7 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challe
   mg_send(c, rpl->sig, rpl->sig_size);
 
   //Nonce
-  mg_send(c, &rpl->nonce_blob, sizeof(Nonce));
+  mg_send(c, &rpl->nonce, NONCE_SIZE * sizeof(uint8_t));
   
   //Data quoted
   mg_send(c, &rpl->quoted->size, sizeof(UINT16));
@@ -182,8 +182,8 @@ int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challe
 
 void print_sent_data(tpm_challenge_reply *rpl){
   printf("NONCE:");
-  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
-    printf("%02X", rpl->nonce_blob.buffer[i]);
+  for(int i= 0; i< (int) NONCE_SIZE * sizeof(uint8_t); i++)
+    printf("%02X", rpl->nonce[i]);
   printf("\n");
 
   TPML_PCR_SELECTION pcr_select;

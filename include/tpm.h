@@ -37,18 +37,13 @@
 
 
 typedef struct {
-    uint16_t size;
-    uint8_t buffer[NONCE_SIZE];
-} Nonce;
-
-typedef struct {
-    Nonce nonce_blob;
+    uint8_t nonce[NONCE_SIZE];
     uint8_t send_wholeLog;
     uint32_t send_from_byte;
 } tpm_challenge;
 
 typedef struct {
-    Nonce nonce_blob;
+    uint8_t nonce[NONCE_SIZE];
     UINT16 sig_size;
     BYTE *sig;
     tpm2_pcrs pcrs;
@@ -61,7 +56,7 @@ typedef struct {
     //int dsc;
 } tpm_challenge_reply;
 
-int nonce_create(Nonce *nonce_blob);
+int nonce_create(uint8_t *nonce);
 int create_quote (tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx);
 void print_quoted(TPM2B_ATTEST * quoted);
 void free_data (tpm_challenge_reply *rply);

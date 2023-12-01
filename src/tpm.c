@@ -36,18 +36,18 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
 int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 
-int nonce_create(Nonce *nonce_blob)
+int nonce_create(uint8_t *nonce)
 {
-    if (!RAND_bytes(nonce_blob->buffer, NONCE_SIZE)){
+    if (!RAND_bytes(nonce, NONCE_SIZE)){
         fprintf(stderr, "ERROR: Attestor client random generation error\n");
         return -1;
     }
-
-    nonce_blob->size = NONCE_SIZE;
-/*     printf("NONCE sent:");
+#ifdef VERBOSE
+    printf("NONCE created:");
     for(int i= 0; i < NONCE_SIZE; i++)
         printf("%02X", nonce_blob->buffer[i]);
-    printf("\n"); */
+    printf("\n"); 
+#endif
     return 0;
 }
 
@@ -265,7 +265,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
 
     //Set nonce
     qualification_data.size = TPM2_SHA256_DIGEST_SIZE;
-    memcpy(qualification_data.buffer, chl->nonce_blob.buffer, qualification_data.size);
+    memcpy(qualification_data.buffer, chl->nonce, qualification_data.size);
 
     rc = pcr_get_banks(ectx, &cap_data, &algs);
     if (rc != tool_rc_success) {
@@ -322,9 +322,8 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         return -1;
     }
 
-    //Copy nonce
-    rply->nonce_blob.size = chl->nonce_blob.size;
-    memcpy(&rply->nonce_blob.buffer, &chl->nonce_blob.buffer, rply->nonce_blob.size);
+    //Copy he nonce
+    memcpy(&rply->nonce, &chl->nonce, NONCE_SIZE * sizeof(uint8_t));
 
     return 0;
 }
@@ -468,8 +467,8 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data 
     }
 
     // Verify the nonce
-    if (attest.extraData.size != rply->nonce_blob.size || 
-        memcmp(attest.extraData.buffer, rply->nonce_blob.buffer, attest.extraData.size) != 0) {
+    if (attest.extraData.size != NONCE_SIZE *sizeof(uint8_t) || 
+        memcmp(attest.extraData.buffer, rply->nonce, attest.extraData.size) != 0) {
         fprintf(stderr, "ERROR: Error validating nonce\n");
         goto err;
     }

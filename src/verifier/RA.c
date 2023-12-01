@@ -19,7 +19,7 @@ int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data)
   else
     chl->send_from_byte = 0;
   
-  return nonce_create(&(chl->nonce_blob));
+  return nonce_create(&(chl->nonce));
 }
 
 int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data)

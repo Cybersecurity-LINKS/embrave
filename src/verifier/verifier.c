@@ -427,7 +427,7 @@ int load_challenge_reply(struct mg_iobuf *r, tpm_challenge_reply *rpl){
     break;
     case 1:
       //Nonce
-      ret = try_read(r, sizeof(Nonce), &rpl->nonce_blob);
+      ret = try_read(r, NONCE_SIZE * sizeof(uint8_t), &rpl->nonce);
       if(ret == 0) last_rcv = 2;
       else return 1;
     break;
@@ -494,8 +494,8 @@ int load_challenge_reply(struct mg_iobuf *r, tpm_challenge_reply *rpl){
 void print_data(tpm_challenge_reply *rpl){
   
   printf("NONCE Received:");
-  for(int i= 0; i< (int) rpl->nonce_blob.size; i++)
-    printf("%02X", rpl->nonce_blob.buffer[i]);
+  for(int i= 0; i< (int) NONCE_SIZE * sizeof(uint8_t); i++)
+    printf("%02X", rpl->nonce[i]);
   printf("\n");
 
   TPML_PCR_SELECTION pcr_select;
