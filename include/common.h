@@ -36,6 +36,27 @@
     #define FRESH 60
 #endif
 
+/* methods */
+#define GET "GET"
+#define POST "POST"
+#define PUT "PUT"
+#define DELETE "DELETE"
+
+/* codes */
+#define OK 200
+
+/* responses */
+#define APPLICATION_JSON "Content-Type: application/json\r\n"
+
+/* APIs */
+#define API_QUOTE "/api/quote"
+
+// calculate the size of 'output' buffer required for a 'input' buffer of length x during Base64 encoding operation
+#define B64ENCODE_OUT_SAFESIZE(x) ((((x) + 3 - 1)/3) * 4 + 1) 
+
+// calculate the size of 'output' buffer required for a 'input' buffer of length x during Base64 decoding operation
+#define B64DECODE_OUT_SAFESIZE(x) (((x)*3)/4) 
+
 enum { NS_PER_SECOND = 1000000000 };
 
 typedef struct {
