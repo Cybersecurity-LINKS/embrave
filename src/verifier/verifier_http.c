@@ -383,18 +383,23 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       return;
     }
 
-    json_length = sizeof(json);
-
+    json_length = strlen(json.ptr);
+    printf("%ld\n", json_length);
     // Send request
-          
-    mg_printf(c,
-              "POST /api/quote HTTP/1.0\r\n"
+  
+     mg_printf(c,
+              "POST /api/quote HTTP/1.1\r\n"
               "Content-Type: application/json\r\n"
-              "Content-Length: %d\r\n"
-              "%s\r\n",
-              json_length
+              "Content-Length: %ld\r\n"
+              "\r\n"
+              "%s\n",
+              json_length,
+              json.ptr
               );
-    mg_send(c, &json, json_length);
+    //mg_http_upload
+    //mg_send(c, &json, json_length);
+    //printf("%s\n", json.ptr);
+    //c->is_resp = 0;
 
     //??
     //free(json);
@@ -411,10 +416,16 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
 int encode_challenge(tpm_challenge *chl, struct mg_str *json){
   char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
-
+  
   mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff);
-  char *tmp = mg_mprintf("{ %m: %s}", MG_ESC("challenge"), buff);
+
+  char *tmp = mg_mprintf("{ %m: \"%s\"}", MG_ESC("challenge"), buff);
+
   *json = mg_str(tmp);
+
+  printf("encoded challenge\n");
+  printf("%s\n", json->ptr);
+  
 
   return 0;
 
