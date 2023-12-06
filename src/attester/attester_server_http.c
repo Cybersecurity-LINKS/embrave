@@ -19,7 +19,7 @@ static struct attester_conf attester_config;
 
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl);
-int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge_reply *rpl);
+int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl);
 void print_sent_data(tpm_challenge_reply *rpl);
 /* 
 // SERVER event handler
@@ -149,14 +149,20 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
   char buff[250];
   char * tmp;
+ // struct mg_str *json = mg_str(hm->body);;
 
-  tmp = mg_json_get_str(hm->body, "tpm_challenge");
+  printf("load_challenge_request\n");
+  printf("%s\n", hm->body.ptr);
+
+  tmp = mg_json_get_str(hm->body, "$.challenge");
   if(tmp == NULL){
     printf("mg_json_get_str error \n");
     return -1;
   }
+
+  printf("%s\n", tmp);
   
-  mg_base64_decode(tmp, sizeof(tmp), buff);
+  mg_base64_decode(tmp, strlen(tmp), (char *) chl->nonce);
   if(chl == NULL && chl->nonce == NULL){
     printf("Transmission challenge data error \n");
     return -1;
@@ -172,32 +178,87 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
   return 0;
 } 
 
-int send_challenge_reply(struct mg_connection *c, struct mg_iobuf *r, tpm_challenge_reply *rpl)
+
+int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
 {
-  //Signature is dynamic memory=> cant send all structure in one time
-  //Signature size
-  mg_send(c, &rpl->sig_size, sizeof(UINT16));
+  char * byte_buff;
+  char * b64_buff;
+  size_t total_sz = 0, i = 0;
+  
+  print_sent_data(rpl);
+
+  total_sz = sizeof(UINT16) + rpl->sig_size + (NONCE_SIZE * sizeof(uint8_t)) 
+          + sizeof(UINT16) + rpl->quoted->size + sizeof(uint32_t) 
+          + sizeof(rpl->pcrs.pcr_values) + sizeof(uint32_t) 
+          + rpl->ima_log_size + sizeof(uint8_t);
+
+  printf("%d\n", total_sz );
+
+  byte_buff = malloc(total_sz);
+  if(byte_buff == NULL) return -1;
+
+  b64_buff = malloc(B64ENCODE_OUT_SAFESIZE(total_sz));
+  if(b64_buff == NULL) {
+    free(byte_buff);
+    return -1;
+  }
+  //Copy all data in the buffer
 
   //Signature
-  mg_send(c, rpl->sig, rpl->sig_size);
+  memcpy(byte_buff + i, &rpl->sig_size,  sizeof(UINT16));
+  i += sizeof(UINT16);
 
   //Nonce
-  mg_send(c, &rpl->nonce, NONCE_SIZE * sizeof(uint8_t));
-  
+  memcpy(byte_buff + i, &rpl->nonce, NONCE_SIZE * sizeof(uint8_t));
+  i += NONCE_SIZE * sizeof(uint8_t);
+
   //Data quoted
-  mg_send(c, &rpl->quoted->size, sizeof(UINT16));
-  mg_send(c, &rpl->quoted->attestationData, rpl->quoted->size);
+  memcpy(byte_buff + i, &rpl->quoted->size, sizeof(UINT16));
+  i += sizeof(UINT16);
+  memcpy(byte_buff + i, &rpl->quoted->attestationData, rpl->quoted->size);
+  i += rpl->quoted->size;
 
   //Pcr
-  mg_send(c, &rpl->pcrs.count, sizeof(uint32_t)); //size_t is different beetween cpu arch, bettere send a fixed type of int and cast it
-  mg_send(c, &rpl->pcrs.pcr_values, sizeof(rpl->pcrs.pcr_values));
+  memcpy(byte_buff + i, &rpl->pcrs.count, sizeof(uint32_t));
+  i += sizeof(uint32_t);
+  memcpy(byte_buff + i, &rpl->pcrs.pcr_values, sizeof(rpl->pcrs.pcr_values));
+  i += sizeof(rpl->pcrs.pcr_values);
 
   //IMA Log
-  mg_send(c, &rpl->ima_log_size, sizeof(uint32_t));
+  memcpy(byte_buff + i, &rpl->ima_log_size, sizeof(uint32_t));
+  i += sizeof(uint32_t);
   if(rpl->ima_log_size != 0){
-    mg_send(c, rpl->ima_log, rpl->ima_log_size);
-    mg_send(c, &rpl->wholeLog, sizeof(uint8_t));
+    memcpy(byte_buff + i, rpl->ima_log, rpl->ima_log_size);
+    i += rpl->ima_log_size;
+    memcpy(byte_buff + i, &rpl->wholeLog, sizeof(uint8_t));
+    i += sizeof(uint8_t);
   }
+  printf("sz %d %d\n", total_sz, i );
+
+
+
+
+  //memcpy buff
+
+  //encode b64
+
+  //create json
+  //char *json = mg_mprintf("{%m:%s}", MG_ESC("challenge_reply"), buff);
+
+  //send http reply OK
+  //mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s\n", json);
+  
+  //free(json);
+
+  free(byte_buff);
+  free(b64_buff);
+
+
+
+
+
+  
+
     
 #ifdef  DEBUG
   print_sent_data(rpl);
@@ -231,14 +292,37 @@ void print_sent_data(tpm_challenge_reply *rpl){
 
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-    if (ev == MG_EV_HTTP_MSG) {
-        struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        if (mg_http_match_uri(hm, API_QUOTE)) {
-            tpm_challenge chl;
-            tpm_challenge_reply rpl;
+  if (ev == MG_EV_HTTP_MSG) {
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    if (mg_http_match_uri(hm, API_QUOTE)) {
+      tpm_challenge chl;
+      tpm_challenge_reply rpl;
     
-            //load challenge data from http body size_t mg_base64_decode(const char *src, size_t n, char *dst, size_t len);
-            load_challenge_request(hm, &chl);
+      //load challenge data from http body
+      if(load_challenge_request(hm, &chl) != 0){
+        printf("Load challenge error\n");
+        c->is_closing = 1;
+        Continue = false;
+        return;
+      }
+
+      //Compute the challenge
+      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
+        printf("Explicit challenge error\n");
+        c->is_closing = 1;
+        Continue = false;
+        tpa_free(&rpl);
+        return;
+      }
+
+      //Send the challenge reply
+      if (send_challenge_reply(c, &rpl) != 0){
+        printf("Send challenge reply error\n");
+        c->is_closing = 1;
+        Continue = false;
+      }
+
+      tpa_free(&rpl);
 
 
        // double num1, num2;
@@ -252,9 +336,9 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
        // } else {
         //    mg_http_reply(c, 500, NULL, "Parameters missing\n");
         //}
-        } else {
+      } else {
         mg_http_reply(c, 500, NULL, "\n");
-        }
+      }
     }
 }
 
