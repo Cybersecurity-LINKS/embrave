@@ -114,4 +114,4 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
 add_executable(ca ${sources})
 #add_dependencies(verifier patch_tpm2-tools)
 target_compile_options(ca PUBLIC -g  -Wall -fPIC)
-target_link_libraries(ca -lssl -lcrypto -pthread) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
+target_link_libraries(ca -lssl -lcrypto -pthread -ldl) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
