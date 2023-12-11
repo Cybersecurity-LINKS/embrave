@@ -147,7 +147,6 @@ static void event_handler_tls(struct mg_connection *c, int ev, void *ev_data, vo
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
-  char buff[250];
   char * tmp;
  // struct mg_str *json = mg_str(hm->body);;
 
@@ -185,28 +184,30 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   char * b64_buff;
   size_t total_sz = 0, i = 0;
   
-  print_sent_data(rpl);
-
+  //Total size to send
   total_sz = sizeof(UINT16) + rpl->sig_size + (NONCE_SIZE * sizeof(uint8_t)) 
           + sizeof(UINT16) + rpl->quoted->size + sizeof(uint32_t) 
           + sizeof(rpl->pcrs.pcr_values) + sizeof(uint32_t) 
           + rpl->ima_log_size + sizeof(uint8_t);
 
-  printf("%d\n", total_sz );
-
+  //Allocate byte buffer
   byte_buff = malloc(total_sz);
   if(byte_buff == NULL) return -1;
 
+  //Allocate buffer for encoded b64 buffer
   b64_buff = malloc(B64ENCODE_OUT_SAFESIZE(total_sz));
   if(b64_buff == NULL) {
     free(byte_buff);
     return -1;
   }
+
   //Copy all data in the buffer
 
   //Signature
   memcpy(byte_buff + i, &rpl->sig_size,  sizeof(UINT16));
   i += sizeof(UINT16);
+  memcpy(byte_buff + i, &rpl->sig,  rpl->sig_size);
+  i += rpl->sig_size;
 
   //Nonce
   memcpy(byte_buff + i, &rpl->nonce, NONCE_SIZE * sizeof(uint8_t));
@@ -232,38 +233,21 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
     i += rpl->ima_log_size;
     memcpy(byte_buff + i, &rpl->wholeLog, sizeof(uint8_t));
     i += sizeof(uint8_t);
+    
   }
-  printf("sz %d %d\n", total_sz, i );
 
+  //Encode in b64
+  mg_base64_encode((const unsigned char *)b64_buff, total_sz, b64_buff);
 
-
-
-  //memcpy buff
-
-  //encode b64
-
-  //create json
-  //char *json = mg_mprintf("{%m:%s}", MG_ESC("challenge_reply"), buff);
-
-  //send http reply OK
-  //mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s\n", json);
+  //Send http reply OK
+  mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s\n", b64_buff);
   
-  //free(json);
-
   free(byte_buff);
   free(b64_buff);
 
-
-
-
-
-  
-
-    
 #ifdef  DEBUG
   print_sent_data(rpl);
 #endif     
-  
 
   return 0;
 }
@@ -271,7 +255,7 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
 void print_sent_data(tpm_challenge_reply *rpl){
   printf("NONCE:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
-    printf("%02X", rpl->nonce);
+    printf("%02X", rpl->nonce[i]);
   printf("\n");
 
   TPML_PCR_SELECTION pcr_select;
@@ -324,24 +308,51 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
       tpa_free(&rpl);
 
-
-       // double num1, num2;
-       // if (mg_json_get_num(hm->body, "$[0]", &num1) &&
-       //     mg_json_get_num(hm->body, "$[1]", &num2)) {
-            // Success! create JSON response
-       //     mg_http_reply(c, OK, APPLICATION_JSON,
-          //              "{%m:%g}\n",
-         //               mg_print_esc, 0, "result", num1 + num2);
-         //   MG_INFO(("%s %s %d", GET, API_QUOTE, OK));
-       // } else {
-        //    mg_http_reply(c, 500, NULL, "Parameters missing\n");
-        //}
       } else {
         mg_http_reply(c, 500, NULL, "\n");
       }
     }
 }
 
+/* static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_HTTP_MSG) {
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    if (mg_http_match_uri(hm, API_QUOTE)) {
+      tpm_challenge chl;
+      tpm_challenge_reply rpl;
+    
+      //load challenge data from http body
+      if(load_challenge_request(hm, &chl) != 0){
+        printf("Load challenge error\n");
+        c->is_closing = 1;
+        Continue = false;
+        return;
+      }
+
+      //Compute the challenge
+      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
+        printf("Explicit challenge error\n");
+        c->is_closing = 1;
+        Continue = false;
+        tpa_free(&rpl);
+        return;
+      }
+
+      //Send the challenge reply
+      if (send_challenge_reply(c, &rpl) != 0){
+        printf("Send challenge reply error\n");
+        c->is_closing = 1;
+        Continue = false;
+      }
+
+      tpa_free(&rpl);
+
+      } else {
+        mg_http_reply(c, 500, NULL, "\n");
+      }
+    }
+}
+ */
 
 
 
