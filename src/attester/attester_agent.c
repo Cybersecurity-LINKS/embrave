@@ -219,7 +219,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          fprintf(stderr, "ERROR: No need to send the IMA log\n");
+          printf("No need to send the IMA log\n");
           break;
         }
       } else {
