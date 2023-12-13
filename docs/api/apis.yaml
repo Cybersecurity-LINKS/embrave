@@ -147,7 +147,7 @@ paths:
               example:
                 ak_cert: bGl...yay4=
 
-####### Join Service ########
+####### Attester Agent ########
   /api/quote:
     get:
       tags:
