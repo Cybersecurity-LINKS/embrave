@@ -45,7 +45,7 @@ int nonce_create(uint8_t *nonce)
 #ifdef VERBOSE
     printf("NONCE created:");
     for(int i= 0; i < NONCE_SIZE; i++)
-        printf("%02X", nonce_blob->buffer[i]);
+        printf("%02X", nonce[i]);
     printf("\n"); 
 #endif
     return 0;
