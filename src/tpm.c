@@ -363,11 +363,6 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
     int k;
     for (k = 0; k < quoteDigest->size; k++) {
         if (quoteDigest->buffer[k] != pcr_digest->buffer[k]) {
-            
-            tpm2_util_hexdump(quoteDigest->buffer, quoteDigest->size);
-            printf("\n");
-            tpm2_util_hexdump(pcr_digest->buffer, quoteDigest->size);
-            printf("\n"); 
 
             return -2;
         }
