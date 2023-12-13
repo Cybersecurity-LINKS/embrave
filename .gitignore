@@ -96,3 +96,4 @@ to_receive/to_send/ak.pub.pem
 src/verifier/client
 src/verifier/verifier
 src/attester/attester_server
+lemon.conf
