@@ -14,171 +14,21 @@
 #include "RA.h"
 #include "config_parse.h"
 #include "common.h"
-// client resources
-static struct c_res_s {
-  int i;
-  //struct mg_connection *c;
-} c_res;
 
 static bool Continue = true;
-static size_t last_read = 0;
-static size_t to_read = 0;
 static bool end = false;
-static int error_val;
+static int verify_val;
 static bool send_all_log = false;
-static char* temp_buff = NULL;
-static int last_rcv = 0;
+
 static tpm_challenge_reply rpl;
-static Tpa_data tpa_data;
+static verifier_database tpa_data;
 
 static struct verifier_conf verifier_config;
 
-
-int load_challenge_reply( struct mg_iobuf *r, tpm_challenge_reply *rpl);
+int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
 void print_data(tpm_challenge_reply *rpl);
-int encode_challenge(tpm_challenge *chl, struct mg_str *json);
-/* static void explicit_ra(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  int *i = &((struct c_res_s *) fn_data)->i;
-  if (ev == MG_EV_OPEN) {
-    MG_INFO(("CLIENT has been initialized"));
-  } else if (ev == MG_EV_CONNECT) {
-    MG_INFO(("CLIENT connected"));
-    *i= *i+1;  // do something
-  } else if (ev == MG_EV_READ) {
-    //printf("Client received data\n");
-    int n = 0;
-    struct mg_iobuf *r = &c->recv;
-    n = load_challenge_reply(r, &rpl);
-    if(n < 0){
-      r->len = 0;
-      end = true;
-      error_val = n;
-      RA_free(&rpl, &tpa_data);
-      return;
-    } //waitng for more data from TPA
-    else if(n == 1) return;
-    
-
-    //End timer 1
-    //get_finish_timer();
-    //print_timer(1);
-
-    error_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
-
-    r->len = 0;
-    end = true;
-    RA_free(&rpl, &tpa_data);
-  } else if (ev == MG_EV_CLOSE) {
-    MG_INFO(("CLIENT disconnected"));
-
-    // signal we are done
-    //((struct c_res_s *) fn_data)->c = NULL;
-    Continue = false;
-  } else if (ev == MG_EV_ERROR) {
-    MG_INFO(("CLIENT error: %s", (char *) ev_data));
-    Continue = false;
-  } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    //int tag = 0;
-    tpm_challenge chl;
-
-    //If PCR10 are empty from tpa db, make tpa send all ima log
-    if(send_all_log){
-      chl.send_wholeLog = 1;
-    } else {
-      chl.send_wholeLog = 0;
-    }
-
-    //Create nonce
-    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
-      Continue = false;
-      return;
-    }
-
-    //Send Explict tag
-    //mg_send(c, &tag, sizeof(int));
-
-    //Send nonce
-    mg_send(c, &chl, sizeof(tpm_challenge));
-    //printf("CLIENT sent data\n");
-    *i= *i+1;
-  }else if (end){
-      c->is_draining = 1;
-      Continue = false;
-    }
-}
-
-static void explicit_ra_TLS(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  int *i = &((struct c_res_s *) fn_data)->i;
-  if (ev == MG_EV_OPEN) {
-    MG_INFO(("CLIENT has been initialized"));
-  } else if (ev == MG_EV_CONNECT) {
-    MG_INFO(("CLIENT connected"));
-
-    struct mg_tls_opts opts = {.ca = tpa_data.ca};
-    mg_tls_init(c, &opts);
-    MG_INFO(("CLIENT initialized TLS"));
-    *i= *i+1;  // do something
-  } else if (ev == MG_EV_READ) {
-    //printf("Client received data\n");
-    int n = 0;
-    
-    struct mg_iobuf *r = &c->recv;
-    n = load_challenge_reply(r, &rpl);
-    if(n < 0){
-      r->len = 0;
-      end = true;
-      error_val = n;
-      RA_free(&rpl, &tpa_data);
-      return;
-    } //waitng for more data from TPA
-    else if(n == 1) return;
-    
-
-    //End timer 1
-    //get_finish_timer();
-    //print_timer(1);
-    
-    error_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
-
-    r->len = 0;
-    end = true;
-    RA_free(&rpl, &tpa_data);
-  } else if (ev == MG_EV_CLOSE) {
-    MG_INFO(("CLIENT disconnected"));
-
-    // signal we are done
-    //((struct c_res_s *) fn_data)->c = NULL;
-    Continue = false;
-  } else if (ev == MG_EV_ERROR) {
-    MG_INFO(("CLIENT error: %s", (char *) ev_data));
-    Continue = false;
-  } else if (ev == MG_EV_POLL && *i == 1) {//CHALLENGE CREATE
-    //int tag = 0;
-    tpm_challenge chl;
-    
-    //If PCR10 are empty from tpa db, make tpa send all ima log
-    if(send_all_log){
-      chl.send_wholeLog = 1;
-    } else {
-      chl.send_wholeLog = 0;
-    }
-    
-    //Create nonce
-    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
-      Continue = false;
-      return;
-    }
-
-    //Send nonce
-    mg_send(c, &chl, sizeof(tpm_challenge));
-    //printf("CLIENT sent data\n");
-    *i= *i+1;
-  }else if (end){
-      c->is_draining = 1;
-      Continue = false;
-    }
-} */
+int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
 
 // Load the AK path, the TLS certificate, the last PCR10 if present, 
 // and the goldenvalue db path for a certain tpa
@@ -337,7 +187,6 @@ int get_paths(int id){
   return -1;
 }
 
-static const char *s_post_data = NULL;      // POST data
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 // Print HTTP response and signal that we're done
@@ -351,12 +200,9 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    char content[250];
     tpm_challenge chl;
-    struct mg_str json;
-    size_t json_length = 0;
-    // Connected to server. Extract host name from URL
-    //struct mg_str host = mg_url_host(s_url);
+    size_t buff_length = 0;
+    char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
     //If PCRs10 from tpa db are null, ask all ima log
     if(send_all_log){
@@ -365,11 +211,81 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       chl.send_wholeLog = 0;
     }
 
-/*     if (mg_url_is_ssl(s_url)) {
-      struct mg_tls_opts opts = {.ca = mg_unpacked("/certs/ca.pem"),
-                                 .name = mg_url_host(s_url)};
-      mg_tls_init(c, &opts);
-    } */
+    //Create nonce
+    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
+      Continue = false;
+      return;
+    }
+
+    //Encode it in json form
+    if(encode_challenge(&chl, buff, &buff_length)!= 0){
+      Continue = false;
+      return;
+    }
+
+    // Send request
+  
+    mg_printf(c,
+      "POST /api/quote HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      buff_length,
+      buff
+    );
+
+  } else if (ev == MG_EV_HTTP_MSG) {
+    // Response is received. Print it
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    int n = load_challenge_reply(hm, &rpl);
+    if(n < 0){
+      end = true;
+      verify_val = n;
+      RA_free(&rpl, &tpa_data);
+      return;
+    } 
+
+    //End timer 1
+    //get_finish_timer();
+    //print_timer(1);
+    
+    verify_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
+
+    end = true;
+    RA_free(&rpl, &tpa_data);
+
+    c->is_draining = 1;        // Tell mongoose to close this connection
+    Continue = false;  // Tell event loop to stop
+  } else if (ev == MG_EV_ERROR) {
+    Continue = false;  // Error, tell event loop to stop
+  }
+}
+
+// Print HTTP response and signal that we're done
+static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_OPEN) {
+    // Connection created. Store connect expiration time in c->data
+    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+  } else if (ev == MG_EV_POLL) {
+    if (mg_millis() > *(uint64_t *) c->data &&
+        (c->is_connecting || c->is_resolving)) {
+      mg_error(c, "Connect timeout");
+    }
+  } else if (ev == MG_EV_CONNECT) {
+    tpm_challenge chl;
+    size_t buff_length = 0;
+    char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
+
+    struct mg_tls_opts opts = {.ca = tpa_data.ca};
+    mg_tls_init(c, &opts);
+
+    //If PCRs10 from tpa db are null, ask all ima log
+    if(send_all_log){
+      chl.send_wholeLog = 1;
+    } else {
+      chl.send_wholeLog = 0;
+    }
 
     //Create nonce
     if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
@@ -378,60 +294,117 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     }
 
     //Encode it in json form
-    if(encode_challenge(&chl, &json)!= 0){
+    if(encode_challenge(&chl, buff, &buff_length)!= 0){
       Continue = false;
       return;
     }
 
-    json_length = strlen(json.ptr);
-    printf("%ld\n", json_length);
     // Send request
   
-     mg_printf(c,
-              "POST /api/quote HTTP/1.1\r\n"
-              "Content-Type: application/json\r\n"
-              "Content-Length: %ld\r\n"
-              "\r\n"
-              "%s\n",
-              json_length,
-              json.ptr
-              );
-    //mg_http_upload
-    //mg_send(c, &json, json_length);
-    //printf("%s\n", json.ptr);
-    //c->is_resp = 0;
+    mg_printf(c,
+      "POST /api/quote HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      buff_length,
+      buff
+    );
 
-    //??
-    //free(json);
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    printf("%.*s", (int) hm->message.len, hm->message.ptr);
+    int n = load_challenge_reply(hm, &rpl);
+    if(n < 0){
+      end = true;
+      verify_val = n;
+      RA_free(&rpl, &tpa_data);
+      return;
+    } 
+
+    //End timer 1
+    //get_finish_timer();
+    //print_timer(1);
+    
+    verify_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
+
+    end = true;
+    RA_free(&rpl, &tpa_data);
+
     c->is_draining = 1;        // Tell mongoose to close this connection
-    *(bool *) fn_data = true;  // Tell event loop to stop
+    Continue = false;  // Tell event loop to stop
   } else if (ev == MG_EV_ERROR) {
-    *(bool *) fn_data = true;  // Error, tell event loop to stop
+    Continue = false;  // Error, tell event loop to stop
   }
 }
 
-int encode_challenge(tpm_challenge *chl, struct mg_str *json){
-  char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
+int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
+  size_t b64_sz = hm->body.len;
+  size_t byte_sz = B64DECODE_OUT_SAFESIZE(b64_sz);
+  size_t i = 0;
+  char * byte_buff;
+
+  //Malloc buffer
+  byte_buff = malloc(byte_sz);
+  if(byte_buff == NULL) return -1;
+
+  //Decode b64
+  if(mg_base64_decode(hm->body.ptr, b64_sz, byte_buff) == 0){
+    printf("Transmission challenge data error \n");
+    return -1;
+  }
+
+  //Read the buffer
   
-  mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff);
+  //Signature
+  memcpy(&rpl->sig_size, byte_buff,  sizeof(UINT16));
+  i += sizeof(UINT16);
 
-  char *tmp = mg_mprintf("{ %m: \"%s\"}", MG_ESC("challenge"), buff);
+  rpl->sig =  malloc(rpl->sig_size * sizeof(BYTE *));
+  memcpy(rpl->sig, byte_buff + i, rpl->sig_size);
+  i += rpl->sig_size;
 
-  *json = mg_str(tmp);
+  //Nonce
+  memcpy(&rpl->nonce, byte_buff + i, NONCE_SIZE * sizeof(uint8_t));
+  i += NONCE_SIZE * sizeof(uint8_t);
 
-  printf("encoded challenge\n");
-  printf("%s\n", json->ptr);
-  
+  //Data quoted
+  rpl->quoted = (TPM2B_ATTEST  *) malloc(sizeof(TPM2B_ATTEST));
+  memcpy(&rpl->quoted->size, byte_buff + i, sizeof(UINT16));
+  i += sizeof(UINT16);
+  memcpy(&rpl->quoted->attestationData, byte_buff + i, rpl->quoted->size);
+  i += rpl->quoted->size;
+
+  //Pcr
+  memcpy(&rpl->pcrs.count, byte_buff + i, sizeof(uint32_t));
+  i += sizeof(uint32_t);
+  memcpy(&rpl->pcrs.pcr_values, byte_buff + i, sizeof(rpl->pcrs.pcr_values));
+  i += sizeof(rpl->pcrs.pcr_values);
+
+  //IMA Log
+  memcpy(&rpl->ima_log_size, byte_buff + i, sizeof(uint32_t));
+  i += sizeof(uint32_t);
+  if(rpl->ima_log_size != 0){
+    rpl->ima_log = (unsigned char *) malloc(rpl->ima_log_size);
+    memcpy(rpl->ima_log, byte_buff + i, rpl->ima_log_size);
+    i += rpl->ima_log_size;
+    memcpy(&rpl->wholeLog, byte_buff + i, sizeof(uint8_t));
+    i += sizeof(uint8_t);
+  }
 
   return 0;
 
 }
 
+int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
+  *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff);
+  if(buff_length == 0){
+    printf("mg_base64_encode error\n");
+    return -1;
+  }
 
+  return 0;
+}
 
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
@@ -480,16 +453,14 @@ int main(int argc, char *argv[]) {
   }
   
   mg_mgr_init(&mgr);
-  c_res.i = 0;
 
-   if(n == 0){
+  if(n == 0){
     //Explict RA
     c = mg_http_connect(&mgr, s_conn, fn, NULL);   
-   }
-   else {
+  } else {
     //Explict RA TLS
-    //c = mg_http_connect(&mgr, s_conn, fn_TLS, NULL);
-   }
+    c = mg_http_connect(&mgr, s_conn, fn_tls, NULL);
+  }
 
   if (c == NULL) {
     MG_INFO(("CLIENT cant' open a connection"));
@@ -497,93 +468,8 @@ int main(int argc, char *argv[]) {
   }
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
-  //printf("%d\n", error_val);//
-  return error_val;
-}
-
-int load_challenge_reply(struct mg_iobuf *r, tpm_challenge_reply *rpl){
-
-  int ret;
-  if(r == NULL) return -1;
-  //printf("Received %d data from socket\n", r->len);
-  
-  while(r->len > 0) {
-    //printf("buffer len %d case %d\n", r->len, last_rcv);
-    switch (last_rcv)
-    {
-    case 0: 
-      //Signature size
-      try_read(r, sizeof(UINT16),  &rpl->sig_size);
-      //Signature
-      rpl->sig = malloc(rpl->sig_size);
-      if(rpl->sig == NULL) return -1;
-      ret = try_read(r, rpl->sig_size,  rpl->sig);
-      if(ret == 0) last_rcv = 1;
-      else return 1;
-    break;
-    case 1:
-      //Nonce
-      ret = try_read(r, NONCE_SIZE * sizeof(uint8_t), &rpl->nonce);
-      if(ret == 0) last_rcv = 2;
-      else return 1;
-    break;
-    case 2:
-      //Quoted data size
-      if(rpl->quoted == NULL) rpl->quoted = malloc(sizeof(TPM2B_ATTEST ));
-      ret = try_read(r, sizeof(UINT16), &rpl->quoted->size);
-      if(ret == 0) last_rcv = 3;
-      else return 1;
-    break;
-    case 3:
-      //Quoted data
-      ret = try_read(r, rpl->quoted->size, &rpl->quoted->attestationData);
-      if(ret == 0) last_rcv = 4;
-      else return 1;
-    break;
-    case 4:
-      //PCRs count
-      ret = try_read(r, sizeof(uint32_t),  &rpl->pcrs.count);
-      if(ret == 0) last_rcv = 5;
-      else return 1;
-    break;
-    case 5:
-      //PCRs
-      ret = try_read(r, sizeof(rpl->pcrs.pcr_values), &rpl->pcrs.pcr_values);  
-      if(ret == 0) last_rcv = 6;
-      else return 1;
-    break;
-    case 6:
-      //IMA log size
-      ret = try_read(r, sizeof(uint32_t), &rpl->ima_log_size);
-      if (rpl->ima_log_size == 0){
-        last_rcv = 0;
-        return 0;
-      }
-      if(ret == 0) last_rcv = 7;
-      else return 1;
-    break;
-    case 7:
-      if(rpl->ima_log == NULL) rpl->ima_log = malloc(rpl->ima_log_size);
-      ret = try_read(r, rpl->ima_log_size, rpl->ima_log);
-      if(ret == 0) last_rcv = 8;
-      else return 1;
-    break;
-    case 8:
-      ret = try_read(r, sizeof(uint8_t), &rpl->wholeLog);
-      if(ret != 0) return 1;
-    break;
-    default:
-      break;
-    }
-
-  }
-
-  last_rcv = 0;
-  
-#ifdef  DEBUG
-  print_data(rpl);
-#endif 
-  return 0;
+  //printf("%d\n", verify_val);//
+  return verify_val;
 }
 
 //Print received data
@@ -608,52 +494,4 @@ void print_data(tpm_challenge_reply *rpl){
   printf("IMA log size recived:%d\n", rpl->ima_log_size);
   printf("IMA whole log %d\n", rpl->wholeLog);
   
-}
-
-  /* Try reading data from the received data buffer. 
-  If the buffer does not contain all of it, it saves the data in
-  a temporary buffer and on the next read cycle reads the remaining 
-  0 full read 1 remaining data to wait -1 error*/
-int try_read(struct mg_iobuf *r, size_t size, void * dst)
-{
-  //printf("size to read %d, to_read %d last read %d r->len %d\n",size, to_read, last_read, r->len);
-  if(to_read == 0){
-    if(r->len >= size){
-        //no segmentation
-        memcpy(dst, r->buf, size);
-        mg_iobuf_del(r,0, size);
-        return 0;
-    }
-    else{
-      //alloc the buffer if needed
-      if(temp_buff == NULL){
-        temp_buff = malloc(size);
-      }
-      //read the available data and save in the buffer
-      to_read = (size - r->len);
-      last_read = r->len;
-      memcpy(temp_buff, r->buf, r->len);
-      mg_iobuf_del(r,0, r->len);
-      return 1;
-    }
-  }
-  //in the buffere there is the remaining data
-  if(to_read <= r->len){
-    memcpy(dst, temp_buff, last_read);
-    memcpy(dst + last_read,  r->buf, to_read);
-    mg_iobuf_del(r,0, to_read);
-    to_read = 0;
-    last_read = 0;
-    free(temp_buff);
-    temp_buff = NULL;
-    return 0;
-  } else{
-    memcpy(temp_buff + last_read, r->buf, r->len);
-    to_read = (to_read - r->len);
-    last_read = last_read + r->len;
-    mg_iobuf_del(r,0, r->len);
-    return 1;
-  }
-  
-  return 0;
 }
