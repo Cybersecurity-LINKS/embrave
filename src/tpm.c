@@ -170,7 +170,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
 
 }
 
-int PCR9softbindig_verify(tpm_challenge_reply *rply, Tpa_data * tpa_data)
+int PCR9softbindig_verify(tpm_challenge_reply *rply, verifier_database * tpa_data)
 {
     unsigned char *pem = NULL;
     unsigned char *digest_buff = NULL;
@@ -377,7 +377,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
 }
 
 
-int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, Tpa_data *tpa)
+int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_database *tpa)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -748,7 +748,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int refresh_tpa_entry(Tpa_data *tpa){
+int refresh_tpa_entry(verifier_database *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
@@ -794,7 +794,7 @@ int refresh_tpa_entry(Tpa_data *tpa){
 
 }
 
-int save_pcr10(Tpa_data *tpa){
+int save_pcr10(verifier_database *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount, byte_rcv =@bytercv WHERE id = @id ";
@@ -861,7 +861,7 @@ int save_pcr10(Tpa_data *tpa){
 
 }
 
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tpa){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];

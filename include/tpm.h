@@ -64,10 +64,10 @@ BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 
-int verify_quote(tpm_challenge_reply *rply,const char* pem_file_name, Tpa_data *tpa);
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, Tpa_data *tpa);
+int verify_quote(tpm_challenge_reply *rply,const char* pem_file_name, verifier_database *tpa);
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tpa);
 int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context);
-int PCR9softbindig_verify(tpm_challenge_reply *rply, Tpa_data * tpa_data);
+int PCR9softbindig_verify(tpm_challenge_reply *rply, verifier_database * tpa_data);
 int check_pcr9(ESYS_CONTEXT *esys_context);
-int refresh_tpa_entry(Tpa_data *tpa);
+int refresh_tpa_entry(verifier_database *tpa);
 #endif

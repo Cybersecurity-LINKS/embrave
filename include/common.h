@@ -72,7 +72,7 @@ typedef struct {
     char *ip_addr;
     uint32_t resetCount;
     uint32_t byte_rcv;
-} Tpa_data;
+} verifier_database;
 
 bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, uint16_t *ak_handle);

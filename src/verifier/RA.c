@@ -12,7 +12,7 @@
 
 #include "RA.h"
 
-int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data)
+int RA_explicit_challenge_create(tpm_challenge *chl, verifier_database *tpa_data)
 {
   if(tpa_data->pcr10_old_sha256 != NULL)
     chl->send_from_byte = tpa_data->byte_rcv;
@@ -22,7 +22,7 @@ int RA_explicit_challenge_create(tpm_challenge *chl, Tpa_data *tpa_data)
   return nonce_create(&(chl->nonce));
 }
 
-int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, Tpa_data *tpa_data)
+int RA_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tpa_data)
 {
   int ret;
   sqlite3 *db;
@@ -92,7 +92,7 @@ end:
   return ret;
 }
 
-int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, Tpa_data *tpa_data)
+int RA_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database *tpa_data)
 {
   int ret;
   sqlite3 *db;
@@ -171,7 +171,7 @@ end:
   return ret;
 }
 
-void RA_free(tpm_challenge_reply *rpl, Tpa_data *tpa_data){
+void RA_free(tpm_challenge_reply *rpl, verifier_database *tpa_data){
   free(rpl->sig);
   free(rpl->quoted);
   free(tpa_data->ak_path);
