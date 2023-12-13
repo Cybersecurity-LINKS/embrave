@@ -47,6 +47,9 @@
 *.cmd
 .tmp_versions/
 
+# for development
+lemon.conf
+
 # Submodules
 lib/tpm2-tools/
 
