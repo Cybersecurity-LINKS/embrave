@@ -81,6 +81,11 @@ int attester_init(struct attester_conf* conf) {
     break;
   }
 
+  if(check_keys(ek_handle, ak_handle, esys_context)) {
+    fprintf(stderr, "INFO: AK already present at handle %s\n", (char *)ak_handle);
+    return 0;
+  }
+
   /* tpm_createek */
   attester_create_ek(esys_context, algo);
 
