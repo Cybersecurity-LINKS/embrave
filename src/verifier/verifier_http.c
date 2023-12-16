@@ -456,7 +456,7 @@ int main(int argc, char *argv[]) {
 
   if(n == 0){
     //Explict RA
-    c = mg_http_connect(&mgr, s_conn, fn, NULL);   
+    c = mg_http_connect(&mgr, s_conn, fn, NULL);
   } else {
     //Explict RA TLS
     c = mg_http_connect(&mgr, s_conn, fn_tls, NULL);

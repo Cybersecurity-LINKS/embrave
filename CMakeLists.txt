@@ -6,9 +6,11 @@ set(patchdir ${CMAKE_SOURCE_DIR}/patches)
 set(agent_srcdir ${CMAKE_SOURCE_DIR}/src/attester)
 set(verifier_srcdir ${CMAKE_SOURCE_DIR}/src/verifier)
 set(ca_srcdir ${CMAKE_SOURCE_DIR}/src/ca)
+set(join_service_srcdir ${CMAKE_SOURCE_DIR}/src/join_service)
 set(agent_wrkdir ${CMAKE_BINARY_DIR}/agent.build)
 set(verifier_wrkdir ${CMAKE_BINARY_DIR}/verifier.build)
 set(ca_wrkdir ${CMAKE_BINARY_DIR}/ca.build)
+set(join_service_wrkdir ${CMAKE_BINARY_DIR}/join_service.build)
 
 ###############################################################################
 ## MACROS
@@ -115,3 +117,19 @@ add_executable(ca ${sources})
 #add_dependencies(verifier patch_tpm2-tools)
 target_compile_options(ca PUBLIC -g  -Wall -fPIC)
 target_link_libraries(ca -lssl -lcrypto -pthread -ldl) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
+
+###############################################################################
+## Join Service
+###############################################################################
+
+add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${join_service_wrkdir})
+
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${join_service_wrkdir})
+file(GLOB_RECURSE sources sources src/config_parse.c src/join_service/*.c lib/sqlite3/* lib/mongoose/*)
+include_directories("include" "lib/mongoose" "lib/sqlite3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+
+add_executable(join_service ${sources})
+#add_dependencies(verifier patch_tpm2-tools)
+target_compile_options(join_service PUBLIC -g  -Wall -fPIC)
+target_link_libraries(join_service -lssl -lcrypto -pthread -ldl) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
