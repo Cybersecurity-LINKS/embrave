@@ -1,10 +1,22 @@
+// Copyright (C) 2023 Fondazione LINKS 
+
+// This program is free software; you can redistribute it and/or modify 
+// it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
+
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// See the GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License along with this program; if not, 
+// write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
 #ifndef __CONFIG_PARSE___
 #define __CONFIG_PARSE___
 
 #include <stdint.h>
 #include <errno.h>
 
-#define CONFIG_FILE_PATH "/home/linux/Documents/lemon/lemon.conf"  /* development path */
+#define CONFIG_FILE_PATH "/home/ale/Scrivania/lemon/lemon.conf"  /* development path */
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 5
