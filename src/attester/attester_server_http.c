@@ -233,6 +233,85 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     }
 }
 
+static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
+
+/* Print HTTP response and signal that we're done
+   set the value of the ip address of the CA (fn_data)*/
+static void get_join_service(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_OPEN) {
+    // Connection created. Store connect expiration time in c->data
+    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+  } else if (ev == MG_EV_POLL) {
+    if (mg_millis() > *(uint64_t *) c->data &&
+        (c->is_connecting || c->is_resolving)) {
+      mg_error(c, "Connect timeout");
+    }
+  } else if (ev == MG_EV_CONNECT) {
+    //size_t buff_length = 0;
+    //char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
+    
+    /* Send request */
+    mg_printf(c,
+      "GET /join HTTP/1.1\r\n"
+      "\r\n"
+    );
+
+  } else if (ev == MG_EV_HTTP_MSG) {
+    // Response is received. Print it
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    //char response_body[1024];
+    //memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len);
+
+    int ip_len = 0;
+    char **ca_ip_addr = (char **) fn_data;
+    //*ca_ip_addr = (char *) malloc(ip_len + 1);
+
+    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
+    //printf("ip_len = %d\n", ip_len);
+    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
+    //(*ca_ip_addr)[ip_len] = '\0';
+    *ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
+    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
+
+    //free(ca_ip_addr);
+    
+    //response_body[hm->body.len] = '\0';
+    //fprintf(stdout, "%s\n", response_body);
+
+    c->is_draining = 1;        // Tell mongoose to close this connection
+    Continue = false;  // Tell event loop to stop
+  } else if (ev == MG_EV_ERROR) {
+    Continue = false;  // Error, tell event loop to stop
+  }
+}
+
+static int join_procedure(){
+  struct mg_mgr mgr;  // Event manager
+  struct mg_connection *c;
+  char s_conn[250];
+  char *ca_ip_addr;
+
+  /* Contact the join service */
+  snprintf(s_conn, 250, "%s:%d/%s", "http://localhost", 8000, "join");
+  //printf("%s\n", s_conn);
+  mg_mgr_init(&mgr);
+
+  c = mg_http_connect(&mgr, s_conn, get_join_service, (void *) &ca_ip_addr);
+
+  if (c == NULL) {
+    MG_ERROR(("CLIENT cant' open a connection"));
+    return 0;
+  }
+
+  while (Continue) mg_mgr_poll(&mgr, 1); //1ms
+
+  printf("ca_ip_addr = %s\n", ca_ip_addr);
+
+  
+
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  /* Event manager */
   struct mg_connection *c;
@@ -259,11 +338,14 @@ int main(int argc, char *argv[]) {
   /* Check TPM keys and extend PCR9 */
   if((a = attester_init(&attester_config)) != 0) return -1;
 
+  /* Perform the join procedure */
+  join_procedure();
+
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
-  snprintf(s_conn, 500, "tcp://%s:%d", attester_config.ip, attester_config.port);
-  snprintf(s_conn_tls, 500, "tcp://%s:%d", attester_config.ip, attester_config.tls_port);
+  snprintf(s_conn, 500, "http://%s:%d", attester_config.ip, attester_config.port);
+  snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
 
   c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */
 
@@ -281,6 +363,8 @@ int main(int argc, char *argv[]) {
   } 
 
   fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", s_conn, s_conn_tls);
+
+  Continue = true;
 
   while (Continue)
     mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
