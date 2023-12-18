@@ -17,21 +17,12 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_REQUEST_CERTIFICATE)) {
-            
-        // Expecting JSON array in the HTTP body, e.g. [ 123.38, -2.72 ]
-        double num1, num2;
-        if (mg_json_get_num(hm->body, "$[0]", &num1) &&
-            mg_json_get_num(hm->body, "$[1]", &num2)) {
-            // Success! create JSON response
             mg_http_reply(c, OK, APPLICATION_JSON,
-                        "{%m:%g}\n",
-                        mg_print_esc, 0, "result", num1 + num2);
+                        "{\"%s\":\"%s\"}",
+                        "ca_ip_addr", "localhost");
             MG_INFO(("%s %s %d", GET, API_REQUEST_CERTIFICATE, OK));
         } else {
-            mg_http_reply(c, 500, NULL, "Parameters missing\n");
-        }
-        } else {
-        mg_http_reply(c, 500, NULL, "\n");
+            mg_http_reply(c, 500, NULL, "\n");
         }
     }
 }
@@ -54,7 +45,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "ERROR: could not read configuration file\n");
         exit(err);
     }
-    #define VERBOSE
+    //#define VERBOSE
     #ifdef  VERBOSE
     printf("ca_config->ip: %s\n", ca_config.ip);
     printf("ca_config->port: %d\n", ca_config.port);
@@ -64,10 +55,12 @@ int main(int argc, char *argv[]) {
     printf("ca_config->db: %s\n", ca_config.db);
     #endif
                                           // Init manager
-    if((c = mg_http_listen(&mgr, "http://localhost:8000", fn, &mgr)) == NULL){  // Setup listener
-        MG_ERROR(("Cannot listen on http://localhost:8000"));
+    if((c = mg_http_listen(&mgr, "http://localhost:8001", fn, &mgr)) == NULL){  // Setup listener
+        MG_ERROR(("Cannot listen on http://localhost:8001"));
         exit(EXIT_FAILURE);
     }
+
+    MG_INFO(("Listening on http://localhost:8001"));
 
     for (;;) mg_mgr_poll(&mgr, 1000);                         // Event loop
     mg_mgr_free(&mgr);                                        // Cleanup
