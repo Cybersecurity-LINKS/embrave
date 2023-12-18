@@ -18,6 +18,7 @@
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
 char* ca_params[CA_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
+char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db", "ca_ip"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -52,11 +53,23 @@ enum ca_keys_config ca_parse_key(char* key){
     return (enum ca_keys_config) i;
 }
 
+enum join_service_keys_config join_service_parse_key(char* key){
+    int i = 0;
+
+    for(i=0; i<JOIN_SERVICE_NUM_CONFIG_PARAMS; i++){
+        if(!strcmp(key, join_service_params[i]))
+            return (enum join_service_keys_config) i;
+    }
+
+    return (enum join_service_keys_config) i;
+}
+
 /*
 user: 
         - 0: attester
         - 1: verifier
         - 2: ca
+        - 3: join_service
 */
 uint16_t read_config(char user, void* config_struct){
     FILE* fd;
@@ -65,9 +78,10 @@ uint16_t read_config(char user, void* config_struct){
     struct attester_conf* attester_config = NULL;
     struct verifier_conf* verifier_config = NULL;
     struct ca_conf* ca_config = NULL;
+    struct join_service_conf* join_service_config = NULL;
 
-    if(user != 0 && user != 1 && user != 2){
-        fprintf(stderr, "ERROR: unknown user\n");
+    if(user != 0 && user != 1 && user != 2 && user != 3){
+        fprintf(stderr, "ERROR: unknown config user\n");
         errno = 5;
         return (uint16_t) -1;
     }
@@ -98,6 +112,10 @@ uint16_t read_config(char user, void* config_struct){
 
     case 2:
         ca_config = (struct ca_conf*) config_struct;
+        break;
+
+    case 3:
+        join_service_config = (struct join_service_conf*) config_struct;
         break;
 
     default:
@@ -268,6 +286,60 @@ uint16_t read_config(char user, void* config_struct){
                             break;
 
                         case CA_NUM_CONFIG_PARAMS:
+                            //unknown param
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            /* Join Service section management */
+            if(user == 3 && !strcmp(section, "JoinService")){
+                while(fgets(line, MAX_LINE_LENGTH, fd)){
+                    /* comment or new line found */
+                    if(line[0] == '#' || line[0] == '\n')
+                        continue;
+
+                    if(line[0] == '['){
+                        break;
+                    }
+
+                    sscanf(line, "%s = %s", key, value);
+
+                    enum join_service_keys_config param = join_service_parse_key(key);
+
+                    switch(param){
+                        case CA_IP:
+                            strcpy(join_service_config->ip, value);
+                            break;
+
+                        case JOIN_SERVICE_PORT:
+                            join_service_config->port = (uint32_t) atoi(value);
+                            break;
+
+                        case JOIN_SERVICE_TLS_PORT:
+                            join_service_config->tls_port = (uint32_t) atoi(value);
+                            break;
+
+                        case JOIN_SERVICE_TLS_CERT:
+                            strcpy(join_service_config->tls_cert, value);
+                            break;
+
+                        case JOIN_SERVICE_TLS_KEY:
+                            strcpy(join_service_config->tls_key, value);
+                            break;
+
+                        case JOIN_SERVICE_TLS_CERT_CA:
+                            strcpy(join_service_config->tls_cert_ca, value);
+                            break;
+
+                        case JOIN_SERVICE_DB:
+                            strcpy(join_service_config->db, value);
+                            break;
+
+                        case JOIN_SERVICE_NUM_CONFIG_PARAMS:
                             //unknown param
                             break;
 

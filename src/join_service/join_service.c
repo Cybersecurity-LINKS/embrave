@@ -50,20 +50,24 @@ int main(int argc, char *argv[]) {
     struct mg_mgr mgr;
     struct mg_connection *c;
     mg_mgr_init(&mgr);
+    struct join_service_conf js_config;
+    char url[MAX_BUF];
 
     /* read configuration from cong file */
-    //if(read_config(/* join_service */ 1, (void * ) &verifier_config)){
-    //    int err = errno;
-    //    fprintf(stderr, "ERROR: could not read configuration file\n");
-    //    exit(err);
-    //}
+    if(read_config(/* join_service */ 3, (void * ) &js_config)){
+        int err = errno;
+        fprintf(stderr, "ERROR: could not read configuration file\n");
+        exit(err);
+    }
+
+    sprintf(url, "http://%s:%d", js_config.ip, js_config.port);
                                           // Init manager
-    if((c = mg_http_listen(&mgr, "http://localhost:8000", fn, &mgr)) == NULL){  // Setup listener
-        MG_ERROR(("Cannot listen on http://localhost:8000"));
+    if((c = mg_http_listen(&mgr, url, fn, &mgr)) == NULL){  // Setup listener
+        MG_ERROR(("Cannot listen on http://%s:%d", js_config.ip, js_config.port));
         exit(EXIT_FAILURE);
     }
 
-    MG_INFO(("Listening on http://localhost:8000"));
+    MG_INFO(("Listening on http://%s:%d", js_config.ip, js_config.port));
 
     for (;;) mg_mgr_poll(&mgr, 1000);                         // Event loop
     mg_mgr_free(&mgr);                                        // Cleanup
