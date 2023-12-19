@@ -69,7 +69,7 @@ add_custom_command(OUTPUT ${agent_wrkdir} PRE_BUILD COMMAND mkdir -p ${agent_wrk
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${agent_wrkdir})
 file(GLOB_RECURSE sources src/tpm.c src/common.c src/config_parse.c src/attester/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(attester_server ${sources})
 add_dependencies(attester_server patch_tpm2-tools)
@@ -90,7 +90,7 @@ add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifi
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
 file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(verifier ${sources})
 add_dependencies(verifier patch_tpm2-tools)
@@ -103,7 +103,7 @@ target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-
 #)
 
 ###############################################################################
-## CA
+## ca
 ###############################################################################
 
 add_custom_command(OUTPUT ${ca_wrkdir} PRE_BUILD COMMAND mkdir -p ${ca_wrkdir})
@@ -111,7 +111,7 @@ add_custom_command(OUTPUT ${ca_wrkdir} PRE_BUILD COMMAND mkdir -p ${ca_wrkdir})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ca_wrkdir})
 file(GLOB_RECURSE sources sources src/config_parse.c src/ca/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(ca ${sources})
 #add_dependencies(verifier patch_tpm2-tools)
@@ -119,7 +119,7 @@ target_compile_options(ca PUBLIC -g  -Wall -fPIC)
 target_link_libraries(ca -lssl -lcrypto -pthread -ldl) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
 
 ###############################################################################
-## Join Service
+## join service
 ###############################################################################
 
 add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${join_service_wrkdir})
@@ -127,7 +127,7 @@ add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${jo
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${join_service_wrkdir})
 file(GLOB_RECURSE sources sources src/config_parse.c src/join_service/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DDEBUG=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(join_service ${sources})
 #add_dependencies(verifier patch_tpm2-tools)
