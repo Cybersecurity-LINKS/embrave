@@ -19,6 +19,8 @@
 #include "config_parse.h"
 #include "tpm.h"
 
+extern struct attester_conf attester_config;
+
 int attester_init(struct attester_conf* conf);
 int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl);
 void tpa_free(tpm_challenge_reply *rpl);

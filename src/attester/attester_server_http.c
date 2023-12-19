@@ -15,8 +15,6 @@
 #include "config_parse.h"
 
 static bool Continue = true;
-static struct attester_conf attester_config;
-
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl);
 int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl);
@@ -24,7 +22,7 @@ void print_sent_data(tpm_challenge_reply *rpl);
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
-#ifdef debug
+#ifdef DEBUG
   printf("load challenge request\n");
   printf("%s\n", hm->body.ptr);
 #endif
@@ -35,7 +33,7 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
     return -1;
   }
 
-#ifdef debug
+#ifdef DEBUG
   printf("NONCE Received:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
     printf("%02X", chl->nonce[i]);
@@ -262,7 +260,7 @@ static void get_join_service(struct mg_connection *c, int ev, void *ev_data, voi
     //char response_body[1024];
     //memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len);
 
-    int ip_len = 0;
+    //int ip_len = 0;
     char **ca_ip_addr = (char **) fn_data;
     //*ca_ip_addr = (char *) malloc(ip_len + 1);
 
@@ -271,7 +269,7 @@ static void get_join_service(struct mg_connection *c, int ev, void *ev_data, voi
     //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
     //(*ca_ip_addr)[ip_len] = '\0';
     *ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
+    //printf("%s\n", response_body);
 
     //free(ca_ip_addr);
     
@@ -295,13 +293,20 @@ static void request_certificate(struct mg_connection *c, int ev, void *ev_data, 
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    //size_t buff_length = 0;
-    //char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
+    size_t object_length = 0;
+    char object [2048];
     
+
+
     /* Send request */
     mg_printf(c,
-      "GET /request_certificate HTTP/1.1\r\n"
+      "POST /request_certificate HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
       "\r\n"
+      "%s\n",
+      object_length,
+      object
     );
 
   } else if (ev == MG_EV_HTTP_MSG) {
@@ -340,7 +345,7 @@ static int join_procedure(){
   char *ca_ip_addr;
 
   /* Contact the join service */
-  snprintf(s_conn, 250, "%s:%d/%s", "http://localhost", 8000, "join");
+  snprintf(s_conn, 250, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");
   //printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
@@ -388,7 +393,7 @@ int main(int argc, char *argv[]) {
     exit(err);
   }
   
-  #ifdef VERBOSE
+  #ifdef DEBUG
   printf("attester_config->ip: %s\n", attester_config.ip);
   printf("attester_config->port: %d\n", attester_config.port);
   printf("attester_config->tls_port: %d\n", attester_config.tls_port);

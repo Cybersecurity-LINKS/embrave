@@ -16,6 +16,7 @@
 #include "ek_cert.h"
 
 //static uint32_t ima_byte_sent = 0;
+struct attester_conf attester_config;
 
 int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
