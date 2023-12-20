@@ -419,18 +419,18 @@ tool_rc attester_create_ek(ESYS_CONTEXT *ectx, const char* algo){
 
     //if (ctx.auth_ek.object.handle) {
 
-        rc = tpm2_ctx_mgmt_evictcontrol(ectx, ESYS_TR_RH_OWNER,
-                ctx.auth_owner_hierarchy.object.session, ctx.objdata.out.handle,
-                ctx.auth_ek.object.handle, NULL);
-        if (rc != tool_rc_success) {
-            return rc;
-        }
+    rc = tpm2_ctx_mgmt_evictcontrol(ectx, ESYS_TR_RH_OWNER,
+            ctx.auth_owner_hierarchy.object.session, ctx.objdata.out.handle,
+            ctx.auth_ek.object.handle, NULL);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
 
-        rc = tpm2_flush_context(ectx, ctx.objdata.out.handle, NULL,
-            TPM2_ALG_NULL);
-        if (rc != tool_rc_success) {
-            return rc;
-        }
+    rc = tpm2_flush_context(ectx, ctx.objdata.out.handle, NULL,
+        TPM2_ALG_NULL);
+    if (rc != tool_rc_success) {
+        return rc;
+    }
     //} else {
     //    /* If it wasn't persistent, save a context for future tool interactions */
     //    tool_rc rc = files_save_tpm_context_to_path(ectx,

@@ -19,7 +19,7 @@
 #define CONFIG_FILE_PATH "/home/linux/Documents/lemon/lemon.conf"  /* development path */
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
-#define ATTESTER_NUM_CONFIG_PARAMS 6
+#define ATTESTER_NUM_CONFIG_PARAMS 12
 #define VERIFIER_NUM_CONFIG_PARAMS 7
 #define CA_NUM_CONFIG_PARAMS 7
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
@@ -30,6 +30,12 @@ enum attester_keys_config{
     ATTESTER_TLS_PORT,
     ATTESTER_TLS_CERT,
     ATTESTER_TLS_KEY,
+    ATTESTER_EK_RSA_CERT,
+    ATTESTER_EK_ECC_CERT,
+    ATTESTER_AK_PUB,
+    ATTESTER_AK_NAME,
+    ATTESTER_AK_CTX,
+    ATTESTER_AK_CERT,
     ATTESTER_JOIN_SERVICE_IP
 };
 enum verifier_keys_config{
@@ -67,6 +73,12 @@ struct attester_conf {
     char ip[MAX_BUF];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
+    char ek_rsa_cert[MAX_BUF];
+    char ek_ecc_cert[MAX_BUF];
+    char ak_pub[MAX_BUF];
+    char ak_name[MAX_BUF];
+    char ak_ctx[MAX_BUF];
+    char ak_cert[MAX_BUF];
     char join_service_ip[MAX_BUF];
 };
 

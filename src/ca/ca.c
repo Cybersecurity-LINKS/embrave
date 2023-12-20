@@ -13,6 +13,12 @@
 #include "ca.h"
 #include "config_parse.h"
 
+static struct ca_conf ca_config;
+
+static void issue_certificate(){
+
+}
+
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
@@ -20,7 +26,10 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "{\"%s\":\"%s\"}",
                         "ca_ip_addr", "localhost");
-            MG_INFO(("%s %s %d", GET, API_REQUEST_CERTIFICATE, OK));
+            MG_INFO(("%s %s %d", POST, API_REQUEST_CERTIFICATE, OK));
+            /* for(int i=0; i<hm->body.len; i++)
+                printf("%c", hm->body.ptr[i]);
+            printf("\n"); */
         } else {
             mg_http_reply(c, 500, NULL, "\n");
         }
@@ -37,7 +46,6 @@ int main(int argc, char *argv[]) {
     struct mg_mgr mgr;
     struct mg_connection *c;
     mg_mgr_init(&mgr);
-    struct ca_conf ca_config;
 
     /* read configuration from cong file */
     if(read_config(/* ca */ 2, (void * ) &ca_config)){
@@ -45,8 +53,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "ERROR: could not read configuration file\n");
         exit(err);
     }
-    //#define VERBOSE
-    #ifdef  VERBOSE
+
+    #ifdef DEBUG
     printf("ca_config->ip: %s\n", ca_config.ip);
     printf("ca_config->port: %d\n", ca_config.port);
     printf("ca_config->tls_port: %d\n", ca_config.tls_port);

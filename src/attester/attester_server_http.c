@@ -10,6 +10,10 @@
 // You should have received a copy of the GNU General Public License along with this program; if not, 
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdio.h>
 #include "mongoose.h"
 #include "attester_agent.h"
 #include "config_parse.h"
@@ -108,7 +112,7 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   //Encode in b64
   n = mg_base64_encode((const unsigned char *)byte_buff, total_sz, b64_buff);
   if(n == 0){
-    printf("mg_base64_encode error\n");
+    printf("ERROR: mg_base64_encode error\n");
     return -1;
   }
 
@@ -295,8 +299,63 @@ static void request_certificate(struct mg_connection *c, int ev, void *ev_data, 
   } else if (ev == MG_EV_CONNECT) {
     size_t object_length = 0;
     char object [2048];
-    
+        
+    /* Read EK certificate */
+    FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
+    if(fd_ek_cert == NULL){
+      fprintf(stdout, "INFO: EK ECC certificate not present, looking for RSA certificate\n");
+      fd_ek_cert = fopen(attester_config.ek_rsa_cert, "r");
+      if(fd_ek_cert == NULL){
+        fprintf(stderr, "ERROR: EK RSA certificate not found\n");
+        exit(-1);
+      }
+    }
 
+    /* size = st.st_size;
+    fseek(fd_ek_cert, 0, SEEK_END); // seek to end of file */
+    long size; //= ftell(fd_ek_cert); // get current file pointer
+    struct stat st;
+    int fd = fileno(fd_ek_cert);
+    fstat(fd, &st);
+    size = st.st_size;
+    /* fseek(fd_ek_cert, 0, SEEK_SET); // seek back to beginning of file */
+
+    unsigned char *ek_cert = (unsigned char *) malloc(size);
+    if(ek_cert == NULL){
+      fprintf(stderr, "ERROR: cannot allocate ek_cert buffer for certificate request\n");
+      exit(-1);
+    }
+
+    printf("EK cert size: %ld\n", size);
+
+    ssize_t ret = fread(ek_cert, 1, (size_t) size, fd_ek_cert);
+    if(ret != size){
+      fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
+      exit(-1);
+    };
+
+    fclose(fd_ek_cert);
+
+    //Encode in b64
+    //Allocate buffer for encoded b64 buffer
+    unsigned char *b64_buff = malloc(B64ENCODE_OUT_SAFESIZE(size));
+    if(b64_buff == NULL) {
+      free(ek_cert);
+      exit(-1);
+    }
+
+    int n = mg_base64_encode((const unsigned char *)ek_cert, size, b64_buff);
+    if(n == 0){
+      printf("ERROR: mg_base64_encode error\n");
+      exit(-1);
+    }
+
+    printf("EK cert base64: %s\n", b64_buff);
+
+    free(ek_cert);
+
+    sprintf(object, "{\"ek_cert_b64\":\"%s\"}", b64_buff);
+    object_length = strlen(object);
 
     /* Send request */
     mg_printf(c,
@@ -308,6 +367,8 @@ static void request_certificate(struct mg_connection *c, int ev, void *ev_data, 
       object_length,
       object
     );
+
+    free(b64_buff);
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
@@ -385,6 +446,24 @@ int main(int argc, char *argv[]) {
   char s_conn[500];
   char s_conn_tls[500];
   int a;
+
+  struct stat st = {0};
+  if (stat("/var/lemon", &st) == -1) {
+    if(!mkdir("/var/lemon", 0711)) {
+        fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
+      }
+      else {
+        fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
+      }
+  }
+  if (stat("/var/lemon/attester", &st) == -1) {
+      if(!mkdir("/var/lemon/attester", 0711)) {
+        fprintf(stdout, "INFO: /var/lemon/attester directory successfully created\n");
+      }
+      else {
+        fprintf(stderr, "ERROR: cannot create /var/lemon/attester directory\n");
+      }
+  }
 
   /* read configuration from cong file */
   if(read_config(/* attester */ 0, (void * ) &attester_config)){

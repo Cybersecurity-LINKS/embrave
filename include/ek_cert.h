@@ -32,6 +32,7 @@
 #include "tpm2_capability.h"
 #include "tpm2_nv_util.h"
 #include "tpm2_tool.h"
+#include "config_parse.h"
 
 typedef enum pubkey_enc_mode pubkey_enc_mode;
 enum pubkey_enc_mode {
@@ -111,7 +112,7 @@ enum ek_nv_index {
 #define NO_CERT_CHECK 3
 #define ERR_CHECK 4
 
-tool_rc get_ek_certificates(ESYS_CONTEXT *ectx);
+tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf);
 unsigned char check_ek_cert_algo(ESYS_CONTEXT *ectx);
 
 #endif

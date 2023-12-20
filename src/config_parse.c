@@ -15,10 +15,13 @@
 #include <string.h>
 #include "config_parse.h"
 
-char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "join_service_ip"};
-char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
+char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
+            "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip"};
+char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
+            "tls_cert_ca", "db"};
 char* ca_params[CA_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
-char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db", "ca_ip"};
+char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
+            "tls_key", "tls_cert_ca", "db", "ca_ip"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -156,7 +159,7 @@ uint16_t read_config(char user, void* config_struct){
 
                     enum attester_keys_config param = attester_parse_key(key);
 
-                    switch(param){
+                    switch((int) param){
                         case ATTESTER_IP:
                             strcpy(attester_config->ip, value);
                             break;
@@ -175,6 +178,30 @@ uint16_t read_config(char user, void* config_struct){
 
                         case ATTESTER_TLS_KEY:
                             strcpy(attester_config->tls_key, value);
+                            break;
+
+                        case ATTESTER_EK_RSA_CERT:
+                            strcpy(attester_config->ek_rsa_cert, value);
+                            break;
+
+                        case ATTESTER_EK_ECC_CERT:
+                            strcpy(attester_config->ek_ecc_cert, value);
+                            break;
+
+                        case ATTESTER_AK_PUB:
+                            strcpy(attester_config->ak_pub, value);
+                            break;
+
+                        case ATTESTER_AK_NAME:
+                            strcpy(attester_config->ak_name, value);
+                            break;
+                        
+                        case ATTESTER_AK_CTX:
+                            strcpy(attester_config->ak_ctx, value);
+                            break;
+
+                        case ATTESTER_AK_CERT:
+                            strcpy(attester_config->ak_cert, value);
                             break;
 
                         case ATTESTER_JOIN_SERVICE_IP:
@@ -206,7 +233,7 @@ uint16_t read_config(char user, void* config_struct){
 
                     enum verifier_keys_config param = verifier_parse_key(key);
 
-                    switch(param){
+                    switch((int) param){
                         case VERIFIER_IP:
                             strcpy(verifier_config->ip, value);
                             break;
@@ -260,7 +287,7 @@ uint16_t read_config(char user, void* config_struct){
 
                     enum ca_keys_config param = ca_parse_key(key);
 
-                    switch(param){
+                    switch((int) param){
                         case CA_IP:
                             strcpy(ca_config->ip, value);
                             break;
@@ -314,7 +341,7 @@ uint16_t read_config(char user, void* config_struct){
 
                     enum join_service_keys_config param = join_service_parse_key(key);
 
-                    switch(param){
+                    switch((int) param){
                         case CA_IP:
                             strcpy(join_service_config->ip, value);
                             break;
