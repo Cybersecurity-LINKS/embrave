@@ -27,6 +27,8 @@
 #include "tpm2_identity_util.h"
 #include "tpm2_options.h"
 #include "tpm2_openssl.h"
+#include "tpm2_util.h"
+#include "tpm2_identity_util.h"
 
 typedef struct tpm_makecred_ctx tpm_makecred_ctx;
 struct tpm_makecred_ctx {
@@ -46,5 +48,5 @@ struct tpm_makecred_ctx {
     char *key_type; //type of key attempting to load, defaults to auto attempt
 };
 
-void tpm_makecredential (void);
+int tpm_makecredential (void);
 #endif

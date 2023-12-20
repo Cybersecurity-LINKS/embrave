@@ -22,22 +22,20 @@ static tpm_makecred_ctx ctx = {
     .credential = TPM2B_EMPTY_INIT,
 };
 
-void tpm_makecredential (void){
+tool_rc make_external_credential_and_save(void);
+bool write_cred_and_secret(const char *path, TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret);
+void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg);
+
+//input
+//-u EK PEM
+//-s The secret which will be protected by the key derived from the random seed. It can be specified as a file or passed from stdin
+//-n The name of the key for which certificate is to be created
+//output
+//TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret
+int tpm_makecredential (void){
 
     TPMI_ALG_PUBLIC alg = TPM2_ALG_NULL;
-    if (ctx.key_type) {
-        if (!flags.quiet) {
-            LOG_WARN("Because **-G** is specified, assuming input encryption "
-                     "public key is in PEM format.");
-        }
-        alg = tpm2_alg_util_from_optarg(ctx.key_type,
-            tpm2_alg_util_flags_asymmetric);
-        if (alg == TPM2_ALG_ERROR ||
-           (alg != TPM2_ALG_RSA && alg != TPM2_ALG_ECC)) {
-            LOG_ERR("Unsupported key type, got: \"%s\"", ctx.key_type);
-            return tool_rc_general_error;
-        }
-    }
+
 
     if (ctx.public_key_path) {
         bool result = alg != TPM2_ALG_NULL ?
@@ -56,7 +54,7 @@ void tpm_makecredential (void){
         set_default_TCG_EK_template(alg);
     }
 
-    if (!ctx.flags.s) {
+/*     if (!ctx.flags.s) {
         LOG_ERR("Specify the secret either as a file or a '-' for stdin");
         return tool_rc_option_error;
     }
@@ -64,7 +62,7 @@ void tpm_makecredential (void){
     if (!ctx.flags.e || !ctx.flags.n || !ctx.flags.o) {
         LOG_ERR("Expected mandatory options e, n, o.");
         return tool_rc_option_error;
-    }
+    } */
 
     /*
      * Maximum size of the allowed secret-data size  to fit in TPM2B_DIGEST
@@ -74,7 +72,7 @@ void tpm_makecredential (void){
     bool result = files_load_bytes_from_buffer_or_file_or_stdin(NULL,
         ctx.input_secret_data, &ctx.credential.size, ctx.credential.buffer);
     if (!result) {
-        return tool_rc_general_error;
+        return -1;
     }
 
     /*
@@ -84,7 +82,7 @@ void tpm_makecredential (void){
     if (ctx.credential.size > TPM2_SHA512_DIGEST_SIZE) {
         LOG_ERR("Size is larger than buffer, got %d expected less than or equal"
         "to %d", ctx.credential.size, TPM2_SHA512_DIGEST_SIZE);
-        return tool_rc_general_error;
+        return -1;
     }
 
 
@@ -94,7 +92,7 @@ void tpm_makecredential (void){
 
 
     make_external_credential_and_save();
-
+    return 0;
 }
 
 tool_rc make_external_credential_and_save(void) {
@@ -178,8 +176,7 @@ tool_rc make_external_credential_and_save(void) {
             &encrypted_seed) ? tool_rc_success : tool_rc_general_error;
 }
 
-static bool write_cred_and_secret(const char *path, TPM2B_ID_OBJECT *cred,
-        TPM2B_ENCRYPTED_SECRET *secret) {
+bool write_cred_and_secret(const char *path, TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret) {
 
     bool result = false;
 
@@ -225,4 +222,51 @@ static bool write_cred_and_secret(const char *path, TPM2B_ID_OBJECT *cred,
 out:
     fclose(fp);
     return result;
+}
+
+void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg) {
+
+    switch (alg) {
+        case TPM2_ALG_RSA:
+            ctx.public.publicArea.parameters.rsaDetail.symmetric.algorithm =
+                    TPM2_ALG_AES;
+            ctx.public.publicArea.parameters.rsaDetail.symmetric.keyBits.aes = 128;
+            ctx.public.publicArea.parameters.rsaDetail.symmetric.mode.aes =
+                    TPM2_ALG_CFB;
+            ctx.public.publicArea.parameters.rsaDetail.scheme.scheme = TPM2_ALG_NULL;
+            ctx.public.publicArea.parameters.rsaDetail.keyBits = 2048;
+            ctx.public.publicArea.parameters.rsaDetail.exponent = 0;
+            ctx.public.publicArea.unique.rsa.size = 256;
+            break;
+        case TPM2_ALG_ECC:
+            ctx.public.publicArea.parameters.eccDetail.symmetric.algorithm =
+                    TPM2_ALG_AES;
+            ctx.public.publicArea.parameters.eccDetail.symmetric.keyBits.aes = 128;
+            ctx.public.publicArea.parameters.eccDetail.symmetric.mode.sym =
+                    TPM2_ALG_CFB;
+            ctx.public.publicArea.parameters.eccDetail.scheme.scheme = TPM2_ALG_NULL;
+            ctx.public.publicArea.parameters.eccDetail.curveID = TPM2_ECC_NIST_P256;
+            ctx.public.publicArea.parameters.eccDetail.kdf.scheme = TPM2_ALG_NULL;
+            ctx.public.publicArea.unique.ecc.x.size = 32;
+            ctx.public.publicArea.unique.ecc.y.size = 32;
+            break;
+    }
+
+    ctx.public.publicArea.objectAttributes =
+          TPMA_OBJECT_RESTRICTED  | TPMA_OBJECT_ADMINWITHPOLICY
+        | TPMA_OBJECT_DECRYPT     | TPMA_OBJECT_FIXEDTPM
+        | TPMA_OBJECT_FIXEDPARENT | TPMA_OBJECT_SENSITIVEDATAORIGIN;
+
+    static const TPM2B_DIGEST auth_policy = {
+        .size = 32,
+        .buffer = {
+            0x83, 0x71, 0x97, 0x67, 0x44, 0x84, 0xB3, 0xF8, 0x1A, 0x90, 0xCC,
+            0x8D, 0x46, 0xA5, 0xD7, 0x24, 0xFD, 0x52, 0xD7, 0x6E, 0x06, 0x52,
+            0x0B, 0x64, 0xF2, 0xA1, 0xDA, 0x1B, 0x33, 0x14, 0x69, 0xAA
+        }
+    };
+    TPM2B_DIGEST *authp = &ctx.public.publicArea.authPolicy;
+    *authp = auth_policy;
+
+    ctx.public.publicArea.nameAlg = TPM2_ALG_SHA256;
 }
