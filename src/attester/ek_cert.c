@@ -10,6 +10,7 @@
 // You should have received a copy of the GNU General Public License along with this program; if not, 
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
+#include <unistd.h>
 #include "ek_cert.h"
 
 #define EK_SERVER_INTEL "https://ekop.intel.com/ekcertservice/"
@@ -22,8 +23,8 @@ static tpm_getekcertificate_ctx ctx = {
     .is_cert_on_nv = true,
     .cert_count = 0,
     .encoding = ENC_AUTO,
-    .ec_cert_path_1 = "ek.cert.pem",
-    .ec_cert_path_2 = "ek.cert.pem.2"
+    .ec_cert_path_1 = "ek_rsa_cert.pem",
+    .ec_cert_path_2 = "ek_ecc_cert.pem"
 };
 
 tool_rc free_ctx(void){
@@ -50,7 +51,7 @@ tool_rc free_ctx(void){
 #define PEM_BEGIN_CERT_LINE "\n-----BEGIN CERTIFICATE-----\n"
 #define PEM_END_CERT_LINE "\n-----END CERTIFICATE-----\n"
 
-tool_rc save_cert(void) {
+tool_rc save_cert(struct attester_conf *conf) {
 
     /*
      * Check if the cert is from INTC based on certificated data containing
@@ -764,13 +765,12 @@ tool_rc print_intel_ek_certificate_warning(void) {
     return tool_rc_success;
 }
 
-tool_rc get_ek_certificates(ESYS_CONTEXT *ectx) {
+tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf) {
 
-
-    if (!ctx.ek_path && !ctx.is_cert_on_nv) {
+    /* if (!ctx.ek_path && !ctx.is_cert_on_nv) {
         LOG_ERR("Must specify the EK public key path");
         return tool_rc_option_error;
-    }
+    } */
 
     if (!ctx.ek_server_addr && !ctx.is_cert_on_nv) {
         LOG_ERR("Must specify a valid remote server url!");
@@ -788,20 +788,26 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx) {
 
     /* read ecc certificate if present */
     if (ctx.ec_cert_path_2 && ctx.is_ecc_ek_cert_nv_location_defined) {
-        ctx.ec_cert_file_handle_2 = fopen(ctx.ec_cert_path_2, "wb");
+        /* if (!access(conf->ek_ecc_cert, F_OK)) {
+            // file doesn't exist
+        } */
+        ctx.ec_cert_file_handle_2 = fopen(conf->ek_ecc_cert, "wb");
         if (!ctx.ec_cert_file_handle_2) {
             LOG_ERR("Could not open file for writing: \"%s\"",
-                ctx.ec_cert_path_2);
+                conf->ek_ecc_cert);
             return tool_rc_general_error;
         }
     }
     else {
         /* read rsa certificate if the ecc one is not present */
         if (ctx.ec_cert_path_1) {
-            ctx.ec_cert_file_handle_1 = fopen(ctx.ec_cert_path_1, "wb");
+            /* if (!access(conf->ek_rsa_cert, F_OK)) {
+                // file doesn't exist
+            } */
+            ctx.ec_cert_file_handle_1 = fopen(conf->ek_rsa_cert, "wb");
             if (!ctx.ec_cert_file_handle_1) {
                 LOG_ERR("Could not open file for writing: \"%s\"",
-                    ctx.ec_cert_path_1);
+                    conf->ek_rsa_cert);
                 return tool_rc_general_error;
             }
         }
@@ -851,7 +857,7 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx) {
         }
     }
 
-    rc = save_cert();
+    rc = save_cert(conf);
     if(rc != tool_rc_success){
         LOG_ERR("Could not save certificates on file");
         return tool_rc_general_error;

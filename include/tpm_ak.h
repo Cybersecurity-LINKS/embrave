@@ -27,6 +27,7 @@
 #include "tpm2_convert.h"
 #include "tpm2_tool.h"
 #include "tpm2_capability.h"
+#include "config_parse.h"
 
 #define MAX_SESSIONS 3
 
@@ -162,7 +163,7 @@ struct tpm_evictcontrol_ctx {
     TPMI_ALG_HASH parameter_hash_algorithm;
 };
 
-tool_rc attester_create_ak(ESYS_CONTEXT *ectx);
-tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx);
+tool_rc attester_create_ak(ESYS_CONTEXT *ectx, struct attester_conf *conf);
+tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf);
 
 #endif

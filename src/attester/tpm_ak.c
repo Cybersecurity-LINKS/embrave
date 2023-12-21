@@ -42,7 +42,7 @@ tool_rc init_ak_public(TPMI_ALG_HASH name_alg, TPM2B_PUBLIC *public, struct crea
     return tpm2_alg_util_public_init(alg, name_halg, NULL, NULL, ATTRS, public);
 }
 
-tool_rc attester_create_ak(ESYS_CONTEXT *ectx){
+tool_rc attester_create_ak(ESYS_CONTEXT *ectx, struct attester_conf *conf){
 
     struct createak_context ctx = {
         .ek = {
@@ -57,10 +57,10 @@ tool_rc attester_create_ak(ESYS_CONTEXT *ectx){
                 },
             },
             .out = {
-                .pub_file = "ak.pub.pem",
-                .name_file = "ak.name",
+                .pub_file = conf->ak_pub,
+                .name_file = conf->ak_name,
                 .pub_fmt = pubkey_format_pem,
-                .ctx_file = "ak.ctx"
+                .ctx_file = conf->ak_ctx
             },
         },
         .flags = { 0 },
@@ -350,10 +350,10 @@ out_session:
 
 }
 
-tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx){
+tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
 
     struct tpm_evictcontrol_ctx ctx = {
-        .to_persist_key.ctx_path = "ak.ctx",
+        .to_persist_key.ctx_path = conf->ak_ctx,
         .auth_hierarchy.ctx_path="o",
         .out_tr = ESYS_TR_NONE,
         .parameter_hash_algorithm = TPM2_ALG_ERROR,

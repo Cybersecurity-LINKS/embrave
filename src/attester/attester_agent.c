@@ -20,7 +20,7 @@ struct attester_conf attester_config;
 
 int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
-int attester_init(struct attester_conf* conf) {
+int attester_init(/* struct attester_conf* conf */) {
   // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -91,11 +91,11 @@ int attester_init(struct attester_conf* conf) {
   attester_create_ek(esys_context, algo);
 
   /* tpm_createak */
-  attester_create_ak(esys_context);
-  attester_evictcontrol(esys_context);
+  attester_create_ak(esys_context, &attester_config);
+  attester_evictcontrol(esys_context, &attester_config);
 
   /* tpm_getekcertificate */
-  get_ek_certificates(esys_context);
+  get_ek_certificates(esys_context, &attester_config);
 
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");
@@ -106,7 +106,7 @@ int attester_init(struct attester_conf* conf) {
   //Check if PCR9 is zero
   if(ret == 0){
     //PCR9 is zero => softbinding
-    ret = PCR9softbindig(conf->tls_cert, esys_context);
+    ret = PCR9softbindig(attester_config.tls_cert, esys_context);
     if(ret != 0) goto error;
   } else if(ret == -1){
     goto error;
