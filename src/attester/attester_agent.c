@@ -25,6 +25,7 @@ int attester_init(/* struct attester_conf* conf */) {
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
+  tool_rc rc_tool;
   uint16_t ek_handle[HANDLE_SIZE];
   uint16_t ak_handle[HANDLE_SIZE];
   int ret;
@@ -83,7 +84,22 @@ int attester_init(/* struct attester_conf* conf */) {
   }
 
   if(check_keys(ek_handle, ak_handle, esys_context)) {
-    fprintf(stderr, "INFO: AK already present at handle %s\n", (char *)ak_handle);
+    fprintf(stdout, "INFO: AK already present at handle %s\n", (char *)ak_handle);
+
+    /* Check if present EK cert */
+    FILE *fd = fopen(attester_config.ek_ecc_cert, "r");
+    if(fd == NULL){
+      fd = fopen(attester_config.ek_rsa_cert, "r");
+      if(fd == NULL){
+        fprintf(stdout, "INFO: EK certificate not found, generating it\n");
+        rc_tool = get_ek_certificates(esys_context, &attester_config);
+        if(rc_tool != tool_rc_success)
+          goto error;
+        return 0;
+      }
+    }
+    
+    fclose(fd);
     return 0;
   }
 
@@ -96,6 +112,9 @@ int attester_init(/* struct attester_conf* conf */) {
 
   /* tpm_getekcertificate */
   get_ek_certificates(esys_context, &attester_config);
+
+  printf("AAbb %s\n", attester_config.ek_ecc_cert);
+  printf("AA %s\n", attester_config.ek_rsa_cert);
 
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");

@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
 
   /* Check TPM keys and extend PCR9 */
   if((a = attester_init(&attester_config)) != 0) return -1;
-  printf("%s\n", attester_config.ek_ecc_cert);
+ 
 
   /* Perform the join procedure */
   join_procedure();
