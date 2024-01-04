@@ -110,13 +110,13 @@ tool_rc save_cert(struct attester_conf *conf) {
     bool retval = true;
 
     if (ctx.ecc_cert_buffer) {
-        retval = files_write_bytes(ctx.ec_cert_file_handle_1, ctx.ecc_cert_buffer, ctx.ecc_cert_buffer_size);
+        retval = files_write_bytes(ctx.ec_cert_file_handle_2, ctx.ecc_cert_buffer, ctx.ecc_cert_buffer_size);
         if (!retval) {
             return tool_rc_general_error;
         }
 
     } else if (ctx.rsa_cert_buffer) {
-        retval = files_write_bytes(ctx.ec_cert_file_handle_1, ctx.rsa_cert_buffer, ctx.rsa_cert_buffer_size);
+        retval = files_write_bytes(ctx.ec_cert_file_handle_2, ctx.rsa_cert_buffer, ctx.rsa_cert_buffer_size);
         if (!retval) {
             return tool_rc_general_error;
         }
