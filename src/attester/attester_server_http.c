@@ -402,11 +402,11 @@ static void request_certificate(struct mg_connection *c, int ev, void *ev_data, 
 static int join_procedure(){
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
-  char s_conn[250];
+  char s_conn[280];
   char *ca_ip_addr;
 
   /* Contact the join service */
-  snprintf(s_conn, 250, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");
+  snprintf(s_conn, 280, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");
   //printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
@@ -482,6 +482,7 @@ int main(int argc, char *argv[]) {
 
   /* Check TPM keys and extend PCR9 */
   if((a = attester_init(&attester_config)) != 0) return -1;
+  printf("%s\n", attester_config.ek_ecc_cert);
 
   /* Perform the join procedure */
   join_procedure();
