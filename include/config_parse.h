@@ -16,12 +16,11 @@
 #include <stdint.h>
 #include <errno.h>
 
-#define CONFIG_FILE_PATH "/home/linux/Documents/lemon/lemon.conf"  /* development path */
+#define CONFIG_FILE_PATH "/home/pi/lemon/lemon.conf"  /* development path */
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 12
 #define VERIFIER_NUM_CONFIG_PARAMS 7
-#define CA_NUM_CONFIG_PARAMS 7
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
 
 enum attester_keys_config{
@@ -46,15 +45,6 @@ enum verifier_keys_config{
     VERIFIER_TLS_KEY,
     VERIFIER_TLS_CERT_CA,
     VERIFIER_DB
-};
-enum ca_keys_config{
-    CA_IP,
-    CA_PORT,
-    CA_TLS_PORT,
-    CA_TLS_CERT,
-    CA_TLS_KEY,
-    CA_TLS_CERT_CA,
-    CA_DB
 };
 enum join_service_keys_config{
     JOIN_SERVICE_IP,
@@ -92,16 +82,6 @@ struct verifier_conf {
     char tls_key[MAX_LINE_LENGTH];
 };
 
-struct ca_conf {
-    char db[MAX_LINE_LENGTH];
-    uint32_t port;
-    uint32_t tls_port;
-    char ip[MAX_BUF];
-    char tls_cert_ca[MAX_LINE_LENGTH];
-    char tls_cert[MAX_LINE_LENGTH];
-    char tls_key[MAX_LINE_LENGTH];
-};
-
 struct join_service_conf {
     char db[MAX_LINE_LENGTH];
     uint32_t port;
@@ -110,7 +90,6 @@ struct join_service_conf {
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
-    char ca_ip[MAX_BUF];
 };
 
 enum attester_keys_config attester_parse_key(char* key);

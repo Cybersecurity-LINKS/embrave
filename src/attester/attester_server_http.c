@@ -359,7 +359,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
 
     /* Send request */
     mg_printf(c,
-      "POST /request_certificate HTTP/1.1\r\n"
+      "POST /request_join HTTP/1.1\r\n"
       "Content-Type: application/json\r\n"
       "Content-Length: %ld\r\n"
       "\r\n"
@@ -403,7 +403,6 @@ static int join_procedure(){
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[280];
-  //char *ca_ip_addr;
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");

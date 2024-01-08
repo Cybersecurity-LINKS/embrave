@@ -14,7 +14,7 @@
 #define __JOIN_SERVICE__
 
 #include "mongoose.h"
-
+#include <sqlite3.h>
 /* methods */
 #define GET "GET"
 #define POST "POST"
@@ -28,6 +28,6 @@
 #define APPLICATION_JSON "Content-Type: application/json\r\n"
 
 /* APIs */
-#define API_JOIN "/join"
+#define API_JOIN "/request_join"
 
 #endif

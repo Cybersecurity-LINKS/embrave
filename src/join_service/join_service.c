@@ -15,10 +15,33 @@
 
 static struct join_service_conf js_config;
 
+int init_database(void);
+
+
+
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN)) {
+
+            //Check if AK already present in the database or in the revoked db
+
+            //if present send OK
+
+            //if not present => challenge
+
+
+
+
+
+
+
+
+
+
+
+
+
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "{\"%s\":\"%s\"}"
                         );
@@ -54,13 +77,37 @@ int main(int argc, char *argv[]) {
     mg_mgr_init(&mgr);
     char url[MAX_BUF];
 
+    struct stat st = {0};
+    if (stat("/var/lemon", &st) == -1) {
+        if(!mkdir("/var/lemon", 0711)) {
+            fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
+        }
+        else {
+            fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
+        }
+    }
+    if (stat("/var/lemon/join_service", &st) == -1) {
+        if(!mkdir("/var/lemon/join_service", 0711)) {
+            fprintf(stdout, "INFO: /var/lemon/join_service directory successfully created\n");
+        }
+        else {
+            fprintf(stderr, "ERROR: cannot create /var/lemon/join_service directory\n");
+        }
+    }
+
     /* read configuration from cong file */
     if(read_config(/* join_service */ 2, (void * ) &js_config)){
         int err = errno;
         fprintf(stderr, "ERROR: could not read configuration file\n");
         exit(err);
     }
-    
+
+    //init database
+    if(init_database()){
+        fprintf(stderr, "ERROR: could not read the db\n");
+        exit(-1);
+    }
+
     #ifdef DEBUG
     printf("join_service_config->ip: %s\n", js_config.ip);
     printf("join_service_config->port: %d\n", js_config.port);
@@ -68,7 +115,6 @@ int main(int argc, char *argv[]) {
     printf("join_service_config->tls_cert: %s\n", js_config.tls_cert);
     printf("join_service_config->tls_key: %s\n", js_config.tls_key);
     printf("join_service_config->db: %s\n", js_config.db);
-    printf("join_service_config->ca_ip: %s\n", js_config.ca_ip);
     #endif
 
     snprintf(url, 1024, "http://%s:%d", js_config.ip, js_config.port);
@@ -83,4 +129,53 @@ int main(int argc, char *argv[]) {
     for (;;) mg_mgr_poll(&mgr, 1000);                         // Event loop
     mg_mgr_free(&mgr);                                        // Cleanup
     return 0;
+}
+
+/*Create db connection and, if not presents, create the keys databases
+    ret:
+    -1 error
+    0 OK
+*/
+int init_database(void){
+    sqlite3_stmt *res= NULL;
+    sqlite3 *db = NULL;
+    int byte;
+    char *sql1 = "CREATE TABLE IF NOT EXISTS joined (ak text NOT NULL, PRIMARY KEY (ak)); ";
+    char *sql2 = "CREATE TABLE IF NOT EXISTS revoked (ak text NOT NULL, PRIMARY KEY (ak)); ";
+    int step, idx;
+
+    printf("%s\n", js_config.db);
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    if ( rc != SQLITE_OK) {
+        printf("Cannot open or create the join service database, error %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    //convert the sql statament 
+    rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
+
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, sql1, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    sqlite3_close(db);
+    return 0;
+
 }
