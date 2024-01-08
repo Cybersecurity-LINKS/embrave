@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     char url[MAX_BUF];
 
     /* read configuration from cong file */
-    if(read_config(/* join_service */ 3, (void * ) &js_config)){
+    if(read_config(/* join_service */ 2, (void * ) &js_config)){
         int err = errno;
         fprintf(stderr, "ERROR: could not read configuration file\n");
         exit(err);
