@@ -113,9 +113,6 @@ int attester_init(/* struct attester_conf* conf */) {
   /* tpm_getekcertificate */
   get_ek_certificates(esys_context, &attester_config);
 
-  printf("AAbb %s\n", attester_config.ek_ecc_cert);
-  printf("AA %s\n", attester_config.ek_rsa_cert);
-
   if(!check_keys(ek_handle, ak_handle, esys_context)) {
     fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");
     goto error;

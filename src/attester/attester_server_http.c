@@ -237,55 +237,157 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
 
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
-/* Print HTTP response and signal that we're done
-   set the value of the ip address of the CA (fn_data)*/
-/* static void get_join_service(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  if (ev == MG_EV_OPEN) {
-    // Connection created. Store connect expiration time in c->data
-    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
-  } else if (ev == MG_EV_POLL) {
-    if (mg_millis() > *(uint64_t *) c->data &&
-        (c->is_connecting || c->is_resolving)) {
-      mg_error(c, "Connect timeout");
+int create_request_body(size_t *object_length, char **object){
+
+  long size; //= ftell(fd_ek_cert); // get current file pointer
+  struct stat st;
+  size_t ret, tot_sz = 0;
+  int fd, n;
+  unsigned char *ek_cert = NULL, *ak_cert = NULL;
+  char *b64_buff_ek = NULL, *b64_buff_ak = NULL;
+
+  /* Read EK certificate */
+  FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
+  if(fd_ek_cert == NULL){
+    fprintf(stdout, "INFO: EK ECC certificate not present, looking for RSA certificate\n");
+    fd_ek_cert = fopen(attester_config.ek_rsa_cert, "r");
+    if(fd_ek_cert == NULL){
+      fprintf(stderr, "ERROR: EK RSA certificate not found\n");
+      return -1;
     }
-  } else if (ev == MG_EV_CONNECT) {
-    //size_t buff_length = 0;
-    //char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
-    
-    // Send request 
-    mg_printf(c,
-      "GET /join HTTP/1.1\r\n"
-      "\r\n"
-    );
-
-  } else if (ev == MG_EV_HTTP_MSG) {
-    // Response is received. Print it
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    //char response_body[1024];
-    //memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len);
-
-    //int ip_len = 0;
-    char **ca_ip_addr = (char **) fn_data;
-    //*ca_ip_addr = (char *) malloc(ip_len + 1);
-
-    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
-    //printf("ip_len = %d\n", ip_len);
-    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
-    //(*ca_ip_addr)[ip_len] = '\0';
-    *ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-    //printf("%s\n", response_body);
-
-    //free(ca_ip_addr);
-    
-    //response_body[hm->body.len] = '\0';
-    //fprintf(stdout, "%s\n", response_body);
-
-    c->is_draining = 1;        // Tell mongoose to close this connection
-    Continue = false;  // Tell event loop to stop
-  } else if (ev == MG_EV_ERROR) {
-    Continue = false;  // Error, tell event loop to stop
   }
-} */
+
+  fd = fileno(fd_ek_cert);
+  fstat(fd, &st);
+  size = st.st_size;
+  /* fseek(fd_ek_cert, 0, SEEK_SET); // seek back to beginning of file */
+
+  ek_cert = (unsigned char *) malloc(size);
+  if(ek_cert == NULL){
+    fprintf(stderr, "ERROR: cannot allocate ek_cert buffer for certificate request\n");
+    fclose(fd_ek_cert);
+    return -1;
+  }
+
+  printf("EK cert size: %ld\n", size);
+
+  ret = fread(ek_cert, 1, (size_t) size, fd_ek_cert);
+  if(ret != size){
+    fclose(fd_ek_cert);
+    free(ek_cert);
+    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
+    return -1;
+  }
+
+  fclose(fd_ek_cert);
+
+  //Encode in b64
+  //Allocate buffer for encoded b64 buffer
+  tot_sz = B64ENCODE_OUT_SAFESIZE(size);
+  b64_buff_ek = malloc(tot_sz);
+  if(b64_buff_ek == NULL) {
+    fprintf(stderr, "ERROR: b64_buff malloc error\n");
+    free(ek_cert);
+    return -1;
+  }
+
+  n = mg_base64_encode((const unsigned char *)ek_cert, size, b64_buff_ek);
+  if(n == 0){
+    fprintf(stderr, "ERROR: mg_base64_encode error\n");
+    free(ek_cert);
+    free(b64_buff_ek);
+    return -1;
+  }
+
+  printf("EK cert base64: %s\n", b64_buff_ek);
+
+  free(ek_cert);
+
+  /* Read AK pub key */
+  fprintf(stdout, "%s\n", attester_config.ak_pub);
+  FILE *fd_ak_cert = fopen(attester_config.ak_pub, "r");
+  if(fd_ak_cert == NULL){
+    fprintf(stderr, "ERROR: AK pub key pem not present\n");
+    free(b64_buff_ek);
+    return -1;
+  }
+
+  fd = fileno(fd_ak_cert);
+  fstat(fd, &st);
+  size = st.st_size;
+
+
+  ak_cert = (unsigned char *) malloc(size);
+  if(ak_cert == NULL){
+    fprintf(stderr, "ERROR: cannot allocate ak_cert buffer\n");
+    free(b64_buff_ek);
+    fclose(fd_ak_cert);
+    return -1;
+  }
+
+  printf("AK pem size: %ld\n", size);
+
+  ret = fread(ak_cert, 1, (size_t) size, fd_ak_cert);
+  if(ret != size){
+    free(b64_buff_ek);
+    fclose(fd_ak_cert);
+    free(ak_cert);
+    fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+    return -1;
+  }
+
+  fclose(fd_ak_cert);
+  printf("AK pem : %s\n", ak_cert);
+  //Encode in b64
+  //Allocate buffer for encoded b64 buffer
+  
+  tot_sz += size;
+  /* tot_sz += B64ENCODE_OUT_SAFESIZE(size);
+  b64_buff_ak = malloc(tot_sz);
+  if(b64_buff_ak == NULL) {
+    fprintf(stderr, "ERROR: b64_buff malloc error\n");
+    free(b64_buff_ek);
+    free(ak_cert);
+    return -1;
+  }
+
+  n = mg_base64_encode((const unsigned char *)ak_cert, size, b64_buff_ak);
+  if(n == 0){
+    fprintf(stderr, "ERROR: mg_base64_encode error\n");
+    free(b64_buff_ek);
+    free(ak_cert);
+    free(b64_buff_ak);
+    return -1;
+  } */
+
+  //printf("EK cert base64: %s\n", b64_buff_ak);
+
+  //free(ak_cert);
+
+  //OTHER DATA TO SEND HERE
+
+  *object = (char *)  malloc(tot_sz);
+  if(*object == NULL) {
+    fprintf(stderr, "ERROR: object malloc error\n");
+    free(ek_cert);
+    free(b64_buff_ek);
+    //free(b64_buff_ak);
+    return -1;
+  }
+printf("00000000000000000000000\n");
+  sprintf(*object, "{\"ek_cert_b64\":\"%s\", \"ak_cert_b64\":\"%s\"}", b64_buff_ek, ak_cert);
+  printf("00000000000000000000000\n");
+  *object_length = strlen(*object);
+printf("00000000000000000000000\n");
+  printf("AK pem : %s\n", *object);
+printf("1111111111111\n");
+  free(b64_buff_ek);
+  printf("2222222222222222\n");
+  //free(b64_buff_ak);
+  return 0;
+
+}
+
 
 static void request_join(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN) {
@@ -298,65 +400,15 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     }
   } else if (ev == MG_EV_CONNECT) {
     size_t object_length = 0;
-    char object [2048];
-        
-    /* Read EK certificate */
-    FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
-    if(fd_ek_cert == NULL){
-      fprintf(stdout, "INFO: EK ECC certificate not present, looking for RSA certificate\n");
-      fd_ek_cert = fopen(attester_config.ek_rsa_cert, "r");
-      if(fd_ek_cert == NULL){
-        fprintf(stderr, "ERROR: EK RSA certificate not found\n");
-        exit(-1);
-      }
-    }
+    char *object = NULL;
 
-    /* size = st.st_size;
-    fseek(fd_ek_cert, 0, SEEK_END); // seek to end of file */
-    long size; //= ftell(fd_ek_cert); // get current file pointer
-    struct stat st;
-    int fd = fileno(fd_ek_cert);
-    fstat(fd, &st);
-    size = st.st_size;
-    /* fseek(fd_ek_cert, 0, SEEK_SET); // seek back to beginning of file */
-
-    unsigned char *ek_cert = (unsigned char *) malloc(size);
-    if(ek_cert == NULL){
-      fprintf(stderr, "ERROR: cannot allocate ek_cert buffer for certificate request\n");
+    if (create_request_body(&object_length, &object) != 0){
       exit(-1);
+
     }
-
-    printf("EK cert size: %ld\n", size);
-
-    ssize_t ret = fread(ek_cert, 1, (size_t) size, fd_ek_cert);
-    if(ret != size){
-      fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
-      exit(-1);
-    };
-
-    fclose(fd_ek_cert);
-
-    //Encode in b64
-    //Allocate buffer for encoded b64 buffer
-    unsigned char *b64_buff = malloc(B64ENCODE_OUT_SAFESIZE(size));
-    if(b64_buff == NULL) {
-      free(ek_cert);
-      exit(-1);
-    }
-
-    int n = mg_base64_encode((const unsigned char *)ek_cert, size, b64_buff);
-    if(n == 0){
-      printf("ERROR: mg_base64_encode error\n");
-      exit(-1);
-    }
-
-    printf("EK cert base64: %s\n", b64_buff);
-
-    free(ek_cert);
-
-    sprintf(object, "{\"ek_cert_b64\":\"%s\"}", b64_buff);
-    object_length = strlen(object);
-
+        printf("3333333333333333\n");
+        printf("%s\n", object);
+        printf("yoooooooo\n");
     /* Send request */
     mg_printf(c,
       "POST /request_join HTTP/1.1\r\n"
@@ -367,8 +419,10 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       object_length,
       object
     );
-
-    free(b64_buff);
+  printf("444444444444444444\n");
+    //free(object);
+printf("5555555555555555555555\n");
+    
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
@@ -467,7 +521,10 @@ int main(int argc, char *argv[]) {
  
 
   /* Perform the join procedure */
-  join_procedure();
+  if (join_procedure() != 0){
+    fprintf(stderr, "ERROR: could not reach the join service\n");
+    exit(-1);
+  };
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
