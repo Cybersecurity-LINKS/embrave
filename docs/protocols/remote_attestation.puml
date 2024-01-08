@@ -10,6 +10,7 @@ participant TPM
 participant "Attester\nAgent" as attester_agent
 endbox
 participant "Verifier" as verifier
+participant "Join Service" as join_service
 
 loop
 verifier->attester_agent: Attestation request (PCRs, nonce)
@@ -24,4 +25,12 @@ attester_agent->verifier: sign(AK_priv, Quote), IMA log
 verifier->verifier: Verfiy quote signature
 verifier->verifier: Verify IMA log integrity
 verifier->verifier: Veryfy IMA log against the whitelist
+group if Verification fails
+  verifier -> join_service: Notify the failure
+  verifier -> verifier: stop RA
+else
+  verifier -> verifier: continue RA
 end
+end
+join_service -> join_service: Store the failure event
+join_service -> join_service:  Notify the event
