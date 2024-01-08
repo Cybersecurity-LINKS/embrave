@@ -20,8 +20,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN)) {
             mg_http_reply(c, OK, APPLICATION_JSON,
-                        "{\"%s\":\"%s\"}",
-                        "ca_ip_addr", js_config.ca_ip);
+                        "{\"%s\":\"%s\"}"
+                        );
             MG_INFO(("%s %s %d", GET, API_JOIN, OK));
         }
         // Expecting JSON array in the HTTP body, e.g. [ 123.38, -2.72 ]

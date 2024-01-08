@@ -19,7 +19,6 @@ char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "
             "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
             "tls_cert_ca", "db"};
-char* ca_params[CA_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key", "tls_cert_ca", "db"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
             "tls_key", "tls_cert_ca", "db", "ca_ip"};
 
@@ -45,17 +44,6 @@ enum verifier_keys_config verifier_parse_key(char* key){
     return (enum verifier_keys_config) i;
 }
 
-enum ca_keys_config ca_parse_key(char* key){
-    int i = 0;
-
-    for(i=0; i<CA_NUM_CONFIG_PARAMS; i++){
-        if(!strcmp(key, ca_params[i]))
-            return (enum ca_keys_config) i;
-    }
-
-    return (enum ca_keys_config) i;
-}
-
 enum join_service_keys_config join_service_parse_key(char* key){
     int i = 0;
 
@@ -71,8 +59,7 @@ enum join_service_keys_config join_service_parse_key(char* key){
 user: 
         - 0: attester
         - 1: verifier
-        - 2: ca
-        - 3: join_service
+        - 2: join_service
 */
 uint16_t read_config(char user, void* config_struct){
     FILE* fd;
@@ -80,10 +67,9 @@ uint16_t read_config(char user, void* config_struct){
     char line[MAX_LINE_LENGTH + 1];
     struct attester_conf* attester_config = NULL;
     struct verifier_conf* verifier_config = NULL;
-    struct ca_conf* ca_config = NULL;
     struct join_service_conf* join_service_config = NULL;
 
-    if(user != 0 && user != 1 && user != 2 && user != 3){
+    if(user != 0 && user != 1 && user != 2 ){
         fprintf(stderr, "ERROR: unknown config user\n");
         errno = 5;
         return (uint16_t) -1;
@@ -114,10 +100,6 @@ uint16_t read_config(char user, void* config_struct){
         break;
 
     case 2:
-        ca_config = (struct ca_conf*) config_struct;
-        break;
-
-    case 3:
         join_service_config = (struct join_service_conf*) config_struct;
         break;
 
@@ -272,62 +254,8 @@ uint16_t read_config(char user, void* config_struct){
                 }
             }
 
-            /* CA section management */
-            if(user == 2 && !strcmp(section, "CA")){
-                while(fgets(line, MAX_LINE_LENGTH, fd)){
-                    /* comment or new line found */
-                    if(line[0] == '#' || line[0] == '\n')
-                        continue;
-
-                    if(line[0] == '['){
-                        break;
-                    }
-
-                    sscanf(line, "%s = %s", key, value);
-
-                    enum ca_keys_config param = ca_parse_key(key);
-
-                    switch((int) param){
-                        case CA_IP:
-                            strcpy(ca_config->ip, value);
-                            break;
-
-                        case CA_PORT:
-                            ca_config->port = (uint32_t) atoi(value);
-                            break;
-
-                        case CA_TLS_PORT:
-                            ca_config->tls_port = (uint32_t) atoi(value);
-                            break;
-
-                        case CA_TLS_CERT:
-                            strcpy(ca_config->tls_cert, value);
-                            break;
-
-                        case CA_TLS_KEY:
-                            strcpy(ca_config->tls_key, value);
-                            break;
-
-                        case CA_TLS_CERT_CA:
-                            strcpy(ca_config->tls_cert_ca, value);
-                            break;
-
-                        case CA_DB:
-                            strcpy(ca_config->db, value);
-                            break;
-
-                        case CA_NUM_CONFIG_PARAMS:
-                            //unknown param
-                            break;
-
-                        default:
-                            break;
-                    }
-                }
-            }
-
             /* Join Service section management */
-            if(user == 3 && !strcmp(section, "JoinService")){
+            if(user == 2 && !strcmp(section, "JoinService")){
                 while(fgets(line, MAX_LINE_LENGTH, fd)){
                     /* comment or new line found */
                     if(line[0] == '#' || line[0] == '\n')
@@ -342,10 +270,6 @@ uint16_t read_config(char user, void* config_struct){
                     enum join_service_keys_config param = join_service_parse_key(key);
 
                     switch((int) param){
-                        case CA_IP:
-                            strcpy(join_service_config->ip, value);
-                            break;
-
                         case JOIN_SERVICE_PORT:
                             join_service_config->port = (uint32_t) atoi(value);
                             break;
@@ -368,10 +292,6 @@ uint16_t read_config(char user, void* config_struct){
 
                         case JOIN_SERVICE_DB:
                             strcpy(join_service_config->db, value);
-                            break;
-
-                        case JOIN_SERVICE_CA_IP:
-                            strcpy(join_service_config->ca_ip, value);
                             break;
 
                         case JOIN_SERVICE_NUM_CONFIG_PARAMS:

@@ -239,7 +239,7 @@ static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 /* Print HTTP response and signal that we're done
    set the value of the ip address of the CA (fn_data)*/
-static void get_join_service(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+/* static void get_join_service(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -252,7 +252,7 @@ static void get_join_service(struct mg_connection *c, int ev, void *ev_data, voi
     //size_t buff_length = 0;
     //char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
     
-    /* Send request */
+    // Send request 
     mg_printf(c,
       "GET /join HTTP/1.1\r\n"
       "\r\n"
@@ -285,9 +285,9 @@ static void get_join_service(struct mg_connection *c, int ev, void *ev_data, voi
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }
-}
+} */
 
-static void request_certificate(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void request_join(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -403,35 +403,18 @@ static int join_procedure(){
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[280];
-  char *ca_ip_addr;
+  //char *ca_ip_addr;
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");
   //printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
-  c = mg_http_connect(&mgr, s_conn, get_join_service, (void *) &ca_ip_addr);
+  c = mg_http_connect(&mgr, s_conn, request_join, NULL);
 
   if (c == NULL) {
     MG_ERROR(("CLIENT cant' open a connection"));
-    return 0;
-  }
-
-  while (Continue) mg_mgr_poll(&mgr, 1); //1ms
-
-  printf("ca_ip_addr = %s\n", ca_ip_addr);
-
-  /* Contact the CA */
-  Continue = true;
-  snprintf(s_conn, 250, "%s%s:%d/%s", "http://", ca_ip_addr, 8001, "request_certificate");
-  //printf("%s\n", s_conn);
-  //mg_mgr_init(&mgr);
-
-  c = mg_http_connect(&mgr, s_conn, request_certificate, NULL);
-
-  if (c == NULL) {
-    MG_ERROR(("CLIENT cant' open a connection"));
-    return 0;
+    return -1;
   }
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms

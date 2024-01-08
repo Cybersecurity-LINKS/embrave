@@ -77,32 +77,6 @@ tls_key = /var/lemon/verifier/tls/key.pem
 # Path of the verfier database (sqlite)
 db = file:/var/lemon/verifier/db.sqlite
 
-############################
-# CA configuration section #
-############################
-[CA]
-
-# Port where it runs the http server
-port = 80
-
-# Port where is runs the https (TLS enabled) server
-tls_port = 443
-
-# Ip address on which make the binding
-ip = 127.0.0.1
-
-# Flag to spacify if the server will run on TLS
-# or not (1 = TLS, 0 = NO TLS). NOT used yet!
-use_tls = 1
-
-# Certificate and key for TLS paths
-tls_cert_ca = /var/lemon/ca/tls/ca.crt
-tls_cert = /var/lemon/ca/tls/cert.crt
-tls_key = /var/lemon/ca/tls/key.pem
-
-# Path of the verfier database (sqlite)
-db = file:/var/lemon/ca/db.sqlite
-
 ######################################
 # Join Service configuration section #
 ######################################
@@ -128,6 +102,3 @@ tls_key = /var/lemon/join_service/tls/key.pem
 
 # Path of the verfier database (sqlite)
 db = file:/var/lemon/join_service/db.sqlite
-
-# Ip address on which make the binding
-ca_ip = localhost
