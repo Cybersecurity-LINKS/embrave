@@ -39,8 +39,8 @@ tls_cert = /var/lemon/attester/tls/cert.crt
 tls_key = /var/lemon/attester/tls/key.pem
 
 # Path where store the EK certificates
-ek_rsa_cert = /var/lemon/attester/ek_rsa_cert.pem
-ek_ecc_cert = /var/lemon/attester/ek_ecc_cert.pem
+ek_rsa_cert = /var/lemon/attester/ek_rsa_cert.crt
+ek_ecc_cert = /var/lemon/attester/ek_ecc_cert.crt
 
 # Path where store the AK info
 ak_pub = /var/lemon/attester/ak_pub.pem
