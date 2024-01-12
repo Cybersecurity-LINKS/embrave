@@ -122,7 +122,7 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   free(byte_buff);
   free(b64_buff);
 
-#ifdef  debug
+#ifdef DEBUG
   print_sent_data(rpl);
 #endif     
 
@@ -237,13 +237,13 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
 
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
-int create_request_body(size_t *object_length, char **object){
+int create_request_body(size_t *object_length, char *object){
 
   long size; //= ftell(fd_ek_cert); // get current file pointer
   struct stat st;
   size_t ret, tot_sz = 0;
   int fd, n;
-  unsigned char *ek_cert = NULL, *ak_cert = NULL;
+  unsigned char *ek_cert = NULL, *ak_pub = NULL;
   char *b64_buff_ek = NULL, *b64_buff_ak = NULL;
 
   /* Read EK certificate */
@@ -304,40 +304,40 @@ int create_request_body(size_t *object_length, char **object){
   free(ek_cert);
 
   /* Read AK pub key */
-  fprintf(stdout, "%s\n", attester_config.ak_pub);
-  FILE *fd_ak_cert = fopen(attester_config.ak_pub, "r");
-  if(fd_ak_cert == NULL){
+  /* fprintf(stdout, "%s\n", attester_config.ak_pub); */
+  FILE *fd_ak_pub = fopen(attester_config.ak_pub, "r");
+  if(fd_ak_pub == NULL){
     fprintf(stderr, "ERROR: AK pub key pem not present\n");
     free(b64_buff_ek);
     return -1;
   }
 
-  fd = fileno(fd_ak_cert);
+  fd = fileno(fd_ak_pub);
   fstat(fd, &st);
   size = st.st_size;
 
-
-  ak_cert = (unsigned char *) malloc(size);
-  if(ak_cert == NULL){
-    fprintf(stderr, "ERROR: cannot allocate ak_cert buffer\n");
+  ak_pub = (unsigned char *) malloc(size + 1); /* add +1 for '\0' */
+  if(ak_pub == NULL){
+    fprintf(stderr, "ERROR: cannot allocate ak_pub buffer\n");
     free(b64_buff_ek);
-    fclose(fd_ak_cert);
+    fclose(fd_ak_pub);
     return -1;
   }
 
   printf("AK pem size: %ld\n", size);
 
-  ret = fread(ak_cert, 1, (size_t) size, fd_ak_cert);
+  ret = fread(ak_pub, 1, (size_t) size, fd_ak_pub);
+  ak_pub[size] = '\0';
   if(ret != size){
     free(b64_buff_ek);
-    fclose(fd_ak_cert);
-    free(ak_cert);
+    fclose(fd_ak_pub);
+    free(ak_pub);
     fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
     return -1;
   }
 
-  fclose(fd_ak_cert);
-  printf("AK pem : %s\n", ak_cert);
+  fclose(fd_ak_pub);
+  printf("AK pem : %s\n", ak_pub);
   //Encode in b64
   //Allocate buffer for encoded b64 buffer
   
@@ -366,20 +366,20 @@ int create_request_body(size_t *object_length, char **object){
 
   //OTHER DATA TO SEND HERE
 
-  *object = (char *)  malloc(tot_sz);
-  if(*object == NULL) {
-    fprintf(stderr, "ERROR: object malloc error\n");
+  //*object = (char *)  malloc(tot_sz + 1);
+  if(object == NULL) {
+    fprintf(stderr, "ERROR: object buff is NULL\n");
     free(ek_cert);
     free(b64_buff_ek);
     //free(b64_buff_ak);
     return -1;
   }
 printf("00000000000000000000000\n");
-  sprintf(*object, "{\"ek_cert_b64\":\"%s\", \"ak_cert_b64\":\"%s\"}", b64_buff_ek, ak_cert);
+  sprintf(object, "{\"ek_cert_b64\":\"%s\", \"ak_pub_b64\":\"%s\"}", b64_buff_ek, ak_pub);
   printf("00000000000000000000000\n");
-  *object_length = strlen(*object);
+  *object_length = strlen(object);
 printf("00000000000000000000000\n");
-  printf("AK pem : %s\n", *object);
+  printf("Final object : %s\n", object);
 printf("1111111111111\n");
   free(b64_buff_ek);
   printf("2222222222222222\n");
@@ -400,15 +400,16 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     }
   } else if (ev == MG_EV_CONNECT) {
     size_t object_length = 0;
-    char *object = NULL;
+    char object[2048];
 
-    if (create_request_body(&object_length, &object) != 0){
+    if (create_request_body(&object_length, object) != 0){
       exit(-1);
-
     }
-        printf("3333333333333333\n");
-        printf("%s\n", object);
-        printf("yoooooooo\n");
+
+    printf("3333333333333333\n");
+    printf("%s\n", object);
+    printf("yoooooooo\n");
+
     /* Send request */
     mg_printf(c,
       "POST /request_join HTTP/1.1\r\n"
@@ -419,16 +420,16 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       object_length,
       object
     );
-  printf("444444444444444444\n");
+    printf("444444444444444444\n");
     //free(object);
-printf("5555555555555555555555\n");
-    
+    printf("5555555555555555555555\n");
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    char response_body[1024];
-    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len);
+    /* char response_body[1024];
+    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
+    printf("%.*s", (int) hm->message.len, hm->message.ptr);
 
     //int ip_len = 0;
     //char **ca_ip_addr = (char **) fn_data;
@@ -443,8 +444,8 @@ printf("5555555555555555555555\n");
 
     //free(ca_ip_addr);
     
-    response_body[hm->body.len] = '\0';
-    fprintf(stdout, "%s\n", response_body);
+    /* response_body[hm->body.len] = '\0';
+    fprintf(stdout, "%s\n", response_body); */
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -459,18 +460,20 @@ static int join_procedure(){
   char s_conn[280];
 
   /* Contact the join service */
-  snprintf(s_conn, 280, "http://%s:%d/%s", attester_config.join_service_ip, 8000, "join");
+  snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, 8000);
   //printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
   c = mg_http_connect(&mgr, s_conn, request_join, NULL);
+
+  printf("HERE\n");
 
   if (c == NULL) {
     MG_ERROR(("CLIENT cant' open a connection"));
     return -1;
   }
 
-  while (Continue) mg_mgr_poll(&mgr, 1); //1ms
+  while (Continue) mg_mgr_poll(&mgr, 10); //10ms
 
   return 0;
 }
@@ -525,6 +528,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "ERROR: could not reach the join service\n");
     exit(-1);
   };
+
+  printf("HERE\n");
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
