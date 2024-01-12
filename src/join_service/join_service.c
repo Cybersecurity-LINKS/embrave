@@ -22,7 +22,7 @@ int init_database(void);
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        if (mg_http_match_uri(hm, API_JOIN)) {
+        if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
             printf("%s\n", hm->body.ptr);
 
             //Read post
@@ -46,8 +46,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
 
             mg_http_reply(c, OK, APPLICATION_JSON,
-                        "{\"%s\":\"%s\"}"
-                        );
+                        "OK\n");
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
         }
         // Expecting JSON array in the HTTP body, e.g. [ 123.38, -2.72 ]
