@@ -13,25 +13,160 @@
 #include "join_service.h"
 #include "config_parse.h"
 
+#define VALID 1
+#define REVOKED 0
+
+static struct ak_db_entry {
+    unsigned char ak_pem[1024];
+    int validity;
+};
+
 static struct join_service_conf js_config;
 
-int init_database(void);
+static struct ak_db_entry *retrieve_ak(unsigned char *ak){
+    sqlite3 *db;
+    char *err_msg = 0;
+    sqlite3_stmt *res;
+    struct ak_db_entry *ak_entry = NULL;
+    
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return NULL;
+    }
 
+    char *sql = "SELECT * FROM attesters_credentials WHERE ak = ?";
 
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ak, -1, NULL);
+        if (rc != SQLITE_OK ) {
+            return NULL;
+        }
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW) {
+        ak_entry = (struct ak_db_entry *) malloc(sizeof(struct ak_db_entry));
+        if(ak_entry == NULL) {
+            fprintf(stderr, "ERROR: could not allocate ak_db_struct\n");
+            return NULL;
+        }
+        strcpy(ak_entry->ak_pem, sqlite3_column_text(res, 0));
+        ak_entry->validity = atoi(sqlite3_column_text(res, 1));
+    #ifdef DEBUG
+        printf("%s: ", sqlite3_column_text(res, 0));
+        printf("%s\n", sqlite3_column_text(res, 1));
+    #endif
+        fprintf(stdout, "INFO: AK already present in the db\n");
+    }
+    else {
+        fprintf(stdout, "INFO: no entry in the db with the specified AK\n");
+    }
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return ak_entry;
+}
+
+static insert_ak(unsigned char *ak){
+    sqlite3 *db;
+    char *err_msg = 0;
+    sqlite3_stmt *res;
+    
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 1;
+    }
+
+    char *sql = "INSERT INTO attesters_credentials values (?, 1);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ak, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_DONE) {
+        fprintf(stdout, "INFO: AK succesfully inserted into the db\n");
+    }
+    else {
+        fprintf(stderr, "ERROR: could not insert AK into the db\n");
+    }
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return 0;
+}
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-            printf("%s\n", hm->body.ptr);
+        
+        //#ifdef DEBUG
+            printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
+        //#endif
 
-            //Read post
+            /* Read post */
+            /*
+                {
+                    "ek_cert_b64": "aaaaaaaaa",
+                    "ak_pub_b64": "aaaaaaaa"
+                }
+            */
+            unsigned char* ek_cert_b64 = mg_json_get_str(hm->body, "$.ek_cert_b64");
+            unsigned char* ak_pub_b64 = mg_json_get_str(hm->body, "$.ak_pub_b64");
+            struct ak_db_entry *ak_entry;
 
-            //Check if AK already present in the database or in the revoked db
+        #ifdef DEBUG
+            printf("EK_CERT: %s\n", ek_cert_b64);
+            printf("AK_PUB: %s\n", ak_pub_b64);
+        #endif
+        
+            ak_entry = retrieve_ak(ak_pub_b64);
+            if(ak_entry == NULL) {
+                insert_ak(ak_pub_b64);
+            }
+            else {
+            #ifdef DEBUG
+                printf("AK: %s", ak_entry->ak_pem);
+                printf("Validity: %d\n", ak_entry->validity);
+            #endif
+                if(ak_entry->validity == VALID) {
+                    printf("INFO: AK is valid\n");
+                    mg_http_reply(c, OK, APPLICATION_JSON,
+                        "{\"message\":\"ak already registered and valid\"}\n");
+                    MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+                }
+                else {
+                    printf("INFO: AK is NOT valid (revoked)\n");
+                }
+            }
 
-            //if present send OK
+            free(ak_entry);
 
-            //if not present => challenge
+            /* Check if AK already present in the database or in the revoked db */
+
+            /* if present send OK */
+
+            /* if not present => challenge */
 
 
 
@@ -73,6 +208,54 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     }
 } */
 
+/*Create db connection and, if not presents, create the keys databases
+    ret:
+    -1 error
+    0 OK
+*/
+static init_database(void){
+    sqlite3_stmt *res= NULL;
+    sqlite3 *db = NULL;
+    int byte;
+    char *sql1 = "CREATE TABLE IF NOT EXISTS attesters_credentials (ak text NOT NULL, validity INT NOT NULL, PRIMARY KEY (ak));";
+    //char *sql2 = "CREATE TABLE IF NOT EXISTS revoked (ak text NOT NULL, PRIMARY KEY (ak)); ";
+    int step, idx;
+
+    printf("%s\n", js_config.db);
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    if ( rc != SQLITE_OK) {
+        printf("Cannot open or create the join service database, error %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    //convert the sql statament 
+    rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, sql1, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    /* rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+    */
+    sqlite3_close(db);
+    return 0;
+
+}
+
 int main(int argc, char *argv[]) {
     struct mg_mgr mgr;
     struct mg_connection *c;
@@ -106,7 +289,7 @@ int main(int argc, char *argv[]) {
 
     /* init database */
     if(init_database()){
-        fprintf(stderr, "ERROR: could not read the db\n");
+        fprintf(stderr, "ERROR: could not init the db\n");
         exit(-1);
     }
 
@@ -131,53 +314,4 @@ int main(int argc, char *argv[]) {
     for (;;) mg_mgr_poll(&mgr, 1000);                         // Event loop
     mg_mgr_free(&mgr);                                        // Cleanup
     return 0;
-}
-
-/*Create db connection and, if not presents, create the keys databases
-    ret:
-    -1 error
-    0 OK
-*/
-int init_database(void){
-    sqlite3_stmt *res= NULL;
-    sqlite3 *db = NULL;
-    int byte;
-    char *sql1 = "CREATE TABLE IF NOT EXISTS joined (ak text NOT NULL, PRIMARY KEY (ak)); ";
-    char *sql2 = "CREATE TABLE IF NOT EXISTS revoked (ak text NOT NULL, PRIMARY KEY (ak)); ";
-    int step, idx;
-
-    printf("%s\n", js_config.db);
-    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        printf("Cannot open or create the join service database, error %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //convert the sql statament 
-    rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
-
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    rc = sqlite3_exec(db, sql1, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    sqlite3_close(db);
-    return 0;
-
 }

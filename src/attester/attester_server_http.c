@@ -374,16 +374,16 @@ int create_request_body(size_t *object_length, char *object){
     //free(b64_buff_ak);
     return -1;
   }
-printf("00000000000000000000000\n");
+
   sprintf(object, "{\"ek_cert_b64\":\"%s\", \"ak_pub_b64\":\"%s\"}", b64_buff_ek, ak_pub);
-  printf("00000000000000000000000\n");
   *object_length = strlen(object);
-printf("00000000000000000000000\n");
+
+#ifdef DEBUG
   printf("Final object : %s\n", object);
-printf("1111111111111\n");
+#endif
+
   free(b64_buff_ek);
-  printf("2222222222222222\n");
-  //free(b64_buff_ak);
+  free(ak_pub);
   return 0;
 
 }
@@ -403,12 +403,13 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     char object[2048];
 
     if (create_request_body(&object_length, object) != 0){
+      fprintf(stderr, "ERROR: cannot create the http body conatcting the join_service\n");
       exit(-1);
     }
 
-    printf("3333333333333333\n");
+#ifdef DEBUG
     printf("%s\n", object);
-    printf("yoooooooo\n");
+#endif
 
     /* Send request */
     mg_printf(c,
@@ -418,19 +419,16 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       "\r\n"
       "%s\n",
       object_length,
-      object
-    );
-    printf("444444444444444444\n");
-    //free(object);
-    printf("5555555555555555555555\n");
+      object);
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     /* char response_body[1024];
     memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
+#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
-
+#endif
     //int ip_len = 0;
     //char **ca_ip_addr = (char **) fn_data;
     //*ca_ip_addr = (char *) malloc(ip_len + 1);
