@@ -12,6 +12,8 @@
 
 #include "join_service.h"
 #include "config_parse.h"
+#include "x509.h"
+#include "common.h"
 
 #define VALID 1
 #define REVOKED 0
@@ -134,14 +136,47 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             unsigned char* ek_cert_b64 = mg_json_get_str(hm->body, "$.ek_cert_b64");
             unsigned char* ak_pub_b64 = mg_json_get_str(hm->body, "$.ak_pub_b64");
             struct ak_db_entry *ak_entry;
+            size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen(ek_cert_b64));
 
         #ifdef DEBUG
             printf("EK_CERT: %s\n", ek_cert_b64);
             printf("AK_PUB: %s\n", ak_pub_b64);
         #endif
-        
+
             ak_entry = retrieve_ak(ak_pub_b64);
             if(ak_entry == NULL) {
+                //Malloc buffer
+                unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
+                if(ek_cert_buff == NULL) {
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    return -1;
+                }
+
+                //Decode b64
+                if(mg_base64_decode(ek_cert_b64, strlen(ek_cert_b64), ek_cert_buff) == 0){
+                    fprintf(stderr, "ERROR: Transmission challenge data error.\n");
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    return -1;
+                }
+
+                /* Verify the X509 certificate of the EK */
+                if(verify_x509_cert(ek_cert_buff, ek_cert_len)){
+                    mg_http_reply(c, OK, APPLICATION_JSON,
+                        "{\"error\":\"ek certificate verification failed\"}\n");
+                    MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    return;
+                }
+                else {
+                    fprintf(stdout, "INFO: EK certificate verified successfully\n");
+                }
+
                 insert_ak(ak_pub_b64);
             }
             else {
@@ -161,6 +196,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             }
 
             free(ak_entry);
+            free(ek_cert_b64);
+            free(ak_pub_b64);
 
             /* Check if AK already present in the database or in the revoked db */
 

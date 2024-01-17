@@ -54,6 +54,7 @@ lemon.conf
 lib/tpm2-tools/
 
 # Custom directories
+tpm_ca_certs_hash_dir/
 build/
 certs/
 .venv/
