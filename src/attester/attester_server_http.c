@@ -243,8 +243,8 @@ int create_request_body(size_t *object_length, char *object){
   struct stat st;
   size_t ret, tot_sz = 0;
   int fd, n;
-  unsigned char *ek_cert = NULL, *ak_pub = NULL;
-  char *b64_buff_ek = NULL, *b64_buff_ak = NULL;
+  unsigned char *ek_cert = NULL, *ak_pub = NULL, *ak_name = NULL;
+  char *b64_buff_ek = NULL, *b64_buff_ak = NULL, *ak_name_b64 = NULL;
 
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
@@ -338,10 +338,60 @@ int create_request_body(size_t *object_length, char *object){
 
   fclose(fd_ak_pub);
   printf("AK pem : %s\n", ak_pub);
+
+  tot_sz += size;
   //Encode in b64
   //Allocate buffer for encoded b64 buffer
-  
-  tot_sz += size;
+
+  /* Read AK name */
+  FILE *fd_ak_name = fopen(attester_config.ak_name, "r");
+  if(fd_ak_name == NULL){
+    fprintf(stderr, "ERROR: EK RSA certificate not found\n");
+    return -1;
+  }
+
+  fd = fileno(fd_ak_name);
+  fstat(fd, &st);
+  size = st.st_size;
+
+  ak_name = (unsigned char *) malloc(size);
+  if(ak_name == NULL){
+    fprintf(stderr, "ERROR: cannot allocate ak_name buffer\n");
+    fclose(fd_ak_name);
+    return -1;
+  }
+
+  ret = fread(ak_name, 1, (size_t) size, fd_ak_name);
+  if(ret != size){
+    fclose(fd_ak_name);
+    free(ak_name);
+    fprintf(stderr, "ERROR: cannot read the whole AK name. %ld/%ld bytes read\n", ret, size);
+    return -1;
+  }
+
+  fclose(fd_ak_name);
+
+  size_t size_b64 = B64ENCODE_OUT_SAFESIZE(size);
+  ak_name_b64 = malloc(size_b64);
+  if(ak_name_b64 == NULL) {
+    fprintf(stderr, "ERROR: ak_name_b64 malloc error\n");
+    free(ak_name);
+    return -1;
+  }
+
+  n = mg_base64_encode((const unsigned char *)ak_name, size, ak_name_b64);
+  if(n == 0){
+    fprintf(stderr, "ERROR: mg_base64_encode error\n");
+    free(ak_name);
+    free(ak_name_b64);
+    return -1;
+  }
+
+  free(ak_name);
+  tot_sz += size_b64;
+
+  printf("AK name : %s\n", ak_name_b64);
+
   /* tot_sz += B64ENCODE_OUT_SAFESIZE(size);
   b64_buff_ak = malloc(tot_sz);
   if(b64_buff_ak == NULL) {
@@ -369,13 +419,12 @@ int create_request_body(size_t *object_length, char *object){
   //*object = (char *)  malloc(tot_sz + 1);
   if(object == NULL) {
     fprintf(stderr, "ERROR: object buff is NULL\n");
-    free(ek_cert);
     free(b64_buff_ek);
     //free(b64_buff_ak);
     return -1;
   }
 
-  sprintf(object, "{\"ek_cert_b64\":\"%s\", \"ak_pub_b64\":\"%s\"}", b64_buff_ek, ak_pub);
+  sprintf(object, "{\"ek_cert_b64\":\"%s\", \"ak_pub_b64\":\"%s\", \"ak_name_b64\":\"%s\"}", b64_buff_ek, ak_pub, ak_name_b64);
   *object_length = strlen(object);
 
 #ifdef DEBUG
@@ -384,6 +433,7 @@ int create_request_body(size_t *object_length, char *object){
 
   free(b64_buff_ek);
   free(ak_pub);
+  free(ak_name_b64);
   return 0;
 
 }
@@ -400,7 +450,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     }
   } else if (ev == MG_EV_CONNECT) {
     size_t object_length = 0;
-    char object[2048];
+    char object[4096];
 
     if (create_request_body(&object_length, object) != 0){
       fprintf(stderr, "ERROR: cannot create the http body conatcting the join_service\n");
