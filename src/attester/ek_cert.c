@@ -116,7 +116,7 @@ tool_rc save_cert(struct attester_conf *conf) {
         }
 
     } else if (ctx.rsa_cert_buffer) {
-        retval = files_write_bytes(ctx.ec_cert_file_handle_2, ctx.rsa_cert_buffer, ctx.rsa_cert_buffer_size);
+        retval = files_write_bytes(ctx.ec_cert_file_handle_1, ctx.rsa_cert_buffer, ctx.rsa_cert_buffer_size);
         if (!retval) {
             return tool_rc_general_error;
         }
@@ -792,6 +792,7 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf) {
             // file doesn't exist
         } */
         ctx.ec_cert_file_handle_2 = fopen(conf->ek_ecc_cert, "wb");
+        LOG_INFO("creating file to store ecc ek certifcate");
         if (!ctx.ec_cert_file_handle_2) {
             LOG_ERR("Could not open file for writing: \"%s\"",
                 conf->ek_ecc_cert);
@@ -805,6 +806,7 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf) {
                 // file doesn't exist
             } */
             ctx.ec_cert_file_handle_1 = fopen(conf->ek_rsa_cert, "wb");
+            LOG_INFO("creating file to store rsa ek certifcate");
             if (!ctx.ec_cert_file_handle_1) {
                 LOG_ERR("Could not open file for writing: \"%s\"",
                     conf->ek_rsa_cert);
