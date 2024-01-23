@@ -48,5 +48,5 @@ struct tpm_makecred_ctx {
     char *key_type; //type of key attempting to load, defaults to auto attempt
 };
 
-int tpm_makecredential (void);
+int tpm_makecredential (unsigned char* ek_cert_pem, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buf);
 #endif

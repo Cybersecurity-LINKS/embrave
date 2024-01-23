@@ -14,12 +14,16 @@
 #include "config_parse.h"
 #include "x509.h"
 #include "common.h"
+#include "tpm_makecredential.h"
 
 #define VALID 1
 #define REVOKED 0
 
+static char* secret = "12345678";
+
 static struct ak_db_entry {
     unsigned char ak_pem[1024];
+    unsigned char ak_name[1024];
     int validity;
 };
 
@@ -60,7 +64,8 @@ static struct ak_db_entry *retrieve_ak(unsigned char *ak){
             return NULL;
         }
         strcpy(ak_entry->ak_pem, sqlite3_column_text(res, 0));
-        ak_entry->validity = atoi(sqlite3_column_text(res, 1));
+        strcpy(ak_entry->ak_name, sqlite3_column_text(res, 1));
+        ak_entry->validity = atoi(sqlite3_column_text(res, 2));
     #ifdef DEBUG
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
@@ -130,13 +135,32 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             /*
                 {
                     "ek_cert_b64": "aaaaaaaaa",
-                    "ak_pub_b64": "aaaaaaaa"
+                    "ak_pub_b64": "aaaaaaaa",
+                    "ak_name_b64": "aaaaaaaa"
                 }
             */
             unsigned char* ek_cert_b64 = mg_json_get_str(hm->body, "$.ek_cert_b64");
             unsigned char* ak_pub_b64 = mg_json_get_str(hm->body, "$.ak_pub_b64");
+            unsigned char* ak_name_b64 = mg_json_get_str(hm->body, "$.ak_name_b64");
             struct ak_db_entry *ak_entry;
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen(ek_cert_b64));
+            size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen(ak_name_b64));
+
+            /* Calculate the actual length removing base64 padding ('=') */
+            for(int i=0; i<strlen(ek_cert_b64); i++){
+                if(ek_cert_b64[i] == '='){
+                    ek_cert_len--;
+                }
+            }
+
+            /* Calculate the actual length removing base64 padding ('=') */
+            for(int i=0; i<strlen(ak_name_b64); i++){
+                if(ak_name_b64[i] == '='){
+                    ak_name_len--;
+                }
+            }
+
+            printf("EK_BASE64_LEN: %d\n", strlen(ek_cert_b64));
 
         #ifdef DEBUG
             printf("EK_CERT: %s\n", ek_cert_b64);
@@ -146,10 +170,20 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             ak_entry = retrieve_ak(ak_pub_b64);
             if(ak_entry == NULL) {
                 //Malloc buffer
-                unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
+                unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len + 1);
                 if(ek_cert_buff == NULL) {
                     free(ek_cert_b64);
                     free(ak_pub_b64);
+                    free(ak_name_b64);
+                    return -1;
+                }
+
+                unsigned char *ak_name_buff = (unsigned char *) malloc(ak_name_len + 1);
+                if(ak_name_buff == NULL) {
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    free(ak_name_b64);
+                    free(ek_cert_buff);
                     return -1;
                 }
 
@@ -159,6 +193,15 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     free(ek_cert_buff);
                     free(ek_cert_b64);
                     free(ak_pub_b64);
+                    return -1;
+                }
+
+                if(mg_base64_decode(ak_name_b64, strlen(ak_name_b64), ak_name_buff) == 0){
+                    fprintf(stderr, "ERROR: Transmission challenge data error.\n");
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    free(ak_name_b64);
                     return -1;
                 }
 
@@ -177,7 +220,32 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     fprintf(stdout, "INFO: EK certificate verified successfully\n");
                 }
 
-                insert_ak(ak_pub_b64);
+            #ifdef DEBUG
+                /* FOR DEBUG */
+                printf("AK_NAME_LEN: %d\n", ak_name_len);
+                printf("AK_NAME: ");
+                for(int k=0; k<ak_name_len; k++){
+                    printf("%02x", ak_name_buff[k]);
+                }
+                printf("\n");
+            #endif
+
+                /* tpm2_makecredential */
+                unsigned char *out_buf;
+                if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf)){
+                    fprintf(stderr, "ERROR: tpm_makecredential failed\n");
+                }
+
+                printf("OUT_BUF: ");
+                for(int i=0; i<313; i++){
+                    printf("%02x", out_buf[i]);
+                }
+                printf("\n");
+
+                //insert_ak(ak_pub_b64);
+
+                free(ak_name_buff);
+                free(ek_cert_buff);
             }
             else {
             #ifdef DEBUG
