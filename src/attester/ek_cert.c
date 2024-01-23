@@ -792,7 +792,7 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf) {
             // file doesn't exist
         } */
         ctx.ec_cert_file_handle_2 = fopen(conf->ek_ecc_cert, "wb");
-        LOG_INFO("creating file to store ecc ek certifcate");
+        fprintf(stdout, "INFO: creating file to store ECC EK certifcate\n");
         if (!ctx.ec_cert_file_handle_2) {
             LOG_ERR("Could not open file for writing: \"%s\"",
                 conf->ek_ecc_cert);
@@ -806,7 +806,7 @@ tool_rc get_ek_certificates(ESYS_CONTEXT *ectx, struct attester_conf *conf) {
                 // file doesn't exist
             } */
             ctx.ec_cert_file_handle_1 = fopen(conf->ek_rsa_cert, "wb");
-            LOG_INFO("creating file to store rsa ek certifcate");
+            fprintf(stdout, "INFO: creating file to store RSA EK certifcate\n");
             if (!ctx.ec_cert_file_handle_1) {
                 LOG_ERR("Could not open file for writing: \"%s\"",
                     conf->ek_rsa_cert);

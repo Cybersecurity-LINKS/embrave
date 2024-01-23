@@ -16,10 +16,10 @@ int verify_x509_cert(unsigned char *cert_buff, int cert_len) {
         return 1;
     }
 
-    for(int i=0; i<cert_len; i++){
+    /* for(int i=0; i<cert_len; i++){
         printf("%02x", cert_buff[i]);
     }
-    printf("\n");
+    printf("\n"); */
 
     X509 *cert = d2i_X509_bio(bio, NULL);
     if (!cert) {
