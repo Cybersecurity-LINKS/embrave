@@ -175,7 +175,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ak_name_b64);
-                    return -1;
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
                 }
 
                 unsigned char *ak_name_buff = (unsigned char *) malloc(ak_name_len + 1);
@@ -184,7 +185,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     free(ak_pub_b64);
                     free(ak_name_b64);
                     free(ek_cert_buff);
-                    return -1;
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
                 }
 
                 //Decode b64
@@ -193,7 +195,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     free(ek_cert_buff);
                     free(ek_cert_b64);
                     free(ak_pub_b64);
-                    return -1;
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
                 }
 
                 if(mg_base64_decode(ak_name_b64, strlen(ak_name_b64), ak_name_buff) == 0){
@@ -202,7 +205,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ak_name_b64);
-                    return -1;
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
                 }
 
                 /* Verify the X509 certificate of the EK */
@@ -232,17 +236,49 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
                 /* tpm2_makecredential */
                 unsigned char *out_buf;
-                if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf)){
+                size_t out_buf_size;
+                if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                     fprintf(stderr, "ERROR: tpm_makecredential failed\n");
                 }
 
                 printf("OUT_BUF: ");
-                for(int i=0; i<313; i++){
+                for(int i=0; i<out_buf_size; i++){
                     printf("%02x", out_buf[i]);
                 }
                 printf("\n");
 
                 //insert_ak(ak_pub_b64);
+                char *mkcred_out_b64;
+                size_t mkcred_out_b64_len = B64ENCODE_OUT_SAFESIZE(out_buf_size);
+
+                mkcred_out_b64 = (char *) malloc(mkcred_out_b64_len + 1);
+                if(mkcred_out_b64 == NULL) {
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    free(ak_name_b64);
+                    free(ak_name_buff);
+                    free(out_buf);
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
+                }
+
+                if(mg_base64_encode(out_buf, out_buf_size, mkcred_out_b64) == 0){
+                    fprintf(stderr, "ERROR: could not encode mkcred out buf.\n");
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    free(ak_name_b64);
+                    free(ak_name_buff);
+                    free(out_buf);
+                    free(mkcred_out_b64);
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
+                }
+
+                mg_http_reply(c, OK, APPLICATION_JSON,
+                    "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
+                MG_INFO(("%s %s %d", POST, API_JOIN, OK));
 
                 free(ak_name_buff);
                 free(ek_cert_buff);
@@ -273,45 +309,24 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
             /* if not present => challenge */
 
-
-
-
-
-
-
-
-
-
-
-
-
+            /* mg_http_reply(c, OK, APPLICATION_JSON,
+                        "OK\n");
+            MG_INFO(("%s %s %d", POST, API_JOIN, OK)); */
+        }
+        else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+            
+            /* receive and verify the value calculated by the attester with tpm_activatecredential */
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+
+
         }
-        // Expecting JSON array in the HTTP body, e.g. [ 123.38, -2.72 ]
-        //double num1, num2;
-        //if (mg_json_get_num(hm->body, "$[0]", &num1) &&
-        //    mg_json_get_num(hm->body, "$[1]", &num2)) {
-            // Success! create JSON response
-        //    mg_http_reply(c, OK, APPLICATION_JSON,
-        //                "{%m:%g}\n",
-        //                mg_print_esc, 0, "result", num1 + num2);
-        //    MG_INFO(("%s %s %d", GET, API_JOIN, OK));
-        //} else {
-        //    mg_http_reply(c, 500, NULL, "Parameters missing\n");
-        //}
         else {
             mg_http_reply(c, 500, NULL, "\n");
         }
     }
 }
-
-/* static void hello_world(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-    if (ev == MG_EV_HTTP_MSG) {
-        mg_http_reply(c, 200, "Content-Type: text/plain\r\n", "Hello, %s\n", "world");
-    }
-} */
 
 /*Create db connection and, if not presents, create the keys databases
     ret:

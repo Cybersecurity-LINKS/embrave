@@ -14,6 +14,10 @@
 #include "tpm_ek.h"
 #include "tpm_ak.h"
 #include "ek_cert.h"
+#include "tpm_activatecredential.h"
+#include "tpm_startauthsession.h"
+#include "tpm_policysecret.h"
+#include "tpm_flushcontext.h"
 
 //static uint32_t ima_byte_sent = 0;
 struct attester_conf attester_config;
@@ -135,7 +139,65 @@ error:
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
   return -1;
+}
 
+int attester_activatecredential(unsigned char *mkcred_out, unsigned int mkcred_out_len, unsigned char **secret, unsigned int *secret_len){
+  // TPM
+  TSS2_RC tss_r;
+  ESYS_CONTEXT *esys_context = NULL;
+  TSS2_TCTI_CONTEXT *tcti_context = NULL;
+  tool_rc rc_tool;
+
+  /* printf("MKCRED_OUT: ");
+    for(int i=0; i<mkcred_out_len; i++){
+      printf("%02x", mkcred_out[i]);
+    }
+    printf("\n"); */
+
+  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
+  if (tss_r != TSS2_RC_SUCCESS) {
+    fprintf(stderr, "ERROR: Could not initialize tcti context\n");
+    return -1;
+  }
+  
+  tss_r = Esys_Initialize(&esys_context, tcti_context, NULL);
+  if (tss_r != TSS2_RC_SUCCESS) {
+    fprintf(stderr, "ERROR: Could not initialize esys context\n");
+    Tss2_TctiLdr_Finalize (&tcti_context);
+    return -1;
+  }
+
+  rc_tool = tpm_startauthsession(esys_context);
+  if(rc_tool != tool_rc_success){
+    fprintf(stderr, "ERROR: Could not start auth session\n");
+    goto error;
+  }
+  
+  rc_tool = tpm_policysecret(esys_context);
+  if(rc_tool != tool_rc_success){
+    fprintf(stderr, "ERROR: Could not set policy secret\n");
+    goto error;
+  }
+
+  rc_tool = tpm_activatecredential(esys_context, &attester_config, mkcred_out, mkcred_out_len, secret, secret_len);
+  if(rc_tool != tool_rc_success){
+    fprintf(stderr, "ERROR: Could not activate credential\n");
+    goto error;
+  }
+
+  rc_tool = tpm_flushcontext(esys_context);
+  if(rc_tool != tool_rc_success){
+    fprintf(stderr, "ERROR: Could not flush context\n");
+    goto error;
+  }
+
+  Esys_Finalize(&esys_context);
+  Tss2_TctiLdr_Finalize (&tcti_context);
+  return 0;
+error:
+  Esys_Finalize(&esys_context);
+  Tss2_TctiLdr_Finalize (&tcti_context);
+  return -1;
 }
 
 int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)

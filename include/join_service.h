@@ -29,5 +29,6 @@
 
 /* APIs */
 #define API_JOIN "/request_join"
+#define API_CONFIRM_CREDENTIAL "/confirm_credential"
 
 #endif

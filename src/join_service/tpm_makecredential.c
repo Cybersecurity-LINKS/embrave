@@ -36,7 +36,7 @@ static tpm_makecred_ctx ctx = {
     //.key_type = "rsa",
 };
 
-tool_rc make_external_credential_and_save(unsigned char **out_buff);
+tool_rc make_external_credential_and_save(unsigned char **out_buff, size_t *out_buff_size);
 void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg);
 
 static bool load_public_RSA_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
@@ -363,7 +363,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
 //TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret
 
 /* it is resposability of the caller to free out_buf */
-int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff){
+int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size){
 
     TPMI_ALG_PUBLIC alg = TPM2_ALG_RSA;
 
@@ -454,12 +454,12 @@ int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned ch
         return -1;
     }
 
-    make_external_credential_and_save(out_buff);
+    make_external_credential_and_save(out_buff, out_buff_size);
     return 0;
 }
 
 /* it is resposability of the caller to free out_buf */
-static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret, unsigned char **out_buff) {
+static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret, unsigned char **out_buff, size_t *out_buff_size) {
 
     bool result = false;
 
@@ -512,12 +512,15 @@ static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET 
 
     result = true;
 
+    *out_buff_size = ftell(stream);
+    fprintf(stdout, "INFO: tpm_makecredential output size: %ld\n", *out_buff_size);
+
 out:
     fclose(stream);
     return result;
 }
 
-tool_rc make_external_credential_and_save(unsigned char **out_buff) {
+tool_rc make_external_credential_and_save(unsigned char **out_buff, size_t *out_buff_size) {
 
     /*
      * Get name_alg from the public key
@@ -607,7 +610,7 @@ tool_rc make_external_credential_and_save(unsigned char **out_buff) {
             + sizeof(outer_hmac.size);
 
     return write_cred_and_secret(&cred_blob,
-            &encrypted_seed, out_buff) ? tool_rc_success : tool_rc_general_error;
+            &encrypted_seed, out_buff, out_buff_size) ? tool_rc_success : tool_rc_general_error;
 }
 
 void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg) {

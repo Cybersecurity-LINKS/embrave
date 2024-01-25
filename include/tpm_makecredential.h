@@ -38,15 +38,8 @@ struct tpm_makecred_ctx {
     char *public_key_path; /* path to the public portion of an object */
     TPM2B_PUBLIC public;
     TPM2B_DIGEST credential;
-/*     struct {
-        UINT8 e :1;
-        UINT8 s :1;
-        UINT8 n :1;
-        UINT8 o :1;
-    } flags; */
-
     char *key_type; //type of key attempting to load, defaults to auto attempt
 };
 
-int tpm_makecredential (unsigned char* ek_cert_pem, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buf);
+int tpm_makecredential (unsigned char* ek_cert_pem, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size);
 #endif

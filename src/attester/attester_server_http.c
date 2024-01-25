@@ -18,6 +18,11 @@
 #include "attester_agent.h"
 #include "config_parse.h"
 
+struct mkcred_out {
+  unsigned char *value;
+  unsigned int len;
+};
+
 static bool Continue = true;
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl);
@@ -476,9 +481,160 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     /* char response_body[1024];
     memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
+//#endif
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+    unsigned char *mkcred_out_b64 = mg_json_get_str(hm->body, "$.mkcred_out");
+    printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
+
+    size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen(mkcred_out_b64));
+
+    /* Calculate the actual length removing base64 padding ('=') */
+    /* for(int i=0; i<strlen(mkcred_out_b64); i++){
+        if(mkcred_out_b64[i] == '='){
+            mkcred_out_len--;
+        }
+    } */
+
+    mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
+    if(mkcred_out->value == NULL) {
+        fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
+        free(mkcred_out_b64);
+        //mg_http_reply(c, 500, NULL, "\n");
+        return;
+    }
+
+    //Decode b64
+    if(mg_base64_decode(mkcred_out_b64, strlen(mkcred_out_b64), mkcred_out->value) == 0){
+        fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
+        free(mkcred_out_b64);
+        //mg_http_reply(c, 500, NULL, "\n");
+        return;
+    }
+
+    /* printf("MKCRED_OUT: ");
+    for(int i=0; i<mkcred_out->len; i++){
+      printf("%02x", mkcred_out->value[i]);
+    }
+    printf("\n"); */
+    mkcred_out->len = mkcred_out_len;
+
+    fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+    free(mkcred_out_b64);
+    //int ip_len = 0;
+    //char **ca_ip_addr = (char **) fn_data;
+    //*ca_ip_addr = (char *) malloc(ip_len + 1);
+
+    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
+    //printf("ip_len = %d\n", ip_len);
+    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
+    //(*ca_ip_addr)[ip_len] = '\0';
+    //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
+    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
+
+    //free(ca_ip_addr);
+    
+    /* response_body[hm->body.len] = '\0';
+    fprintf(stdout, "%s\n", response_body); */
+
+    c->is_draining = 1;        // Tell mongoose to close this connection
+    Continue = false;  // Tell event loop to stop
+  } else if (ev == MG_EV_ERROR) {
+    Continue = false;  // Error, tell event loop to stop
+  }
+}
+
+static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_OPEN) {
+    // Connection created. Store connect expiration time in c->data
+    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+  } else if (ev == MG_EV_POLL) {
+    if (mg_millis() > *(uint64_t *) c->data &&
+        (c->is_connecting || c->is_resolving)) {
+      mg_error(c, "Connect timeout");
+    }
+  } else if (ev == MG_EV_CONNECT) {
+    size_t object_length = 0;
+    char object[4096];
+
+    /* if (create_request_body(&object_length, object) != 0){
+      fprintf(stderr, "ERROR: cannot create the http body conatcting the join_service\n");
+      exit(-1);
+    } */
+    unsigned char *secret;
+    unsigned char *secret_b64;
+    unsigned int secret_len, secret_b64_len;
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+    printf("MKCRED_OUT ptr after having it passed: %p\n", mkcred_out);
+
+    /* printf("MKCRED_OUT: ");
+    for(int i=0; i<mkcred_out->len; i++){
+      printf("%02x", mkcred_out->value[i]);
+    }
+    printf("\n"); */
+
+    //int rc = attester_activatecredential();
+
+#ifdef DEBUG
+    printf("%s\n", object);
 #endif
+
+    int rc = attester_activatecredential(mkcred_out->value, mkcred_out->len, &secret, &secret_len);
+    if (rc != 0) {
+      fprintf(stderr, "ERROR: cannot activate credential\n");
+      return;
+    }
+
+    for(int i=0; i<secret_len; i++){
+      printf("%c", secret[i]);
+    }
+    printf("\n");
+
+    secret_b64_len = B64ENCODE_OUT_SAFESIZE(secret_len);
+    secret_b64 = malloc(secret_b64_len+1);
+    if(secret_b64 == NULL){
+      fprintf(stderr, "ERROR: cannot allocate secret_b64 buffer\n");
+      return;
+    }
+
+    if(mg_base64_encode((const unsigned char *)secret, secret_len, secret_b64) == 0){
+      fprintf(stderr, "ERROR: base64 encoding secret\n");
+      free(secret_b64);
+      return;
+    }
+
+    sprintf(object, "{\"secret\":\"%s\"}", secret_b64);
+
+    free(secret_b64);
+
+    /* Send request */
+    /* mg_printf(c,
+      "POST /confirm_credential HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      object_length,
+      object); */
+
+      mg_printf(c,
+      "POST /confirm_credential HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      strlen(object),
+      object); 
+
+  } else if (ev == MG_EV_HTTP_MSG) {
+    // Response is received. Print it
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    /* char response_body[1024];
+    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
+//#ifdef DEBUG
+    printf("%.*s", (int) hm->message.len, hm->message.ptr);
+//#endif
     //int ip_len = 0;
     //char **ca_ip_addr = (char **) fn_data;
     //*ca_ip_addr = (char *) malloc(ip_len + 1);
@@ -512,9 +668,28 @@ static int join_procedure(){
   //printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
-  c = mg_http_connect(&mgr, s_conn, request_join, NULL);
+  struct mkcred_out mkcred_out;
+  printf("MKCRED_OUT ptr before passing it: %p\n", &mkcred_out);
 
-  printf("HERE\n");
+  /* request to join (receive tpm_makecredential output) */
+  c = mg_http_connect(&mgr, s_conn, request_join, (void *) &mkcred_out);
+
+  if (c == NULL) {
+    MG_ERROR(("CLIENT cant' open a connection"));
+    return -1;
+  }
+
+  /* printf("MKCRED_OUT: ");
+  for(int i=0; i<mkcred_out.len; i++){
+    printf("%02x", mkcred_out.value[i]);
+  }
+  printf("\n"); */
+
+  while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+  /* send back the value calculated with tpm_activatecredential */
+  Continue = true;
+  c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
 
   if (c == NULL) {
     MG_ERROR(("CLIENT cant' open a connection"));
@@ -522,6 +697,10 @@ static int join_procedure(){
   }
 
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+  if(mkcred_out.value != NULL){
+    free(mkcred_out.value);
+  }
 
   return 0;
 }
@@ -577,7 +756,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
 
-  printf("HERE\n");
+  //printf("HERE\n");
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */

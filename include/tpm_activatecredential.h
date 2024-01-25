@@ -20,36 +20,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tpm2_util.h"
+#include "files.h"
 #include "log.h"
 #include "tpm2.h"
 #include "tpm2_tool.h"
-
-#include "files.h"
-#include "log.h"
-#include "object.h"
-
-#define MAX_AUX_SESSIONS 1 // two sessions provided by auth interface
-#define MAX_SESSIONS 3
+#include "config_parse.h"
 
 typedef struct tpm_activatecred_ctx tpm_activatecred_ctx;
+#define MAX_AUX_SESSIONS 1 // two sessions provided by auth interface
+#define MAX_SESSIONS 3
 struct tpm_activatecred_ctx {
     /*
      * Inputs
      */
-    //EK
     struct {
         const char *ctx_path;
         const char *auth_str;
         tpm2_loaded_object object;
-    } credential_key; 
+    } credential_key; //Typically EK
 
-    //AK
     struct {
         const char *ctx_path;
         const char *auth_str;
         tpm2_loaded_object object;
-    } credentialed_key; 
+    } credentialed_key; //Typically AK
 
     TPM2B_ID_OBJECT credential_blob;
     const char *credential_blob_path;
@@ -65,12 +59,12 @@ struct tpm_activatecred_ctx {
     /*
      * Parameter hashes
      */
-/*     const char *cp_hash_path;
+    const char *cp_hash_path;
     TPM2B_DIGEST cp_hash;
     const char *rp_hash_path;
     TPM2B_DIGEST rp_hash;
     TPMI_ALG_HASH parameter_hash_algorithm;
-    bool is_command_dispatch; */
+    bool is_command_dispatch;
 
     /*
      * Aux sessions
@@ -81,6 +75,6 @@ struct tpm_activatecred_ctx {
     ESYS_TR aux_session_handle[MAX_AUX_SESSIONS];
 };
 
+tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *attester_config, unsigned char *mkcred_out, unsigned int mkcred_out_len, unsigned char **secret, unsigned int *secret_len);
 
-int tpm_activatecredential (ESYS_CONTEXT *ectx);
 #endif
