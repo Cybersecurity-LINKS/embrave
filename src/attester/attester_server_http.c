@@ -484,6 +484,13 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
 //#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 //#endif
+    
+    if(mg_http_status(hm) == 403){ /* forbidden */
+      fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
+      //mg_http_reply(c, 500, NULL, "\n");
+      return;
+    }
+
     struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
     unsigned char *mkcred_out_b64 = mg_json_get_str(hm->body, "$.mkcred_out");
     printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
@@ -606,7 +613,38 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
-    sprintf(object, "{\"secret_b64\":\"%s\"}", secret_b64);
+    /* Read AK pub key */
+    /* fprintf(stdout, "%s\n", attester_config.ak_pub); */
+    FILE *fd_ak_pub = fopen(attester_config.ak_pub, "r");
+    if(fd_ak_pub == NULL){
+      fprintf(stderr, "ERROR: AK pub key pem not present\n");
+      return;
+    }
+
+    struct stat st;
+    int fd = fileno(fd_ak_pub);
+    fstat(fd, &st);
+    size_t size = st.st_size;
+
+    unsigned char *ak_pub = (unsigned char *) malloc(size + 1); /* add +1 for '\0' */
+    if(ak_pub == NULL){
+      fprintf(stderr, "ERROR: cannot allocate ak_pub buffer\n");
+      fclose(fd_ak_pub);
+      return;
+    }
+
+    int ret = fread(ak_pub, 1, (size_t) size, fd_ak_pub);
+    ak_pub[size] = '\0';
+    if(ret != size){
+      fclose(fd_ak_pub);
+      free(ak_pub);
+      fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+      return;
+    }
+
+    fclose(fd_ak_pub);
+
+    sprintf(object, "{\"secret_b64\":\"%s\",\"uuid\":\"%s\",\"ak_pub_b64\":\"%s\"}", secret_b64, attester_config.uuid, ak_pub);
 
     free(secret_b64);
 
