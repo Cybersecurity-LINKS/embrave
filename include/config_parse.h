@@ -19,11 +19,12 @@
 #define CONFIG_FILE_PATH "/home/linux/Documents/lemon/lemon.conf"  /* development path */
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
-#define ATTESTER_NUM_CONFIG_PARAMS 12
+#define ATTESTER_NUM_CONFIG_PARAMS 13
 #define VERIFIER_NUM_CONFIG_PARAMS 7
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
 
 enum attester_keys_config{
+    ATTESTER_UUID,
     ATTESTER_IP,
     ATTESTER_PORT,
     ATTESTER_TLS_PORT,
@@ -70,6 +71,7 @@ struct attester_conf {
     char ak_ctx[MAX_BUF];
     char ak_cert[MAX_BUF];
     char join_service_ip[MAX_BUF];
+    char uuid[26]; /* 128 bits + 1 byte for '\0' */
 };
 
 struct verifier_conf {

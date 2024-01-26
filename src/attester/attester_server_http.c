@@ -249,7 +249,7 @@ int create_request_body(size_t *object_length, char *object){
   size_t ret, tot_sz = 0;
   int fd, n;
   unsigned char *ek_cert = NULL, *ak_pub = NULL, *ak_name = NULL;
-  char *b64_buff_ek = NULL, *b64_buff_ak = NULL, *ak_name_b64 = NULL;
+  char *b64_buff_ek = NULL, *b64_buff_ak = NULL, *ak_name_b64 = NULL, uuid = NULL;
 
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
@@ -429,7 +429,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  sprintf(object, "{\"ek_cert_b64\":\"%s\", \"ak_pub_b64\":\"%s\", \"ak_name_b64\":\"%s\"}", b64_buff_ek, ak_pub, ak_name_b64);
+  sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64);
   *object_length = strlen(object);
 
 #ifdef DEBUG
@@ -462,9 +462,9 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       exit(-1);
     }
 
-#ifdef DEBUG
+//#ifdef DEBUG
     printf("%s\n", object);
-#endif
+//#endif
 
     /* Send request */
     mg_printf(c,
@@ -586,10 +586,12 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
+#ifdef DEBUG
     for(int i=0; i<secret_len; i++){
       printf("%c", secret[i]);
     }
     printf("\n");
+#endif
 
     secret_b64_len = B64ENCODE_OUT_SAFESIZE(secret_len);
     secret_b64 = malloc(secret_b64_len+1);
@@ -604,7 +606,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
-    sprintf(object, "{\"secret\":\"%s\"}", secret_b64);
+    sprintf(object, "{\"secret_b64\":\"%s\"}", secret_b64);
 
     free(secret_b64);
 
