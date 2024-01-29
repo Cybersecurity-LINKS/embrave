@@ -36,8 +36,191 @@ static tpm_makecred_ctx ctx = {
     //.key_type = "rsa",
 };
 
+static const struct {
+    TPMI_ECC_CURVE curve;
+    int nid;
+} nid_curve_map[] = {
+    { TPM2_ECC_NIST_P192, NID_X9_62_prime192v1 },
+    { TPM2_ECC_NIST_P224, NID_secp224r1        },
+    { TPM2_ECC_NIST_P256, NID_X9_62_prime256v1 },
+    { TPM2_ECC_NIST_P384, NID_secp384r1        },
+    { TPM2_ECC_NIST_P521, NID_secp521r1        },
+#if OPENSSL_VERSION_NUMBER >= 0x10101003L
+    { TPM2_ECC_SM2_P256,  NID_sm2              },
+#endif
+    /*
+     * XXX
+     * See if it's possible to support the other curves, I didn't see the
+     * mapping in OSSL:
+     *  - TPM2_ECC_BN_P256
+     *  - TPM2_ECC_BN_P638
+     *  - TPM2_ECC_SM2_P256
+     */
+};
+
 tool_rc make_external_credential_and_save(unsigned char **out_buff, size_t *out_buff_size);
 void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg);
+
+/**
+ * Maps an OSSL nid as defined obj_mac.h to a TPM2 ECC curve id.
+ * @param nid
+ *  The nid to map.
+ * @return
+ *  A valid TPM2_ECC_* or TPM2_ALG_ERROR on error.
+ */
+static TPMI_ECC_CURVE ossl_nid_to_curve(int nid) {
+
+    unsigned i;
+    for (i = 0; i < ARRAY_LEN(nid_curve_map); i++) {
+        TPMI_ECC_CURVE c = nid_curve_map[i].curve;
+        int n = nid_curve_map[i].nid;
+
+        if (n == nid) {
+            return c;
+        }
+    }
+
+    LOG_ERR("Cannot map nid \"%d\" to TPM ECC curve", nid);
+    return TPM2_ALG_ERROR;
+}
+
+static bool load_public_ECC_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
+
+    BIGNUM *y = NULL;
+    BIGNUM *x = NULL;
+    int nid;
+    unsigned keysize;
+    bool result = false;
+
+    /*
+     * Set the algorithm type
+     */
+    pub->publicArea.type = TPM2_ALG_ECC;
+    TPMS_ECC_PARMS *pp = &pub->publicArea.parameters.eccDetail;
+
+    /*
+     * Get the curve type and the public key (X and Y)
+     */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+    EC_KEY *k = EVP_PKEY_get0_EC_KEY(key);
+    if (!k) {
+        LOG_ERR("Could not retrieve ECC key");
+        goto out;
+    }
+
+    y = BN_new();
+    x = BN_new();
+    if (!x || !y) {
+        LOG_ERR("oom");
+        goto out;
+    }
+
+    const EC_GROUP *group = EC_KEY_get0_group(k);
+    nid = EC_GROUP_get_curve_name(group);
+    keysize = (EC_GROUP_get_degree(group) + 7) / 8;
+
+    const EC_POINT *point = EC_KEY_get0_public_key(k);
+
+    int ret = EC_POINT_get_affine_coordinates_tss(group, point, x, y, NULL);
+    if (!ret) {
+        LOG_ERR("Could not get X and Y affine coordinates");
+        goto out;
+    }
+#else
+    char curve_name[80];
+
+    int rc = EVP_PKEY_get_utf8_string_param(key, OSSL_PKEY_PARAM_GROUP_NAME,
+                                            curve_name, sizeof(curve_name), NULL);
+    if (!rc) {
+        LOG_ERR("Could not read ECC curve name");
+        goto out;
+    }
+    nid = OBJ_txt2nid(curve_name);
+    keysize = (EVP_PKEY_bits(key) + 7) / 8;
+
+    rc = EVP_PKEY_get_bn_param(key, OSSL_PKEY_PARAM_EC_PUB_X, &x);
+    if (!rc) {
+        LOG_ERR("Could not read public X coordinate");
+        goto out;
+    }
+
+    rc = EVP_PKEY_get_bn_param(key, OSSL_PKEY_PARAM_EC_PUB_Y, &y);
+    if (!rc) {
+        LOG_ERR("Could not read public Y coordinate");
+        goto out;
+    }
+#endif
+
+    /*
+     * Set the curve type
+     */
+    TPM2_ECC_CURVE curve_id = ossl_nid_to_curve(nid); // Not sure what lines up with NIST 256...
+    if (curve_id == TPM2_ALG_ERROR) {
+        goto out;
+    }
+    pp->curveID = curve_id;
+
+    /*
+     * Copy the X and Y coordinate data into the ECC unique field,
+     * ensuring that it fits along the way.
+     */
+    TPM2B_ECC_PARAMETER *X = &pub->publicArea.unique.ecc.x;
+    TPM2B_ECC_PARAMETER *Y = &pub->publicArea.unique.ecc.y;
+
+    if (keysize > sizeof(X->buffer)) {
+        LOG_ERR("X coordinate is too big. Got %u expected less than or equal to"
+                " %zu", keysize, sizeof(X->buffer));
+        goto out;
+    }
+
+    if (keysize > sizeof(Y->buffer)) {
+        LOG_ERR("X coordinate is too big. Got %u expected less than or equal to"
+                " %zu", keysize, sizeof(Y->buffer));
+        goto out;
+    }
+
+    X->size = BN_bn2binpad(x, X->buffer, keysize);
+    if (X->size != keysize) {
+        LOG_ERR("Error converting X point BN to binary");
+        goto out;
+    }
+
+    Y->size = BN_bn2binpad(y, Y->buffer, keysize);
+    if (Y->size != keysize) {
+        LOG_ERR("Error converting Y point BN to binary");
+        goto out;
+    }
+
+    /*
+     * no kdf - not sure what this should be
+     */
+    pp->kdf.scheme = TPM2_ALG_NULL;
+
+    /*
+     * If the scheme is not TPM2_ALG_ERROR (0),
+     * its a valid scheme so don't set it to NULL scheme
+     */
+    if (pp->scheme.scheme == TPM2_ALG_ERROR) {
+        pp->scheme.scheme = TPM2_ALG_NULL;
+        pp->scheme.details.anySig.hashAlg = TPM2_ALG_NULL;
+    }
+
+    /* NULL out sym details if not already set */
+    TPMT_SYM_DEF_OBJECT *sym = &pp->symmetric;
+    if (sym->algorithm == TPM2_ALG_ERROR) {
+        sym->algorithm = TPM2_ALG_NULL;
+        sym->keyBits.sym = 0;
+        sym->mode.sym = TPM2_ALG_NULL;
+    }
+
+    result = true;
+out:
+    BN_free(x);
+    BN_free(y);
+    return result;
+}
+
+
 
 static bool load_public_RSA_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
 
@@ -204,6 +387,16 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         // Populate ctx.public with the EC key details
         // This part depends on the specifics of your TPM2B_PUBLIC structure and the EC key
         // You may need to convert the EC key into a format suitable for your TPM2B_PUBLIC structure
+        /* set TPM2B_PUBLIC struct */
+        ctx.public.publicArea.type = TPM2_ALG_ECC;
+        if(!load_public_ECC_from_key(pkey, &ctx.public)){
+            fprintf(stderr, "Failed to load ECC key\n");
+            EVP_PKEY_free(pkey);
+            X509_free(cert);
+            BIO_free(bio);
+            return 1;
+        }
+        
         EC_KEY_free(ec);
     } else {
         fprintf(stderr, "Unsupported key type\n");
