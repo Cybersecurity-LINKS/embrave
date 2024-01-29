@@ -274,6 +274,10 @@ uint16_t read_config(char user, void* config_struct){
                     enum join_service_keys_config param = join_service_parse_key(key);
 
                     switch((int) param){
+                        case JOIN_SERVICE_IP:
+                            strcpy(join_service_config->ip, value);
+                        break;
+                        
                         case JOIN_SERVICE_PORT:
                             join_service_config->port = (uint32_t) atoi(value);
                             break;
