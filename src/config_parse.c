@@ -16,7 +16,7 @@
 #include "config_parse.h"
 
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port", "tls_port", "tls_cert", "tls_key",
-            "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip"};
+            "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip", "join_service_port"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
             "tls_cert_ca", "db"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
@@ -194,6 +194,10 @@ uint16_t read_config(char user, void* config_struct){
                             strcpy(attester_config->join_service_ip, value);
                             break;
 
+                        case ATTESTER_JOIN_SERVICE_PORT:
+                            attester_config->join_service_port = (uint32_t) atoi(value);
+                        break;
+                        
                         case ATTESTER_NUM_CONFIG_PARAMS:
                             //unknown param
                             break;

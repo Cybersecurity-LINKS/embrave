@@ -16,10 +16,10 @@
 #include <stdint.h>
 #include <errno.h>
 
-#define CONFIG_FILE_PATH "/home/linux/Documents/lemon/lemon.conf"  /* development path */
+#define CONFIG_FILE_PATH "/home/pi/lemon/lemon.conf"  /* development path */
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
-#define ATTESTER_NUM_CONFIG_PARAMS 13
+#define ATTESTER_NUM_CONFIG_PARAMS 14
 #define VERIFIER_NUM_CONFIG_PARAMS 7
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
 
@@ -36,7 +36,8 @@ enum attester_keys_config{
     ATTESTER_AK_NAME,
     ATTESTER_AK_CTX,
     ATTESTER_AK_CERT,
-    ATTESTER_JOIN_SERVICE_IP
+    ATTESTER_JOIN_SERVICE_IP,
+    ATTESTER_JOIN_SERVICE_PORT
 };
 enum verifier_keys_config{
     VERIFIER_IP,
@@ -61,6 +62,7 @@ enum join_service_keys_config{
 struct attester_conf {
     uint32_t port;
     uint32_t tls_port;
+    uint32_t join_service_port;
     char ip[MAX_BUF];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];

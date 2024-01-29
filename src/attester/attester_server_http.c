@@ -704,8 +704,8 @@ static int join_procedure(){
   char s_conn[280];
 
   /* Contact the join service */
-  snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, 8000);
-  //printf("%s\n", s_conn);
+  snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
+  printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
   struct mkcred_out mkcred_out;
