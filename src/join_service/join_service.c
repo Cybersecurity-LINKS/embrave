@@ -402,7 +402,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 }
 
                 /* Verify the X509 certificate of the EK */
-                if(verify_x509_cert(ek_cert_buff, ek_cert_len)){
+                if(verify_x509_cert(ek_cert_buff, ek_cert_len, js_config.ca_x509_path)){
                     mg_http_reply(c, OK, APPLICATION_JSON,
                         "{\"error\":\"ek certificate verification failed\"}\n");
                     MG_INFO(("%s %s %d", POST, API_JOIN, OK));

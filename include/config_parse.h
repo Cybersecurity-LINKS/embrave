@@ -56,7 +56,7 @@ enum join_service_keys_config{
     JOIN_SERVICE_TLS_KEY,
     JOIN_SERVICE_TLS_CERT_CA,
     JOIN_SERVICE_DB,
-    JOIN_SERVICE_CA_IP
+    JOIN_SERVICE_CA_X509
 };
 
 struct attester_conf {
@@ -94,6 +94,7 @@ struct join_service_conf {
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
+    char ca_x509_path[MAX_LINE_LENGTH];
 };
 
 enum attester_keys_config attester_parse_key(char* key);

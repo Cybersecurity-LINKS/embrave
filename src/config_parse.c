@@ -20,7 +20,7 @@ char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port", "tls_
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
             "tls_cert_ca", "db"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
-            "tls_key", "tls_cert_ca", "db", "ca_ip"};
+            "tls_key", "tls_cert_ca", "db", "ca_x509_path"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -305,6 +305,10 @@ uint16_t read_config(char user, void* config_struct){
                         case JOIN_SERVICE_DB:
                             strcpy(join_service_config->db, value);
                             break;
+
+                        case JOIN_SERVICE_CA_X509:
+                            strcpy(join_service_config->ca_x509_path, value);
+                        break;
 
                         case JOIN_SERVICE_NUM_CONFIG_PARAMS:
                             //unknown param
