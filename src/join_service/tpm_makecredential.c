@@ -348,6 +348,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
      * Determine the type of the key and populate the TPM2B_PUBLIC structure  * accordingly
      */
     int type = EVP_PKEY_base_id(pkey);
+
     if (type == EVP_PKEY_RSA) {
         RSA *rsa = EVP_PKEY_get1_RSA(pkey);
         if (rsa == NULL) {
@@ -361,7 +362,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         /* read the key dimension */
         // const BIGNUM *n;
         // RSA_get0_key(rsa, &n, NULL, NULL);
-
+        //ctx.key_type = "rsa";
         /* set TPM2B_PUBLIC struct */
         ctx.public.publicArea.type = TPM2_ALG_RSA;
         // ctx.public.publicArea.unique.rsa.size = BN_num_bytes(n);
@@ -414,140 +415,6 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
     return 0;
 }
 
-/* EVP_PKEY *read_pubkey_from_pem_file(FILE *file) {
-    X509 *cert;
-    EVP_PKEY *pkey;
-
-    // Read the X509 certificate from the file
-    cert = PEM_read_X509(file, NULL, NULL, NULL);
-    if (cert == NULL) {
-        return NULL;
-    }
-
-    // Get the public key from the certificate
-    pkey = X509_get_pubkey(cert);
-    if (pkey == NULL) {
-        X509_free(cert);
-        return NULL;
-    }
-
-    // Clean up
-    X509_free(cert);
-
-    return pkey;
-} */
-
-/* static bool load_public_RSA_from_pem(FILE *f, const char *path,
-        TPM2B_PUBLIC *pub) {
-
-    //
-     // Public PEM files appear in two formats:
-     // 1. PEM format, read with PEM_read_RSA_PUBKEY
-     // 2. PKCS#1 format, read with PEM_read_RSAPublicKey
-     //
-     // See:
-     //  - https://stackoverflow.com/questions/7818117/why-i-cant-read-openssl-generated-rsa-pub-key-with-pem-read-rsapublickey
-     //
-    EVP_PKEY *k = // PEM_read_PUBKEY(f, NULL, NULL, NULL);
-                    read_pubkey_from_pem_file(f);
-    if (!k) {
-        ERR_print_errors_fp(stderr);
-        LOG_ERR("Reading public PEM file \"%s\" failed", path);
-        return false;
-    }
-
-    bool result = false;
-    if (EVP_PKEY_base_id(k) == EVP_PKEY_RSA) {
-        result = load_public_RSA_from_key(k, pub);
-    }
-
-    EVP_PKEY_free(k);
-
-    return result;
-} */
-
-
-/* bool tpm_load_public(char *buff, int buff_size, TPMI_ALG_PUBLIC alg,
-        TPM2B_PUBLIC *pub) {
-
-    // Create a memory stream
-    FILE *stream = fmemopen(buff, buff_size, "rb");
-    if (stream == NULL) {
-        fprintf(stderr, "Failed to open certificate memory stream\n");
-        //free(buff);
-        return false;
-    }
-
-    bool result = false;
-
-    switch (alg) {
-    case TPM2_ALG_RSA:
-        result = load_public_RSA_from_pem(stream, "placeholder", pub);
-        break;
-    case TPM2_ALG_ECC:
-        //result = load_public_ECC_from_pem(stream, "placeholder", pub);
-        break;
-        //Skip AES here, as we can only load this one from a private file 
-    default:
-        LOG_ERR("Unkown public format: 0x%x", alg);
-    }
-
-    fclose(stream);
-
-    return result;
-} */
-
-/* static int convert_der_to_pem(unsigned char *der_data, int der_len, unsigned char **pem_data, int *pem_len) {
-    BIO *bio_der, *bio_pem;
-    X509 *cert;
-    BUF_MEM *pem_ptr;
-
-    // Create a BIO for the DER data
-    bio_der = BIO_new_mem_buf(der_data, der_len);
-    if (bio_der == NULL) {
-        return -1;
-    }
-
-    // Read the DER certificate from the BIO
-    cert = d2i_X509_bio(bio_der, NULL);
-    BIO_free(bio_der);
-    if (cert == NULL) {
-        return -1;
-    }
-
-    // Create a BIO for the PEM data
-    bio_pem = BIO_new(BIO_s_mem());
-    if (bio_pem == NULL) {
-        X509_free(cert);
-        return -1;
-    }
-
-    // Write the X509 object to the PEM BIO
-    if (!PEM_write_bio_X509(bio_pem, cert)) {
-        BIO_free(bio_pem);
-        X509_free(cert);
-        return -1;
-    }
-
-    // Read the PEM data from the BIO
-    BIO_get_mem_ptr(bio_pem, &pem_ptr);
-    *pem_data = (unsigned char *)malloc(pem_ptr->length + 1);
-    if (*pem_data == NULL) {
-        BIO_free(bio_pem);
-        X509_free(cert);
-        return -1;
-    }
-    memcpy(*pem_data, pem_ptr->data, pem_ptr->length);
-    (*pem_data)[pem_ptr->length] = '\0';
-    *pem_len = pem_ptr->length;
-
-    // Clean up
-    BIO_free(bio_pem);
-    X509_free(cert);
-
-    return 0;
-} */
-
 //input
 //-u EK PEM
 //-s The secret which will be protected by the key derived from the random seed. It can be specified as a file or passed from stdin
@@ -558,28 +425,12 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
 /* it is resposability of the caller to free out_buf */
 int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size){
 
-    TPMI_ALG_PUBLIC alg = TPM2_ALG_RSA;
-
-    /* if (ctx.public_key_path) {
-        bool result = alg != TPM2_ALG_NULL ?
-            tpm2_openssl_load_public(ctx.public_key_path, alg,
-            &ctx.public) : files_load_public(ctx.public_key_path, &ctx.public);
-        if (!result) {
-            return tool_rc_general_error;
-        }
-    } */
     unsigned char *pem_data;
     int pem_len;
 
-    /* if(convert_der_to_pem(ek_cert_der, ek_cert_len, &pem_data, &pem_len) != 0){
-        fprintf(stderr, "ERROR: Failed to convert DER to PEM\n");
-        return tool_rc_general_error;
-    } */
-
-    /* if(!tpm_load_public(pem_data, pem_len, alg, &ctx.public)){
-        fprintf(stderr, "ERROR: Failed to load public key\n");
-        return tool_rc_general_error;
-    } */
+    /* 
+     * Extract the EK pub key from the certificate in DER format
+     */
 
     if(read_der_key_from_buf(ek_cert_der, ek_cert_len)){
         fprintf(stderr, "ERROR: Failed to load public key\n");
@@ -601,24 +452,11 @@ int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned ch
 #endif
 
     /*
-     * Since it is a PEM we will fixate the key properties from TCG EK
+     * Set the key properties from TCG EK
      * template since we had to choose "a template".
      */
-    ctx.key_type = "rsa";
-    if (ctx.key_type) {
-        /*  ctx.public.publicArea.type */
-        set_default_TCG_EK_template(alg);
-    }
-
-/*     if (!ctx.flags.s) {
-        LOG_ERR("Specify the secret either as a file or a '-' for stdin");
-        return tool_rc_option_error;
-    }
-
-    if (!ctx.flags.e || !ctx.flags.n || !ctx.flags.o) {
-        LOG_ERR("Expected mandatory options e, n, o.");
-        return tool_rc_option_error;
-    } */
+    
+    set_default_TCG_EK_template(ctx.public.publicArea.type);
 
     /*
      * Maximum size of the allowed secret-data size  to fit in TPM2B_DIGEST
@@ -629,13 +467,6 @@ int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned ch
 #ifdef DEBUG   
     printf("Loaded secret: %s\n", ctx.credential.buffer);
 #endif
-
-    /* read the secret from a buffer */
-    /* bool result = files_load_bytes_from_buffer_or_file_or_stdin(secret,
-        NULL, &ctx.credential.size, ctx.credential.buffer);
-    if (!result) {
-        return -1;
-    } */
 
     /*
      * If input was read from stdin, check if a larger data set was specified
