@@ -19,7 +19,7 @@
 #define VALID 1
 #define REVOKED 0
 
-static char* secret = "12345678";
+static unsigned char secret [B64ENCODE_OUT_SAFESIZE(SECRET_SIZE)];
 
 struct ek_db_entry {
     char uuid[1024];
@@ -34,6 +34,37 @@ struct ak_db_entry {
 };
 
 static struct join_service_conf js_config;
+
+
+int create_secret(unsigned char * secret)
+{
+    unsigned char data[SECRET_SIZE];
+    
+    if(secret == NULL){
+        fprintf(stderr, "ERROR: secret buffer is NULL\n");
+        return -1;
+    }
+
+    /* RAND_priv_bytes() has the same semantics as RAND_bytes().
+    *  It is intended to be used for generating values that should remain private
+    */
+
+    if (!RAND_priv_bytes(data, SECRET_SIZE)){
+        fprintf(stderr, "ERROR: random generation error\n");
+        return -1;
+    }
+
+    if(mg_base64_encode(data, SECRET_SIZE, (char *) secret) == 0){
+        fprintf(stderr, "ERROR: could not encode secret buf.\n");
+        return -1;
+    }
+
+#ifdef DEBUG
+    printf("Secret created: %s\n", secret);
+#endif
+    
+    return 0;
+}
 
 /* responsibility of the caller to free the ak_db_entry */
 static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
@@ -518,11 +549,16 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     return;
                 }
             }
+            /* create secret */
+            if (create_secret(secret) != 0){
+                fprintf(stderr, "ERROR: create_secret failed\n");
+                return;
+            }
 
             /* tpm2_makecredential */
             unsigned char *out_buf;
             size_t out_buf_size;
-            if(tpm_makecredential(ek_cert_buff, ek_cert_len,(unsigned char *) secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
+            if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
             }
 
@@ -624,7 +660,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             fprintf(stdout, "INFO: secret received: %s\n", secret_buff);
 
             /* verify the correctness of the secret_buff received */
-            if(!strcmp((char *) secret_buff, secret)){
+            if(!strcmp((char *) secret_buff, (char *) secret)){
                 fprintf(stdout, "INFO: secret verified succesfully\n");
             }
             else {
