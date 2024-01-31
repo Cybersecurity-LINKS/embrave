@@ -60,6 +60,10 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied PRE_BUILD
 
 add_custom_target(patch_tpm2-tools ALL DEPENDS ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied)  #${patch}.applied
 
+# create hash of root CA certificates
+execute_process ( COMMAND ${CMAKE_SOURCE_DIR}/scripts/create_hash_dir.sh
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})  
+
 ###############################################################################
 ## attester agent
 ###############################################################################
