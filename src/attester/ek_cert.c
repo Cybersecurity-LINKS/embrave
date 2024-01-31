@@ -904,7 +904,7 @@ char *base64_decode(char **split, unsigned int cert_length) {
 }
 
 unsigned char check_ek_cert_algo(ESYS_CONTEXT *ectx){
-    TPMI_YES_NO more_data;
+    //TPMI_YES_NO more_data;
     TPMS_CAPABILITY_DATA *capability_data;
     tool_rc rc = tool_rc_success;
     unsigned char ret = ERR_CHECK;

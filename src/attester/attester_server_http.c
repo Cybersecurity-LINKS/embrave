@@ -249,7 +249,7 @@ int create_request_body(size_t *object_length, char *object){
   size_t ret, tot_sz = 0;
   int fd, n;
   unsigned char *ek_cert = NULL, *ak_pub = NULL, *ak_name = NULL;
-  char *b64_buff_ek = NULL, *b64_buff_ak = NULL, *ak_name_b64 = NULL, uuid = NULL;
+  char *b64_buff_ek = NULL, *ak_name_b64 = NULL;
 
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
@@ -280,7 +280,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ek_cert);
     free(ek_cert);
-    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -337,7 +337,7 @@ int create_request_body(size_t *object_length, char *object){
     free(b64_buff_ek);
     fclose(fd_ak_pub);
     free(ak_pub);
-    fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -370,7 +370,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ak_name);
     free(ak_name);
-    fprintf(stderr, "ERROR: cannot read the whole AK name. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK name. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -492,10 +492,10 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     }
 
     struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
-    unsigned char *mkcred_out_b64 = mg_json_get_str(hm->body, "$.mkcred_out");
+    unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
     printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
 
-    size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen(mkcred_out_b64));
+    size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
 
     /* Calculate the actual length removing base64 padding ('=') */
     /* for(int i=0; i<strlen(mkcred_out_b64); i++){
@@ -513,7 +513,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
     }
 
     //Decode b64
-    if(mg_base64_decode(mkcred_out_b64, strlen(mkcred_out_b64), mkcred_out->value) == 0){
+    if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value) == 0){
         fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
         free(mkcred_out_b64);
         //mg_http_reply(c, 500, NULL, "\n");
@@ -562,7 +562,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    size_t object_length = 0;
+    //size_t object_length = 0;
     char object[4096];
 
     /* if (create_request_body(&object_length, object) != 0){
@@ -607,7 +607,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
-    if(mg_base64_encode((const unsigned char *)secret, secret_len, secret_b64) == 0){
+    if(mg_base64_encode((const unsigned char *)secret, secret_len, (char *) secret_b64) == 0){
       fprintf(stderr, "ERROR: base64 encoding secret\n");
       free(secret_b64);
       return;
@@ -638,7 +638,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
     if(ret != size){
       fclose(fd_ak_pub);
       free(ak_pub);
-      fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+      fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%d bytes read\n", ret, size);
       return;
     }
 

@@ -425,9 +425,6 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
 /* it is resposability of the caller to free out_buf */
 int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size){
 
-    unsigned char *pem_data;
-    int pem_len;
-
     /* 
      * Extract the EK pub key from the certificate in DER format
      */
@@ -461,7 +458,7 @@ int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned ch
     /*
      * Maximum size of the allowed secret-data size  to fit in TPM2B_DIGEST
      */
-    ctx.credential.size = strlen(secret);
+    ctx.credential.size = strlen((char *) secret);
     memcpy(ctx.credential.buffer, secret, ctx.credential.size);
 
 #ifdef DEBUG   
@@ -537,7 +534,7 @@ static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET 
     result = true;
 
     *out_buff_size = ftell(stream);
-    fprintf(stdout, "INFO: tpm_makecredential output size: %ld\n", *out_buff_size);
+    fprintf(stdout, "INFO: tpm_makecredential output size: %d\n", *out_buff_size);
 
 out:
     fclose(stream);

@@ -38,7 +38,6 @@ static struct join_service_conf js_config;
 /* responsibility of the caller to free the ak_db_entry */
 static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
     sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
     struct ak_db_entry *ak_entry = NULL;
     
@@ -58,7 +57,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
         if (rc != SQLITE_OK ) {
             return NULL;
         }
-        rc = sqlite3_bind_text(res, 2, ak, -1, NULL);
+        rc = sqlite3_bind_text(res, 2, (char *) ak, -1, NULL);
         if (rc != SQLITE_OK ) {
             return NULL;
         }
@@ -74,10 +73,10 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
             fprintf(stderr, "ERROR: could not allocate ak_db_struct\n");
             return NULL;
         }
-        strcpy(ak_entry->uuid, sqlite3_column_text(res, 0));
-        strcpy(ak_entry->ak_pem, sqlite3_column_text(res, 1));
-        ak_entry->validity = atoi(sqlite3_column_text(res, 2));
-        ak_entry->confirmed = atoi(sqlite3_column_text(res, 3));
+        strcpy(ak_entry->uuid, (char *) sqlite3_column_text(res, 0));
+        strcpy((char *) ak_entry->ak_pem, (char *) sqlite3_column_text(res, 1));
+        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 2));
+        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 3));
     #ifdef DEBUG
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
@@ -96,7 +95,6 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
 
 static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
     sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
@@ -111,7 +109,7 @@ static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
 
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, ak, -1, SQLITE_TRANSIENT);
+        rc = sqlite3_bind_text(res, 1, (char *) ak, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
             return -1;
         }
@@ -229,7 +227,6 @@ static int set_ak_valid(unsigned char *ak, char *uuid){
 /* responsibility of the caller to free the ek_db_entry */
 static struct ek_db_entry *retrieve_ek(char *uuid){
     sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
     struct ek_db_entry *ek_entry = NULL;
     
@@ -261,8 +258,8 @@ static struct ek_db_entry *retrieve_ek(char *uuid){
             fprintf(stderr, "ERROR: could not allocate ek_db_struct\n");
             return NULL;
         }
-        strcpy(ek_entry->uuid, sqlite3_column_text(res, 0));
-        strcpy(ek_entry->ek_cert, sqlite3_column_text(res, 1));
+        strcpy(ek_entry->uuid, (char *) sqlite3_column_text(res, 0));
+        strcpy((char *) ek_entry->ek_cert, (char *) sqlite3_column_text(res, 1));
     #ifdef DEBUG
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
@@ -281,7 +278,6 @@ static struct ek_db_entry *retrieve_ek(char *uuid){
 
 static int insert_ak(struct ak_db_entry *ak_entry){
     sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
@@ -300,7 +296,7 @@ static int insert_ak(struct ak_db_entry *ak_entry){
         if (rc != SQLITE_OK ) {
             return -1;
         }
-        rc = sqlite3_bind_text(res, 2, ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
+        rc = sqlite3_bind_text(res, 2, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
             return -1;
         }
@@ -333,7 +329,6 @@ static int insert_ak(struct ak_db_entry *ak_entry){
 
 static int insert_ek(struct ek_db_entry *ek_entry){
     sqlite3 *db;
-    char *err_msg = 0;
     sqlite3_stmt *res;
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
@@ -352,7 +347,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
         if (rc != SQLITE_OK ) {
             return -1;
         }
-        rc = sqlite3_bind_text(res, 2, ek_entry->ek_cert, -1, SQLITE_TRANSIENT);
+        rc = sqlite3_bind_text(res, 2, (char *) ek_entry->ek_cert, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
             return -1;
         }
@@ -393,29 +388,29 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     "ak_name_b64": "aaaaaaaa"
                 }
             */
-            unsigned char* uuid = mg_json_get_str(hm->body, "$.uuid");
-            unsigned char* ek_cert_b64 = mg_json_get_str(hm->body, "$.ek_cert_b64");
-            unsigned char* ak_pub_b64 = mg_json_get_str(hm->body, "$.ak_pub_b64");
-            unsigned char* ak_name_b64 = mg_json_get_str(hm->body, "$.ak_name_b64");
+            unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
+            unsigned char* ek_cert_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ek_cert_b64");
+            unsigned char* ak_pub_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
+            unsigned char* ak_name_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_name_b64");
             struct ek_db_entry *ek_entry;
-            size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen(ek_cert_b64));
-            size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen(ak_name_b64));
+            size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
+            size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
             /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen(ek_cert_b64); i++){
+            for(int i=0; i<strlen((char *) ek_cert_b64); i++){
                 if(ek_cert_b64[i] == '='){
                     ek_cert_len--;
                 }
             }
 
             /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen(ak_name_b64); i++){
+            for(int i=0; i<strlen((char *) ak_name_b64); i++){
                 if(ak_name_b64[i] == '='){
                     ak_name_len--;
                 }
             }
 
-            printf("EK_BASE64_LEN: %d\n", strlen(ek_cert_b64));
+            printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
 
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len + 1);
 
@@ -424,7 +419,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             printf("AK_PUB: %s\n", ak_pub_b64);
         #endif
 
-            ek_entry = retrieve_ek(uuid);
+            ek_entry = retrieve_ek((char *) uuid);
             if(ek_entry == NULL) {
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
@@ -436,7 +431,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 }
 
                 //Decode b64
-                if(mg_base64_decode(ek_cert_b64, strlen(ek_cert_b64), ek_cert_buff) == 0){
+                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
@@ -460,8 +455,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     fprintf(stdout, "INFO: EK certificate verified successfully\n");
 
                     struct ek_db_entry ek;
-                    strcpy(ek.ek_cert, ek_cert_b64);
-                    strcpy(ek.uuid, uuid);
+                    strcpy((char *) ek.ek_cert,(char *) ek_cert_b64);
+                    strcpy(ek.uuid, (char *) uuid);
 
                     insert_ek(&ek);
                 }
@@ -495,7 +490,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            if(mg_base64_decode(ak_name_b64, strlen(ak_name_b64), ak_name_buff) == 0){
+            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff) == 0){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(ek_cert_buff);
                 free(ek_cert_b64);
@@ -505,7 +500,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            struct ak_db_entry *ak_entry = retrieve_ak(uuid, ak_pub_b64);
+            struct ak_db_entry *ak_entry = retrieve_ak((char *) uuid, ak_pub_b64);
             if (ak_entry == NULL) {
                 fprintf(stdout, "INFO: AK not present in the db\n");
             }
@@ -531,7 +526,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             /* tpm2_makecredential */
             unsigned char *out_buf;
             size_t out_buf_size;
-            if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
+            if(tpm_makecredential(ek_cert_buff, ek_cert_len,(unsigned char *) secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
             }
 
@@ -571,8 +566,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             }
 
             struct ak_db_entry ak;
-            strcpy(ak.ak_pem, ak_pub_b64);
-            strcpy(ak.uuid, uuid);
+            strcpy((char *) ak.ak_pem, (char *) ak_pub_b64);
+            strcpy(ak.uuid, (char *) uuid);
             ak.confirmed = 0;
             ak.validity = 0;
 
@@ -602,13 +597,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
             
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
-            unsigned char* secret_b64 = mg_json_get_str(hm->body, "$.secret_b64");
-            unsigned char* uuid = mg_json_get_str(hm->body, "$.uuid");
-            unsigned char* ak_pub = mg_json_get_str(hm->body, "$.ak_pub_b64");
-            size_t secret_len = B64DECODE_OUT_SAFESIZE(strlen(secret_b64));
+            unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
+            unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
+            unsigned char* ak_pub = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
+            size_t secret_len = B64DECODE_OUT_SAFESIZE(strlen((char *) secret_b64));
 
             /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen(secret_b64); i++){
+            for(int i=0; i<strlen((char *) secret_b64); i++){
                 if(secret_b64[i] == '='){
                     secret_len--;
                 }
@@ -622,7 +617,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             }
 
             /* Decode b64 */
-            if(!mg_base64_decode(secret_b64, strlen(secret_b64), secret_buff)){
+            if(!mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff)){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(secret_buff);
                 free(secret_b64);
@@ -633,7 +628,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             fprintf(stdout, "INFO: secret received: %s\n", secret_buff);
 
             /* verify the correctness of the secret_buff received */
-            if(!strcmp(secret_buff, secret)){
+            if(!strcmp((char *) secret_buff, secret)){
                 fprintf(stdout, "INFO: secret verified succesfully\n");
             }
             else {
@@ -651,7 +646,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             //set_ak_valid(ak_pub, uuid);
 
             /* Set the AK in the database as confirmed (=1) and valid (=1)*/
-            if(set_ak_confirmed_and_valid(ak_pub, uuid) != 0){
+            if(set_ak_confirmed_and_valid(ak_pub, (char *) uuid) != 0){
                 //TODO database error ??
                 free(secret_buff);
                 free(secret_b64);
@@ -699,7 +694,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
 static int init_database(void){
     sqlite3_stmt *res= NULL;
     sqlite3 *db = NULL;
-    int byte;
     char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
         uuid text NOT NULL,\
         ak_pub text NOT NULL,\
@@ -714,9 +708,6 @@ static int init_database(void){
         PRIMARY KEY (uuid)\
     );";
     
-    int step, idx;
-
-    printf("%s\n", js_config.db);
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open or create the join service database, error %s\n", sqlite3_errmsg(db));
