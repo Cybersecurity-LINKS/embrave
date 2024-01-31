@@ -25,7 +25,7 @@
 #define OK 200
 #define ANAUTHORIZED 401
 #define FORBIDDEN 403
-
+#define ALREDY_JOINED 409
 /* responses */
 #define APPLICATION_JSON "Content-Type: application/json\r\n"
 

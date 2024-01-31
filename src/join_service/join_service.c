@@ -81,10 +81,6 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
     #endif
-        fprintf(stdout, "INFO: AK already present in the db\n");
-    }
-    else {
-        fprintf(stdout, "INFO: no entry in the db with the specified AK\n");
     }
 
     sqlite3_finalize(res);
@@ -509,9 +505,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
 
                 if(ak_entry->validity == VALID) {
                     printf("INFO: AK is valid\n");
-                    mg_http_reply(c, OK, APPLICATION_JSON,
+                    mg_http_reply(c, ALREDY_JOINED, APPLICATION_JSON,
                         "{\"message\":\"ak already registered and valid\"}\n");
-                    MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+                    MG_INFO(("%s %s %d", POST, API_JOIN, ALREDY_JOINED));
                     return;
                 }
                 else {

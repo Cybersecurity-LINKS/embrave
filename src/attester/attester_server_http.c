@@ -17,6 +17,7 @@
 #include "mongoose.h"
 #include "attester_agent.h"
 #include "config_parse.h"
+#include "join_service.h"
 
 struct mkcred_out {
   unsigned char *value;
@@ -462,9 +463,9 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       exit(-1);
     }
 
-//#ifdef DEBUG
+#ifdef DEBUG
     printf("%s\n", object);
-//#endif
+#endif
 
     /* Send request */
     mg_printf(c,
@@ -479,30 +480,29 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    /* char response_body[1024];
-    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
-//#ifdef DEBUG
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
-//#endif
-    
-    if(mg_http_status(hm) == 403){ /* forbidden */
+#endif
+    int status = mg_http_status(hm);
+    printf("%d\n", status);
+    if(status == FORBIDDEN){ /* forbidden */
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
       //mg_http_reply(c, 500, NULL, "\n");
       return;
+    } else if (status == ALREDY_JOINED){
+        fprintf(stdout, "INFO: ak present in the join service db\n");
+        c->is_draining = 1;        // Tell mongoose to close this connection
+        Continue = false;  // Tell event loop to stop
+        mkcred_out->len = 0; 
+        return;
     }
 
-    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+    
     unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
     printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
 
     size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
-
-    /* Calculate the actual length removing base64 padding ('=') */
-    /* for(int i=0; i<strlen(mkcred_out_b64); i++){
-        if(mkcred_out_b64[i] == '='){
-            mkcred_out_len--;
-        }
-    } */
 
     mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
     if(mkcred_out->value == NULL) {
@@ -726,21 +726,26 @@ static int join_procedure(){
   printf("\n"); */
 
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+  
+  /* mkcred_out.len == 0 means ak alredy present in the js db so no challenge to reply*/
+  if(mkcred_out.len != 0){
+    /* send back the value calculated with tpm_activatecredential */
+    Continue = true;
+    c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
 
-  /* send back the value calculated with tpm_activatecredential */
-  Continue = true;
-  c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
+    if (c == NULL) {
+      MG_ERROR(("CLIENT cant' open a connection"));
+      return -1;
+    }
 
-  if (c == NULL) {
-    MG_ERROR(("CLIENT cant' open a connection"));
-    return -1;
+    while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+    if(mkcred_out.value != NULL){
+      free(mkcred_out.value);
+    }
+    
   }
 
-  while (Continue) mg_mgr_poll(&mgr, 10); //10ms
-
-  if(mkcred_out.value != NULL){
-    free(mkcred_out.value);
-  }
 
   return 0;
 }
