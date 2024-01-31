@@ -94,7 +94,51 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
     return ak_entry;
 }
 
-static int set_ak_confirmed(unsigned char *ak, char *uuid){
+static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
+    sqlite3 *db;
+    char *err_msg = 0;
+    sqlite3_stmt *res;
+    
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 1;
+    }
+
+    char *sql = "UPDATE attesters_credentials SET confirmed = 1, validity = 1 WHERE ak_pub = ? AND uuid = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ak, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+        rc = sqlite3_bind_text(res, 2, uuid, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+        fprintf(stdout, "INFO: AK succesfully updated\n");
+    }
+    else {
+        fprintf(stderr, "ERROR: could not update AK\n");
+    }
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return 0;
+}
+
+/* static int set_ak_confirmed(unsigned char *ak, char *uuid){
     sqlite3 *db;
     char *err_msg = 0;
     sqlite3_stmt *res;
@@ -180,7 +224,7 @@ static int set_ak_valid(unsigned char *ak, char *uuid){
     sqlite3_close(db);
     
     return 0;
-}
+} */
 
 /* responsibility of the caller to free the ek_db_entry */
 static struct ek_db_entry *retrieve_ek(char *uuid){
@@ -336,9 +380,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
         
-        //#ifdef DEBUG
+        #ifdef DEBUG
             printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
-        //#endif
+        #endif
 
             /* Read post */
             /*
@@ -600,24 +644,35 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            /* Set the AK in the database as confirmed (=1) */
-            set_ak_confirmed(ak_pub, uuid);
+            // Set the AK in the database as confirmed (=1) */
+            //set_ak_confirmed(ak_pub, uuid);
 
-            /* Set the AK in the database as valid (=1) */
-            set_ak_valid(ak_pub, uuid);
+            // Set the AK in the database as valid (=1) */
+            //set_ak_valid(ak_pub, uuid);
+
+            /* Set the AK in the database as confirmed (=1) and valid (=1)*/
+            if(set_ak_confirmed_and_valid(ak_pub, uuid) != 0){
+                //TODO database error ??
+                free(secret_buff);
+                free(secret_b64);
+                free(uuid);
+                free(ak_pub);
+                return;
+            }
 
             free(secret_buff);
             free(secret_b64);
             free(uuid);
             free(ak_pub);
 
-            /* notify verifiers */
-
+            
+            /* reply the agent  */
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
 
-
+            /* notify the verifiers */
+            //TODO
         }
         else {
             mg_http_reply(c, 500, NULL, "\n");
@@ -658,7 +713,7 @@ static int init_database(void){
         ek_cert text NOT NULL,\
         PRIMARY KEY (uuid)\
     );";
-    //char *sql2 = "CREATE TABLE IF NOT EXISTS revoked (ak text NOT NULL, PRIMARY KEY (ak)); ";
+    
     int step, idx;
 
     printf("%s\n", js_config.db);
@@ -699,13 +754,6 @@ static int init_database(void){
         return -1;
     }
 
-    /* rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-    */
     sqlite3_close(db);
     return 0;
 }
