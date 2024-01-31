@@ -73,7 +73,7 @@ struct attester_conf {
     char ak_ctx[MAX_BUF];
     char ak_cert[MAX_BUF];
     char join_service_ip[MAX_BUF];
-    char uuid[26]; /* 128 bits + 1 byte for '\0' */
+    char uuid[MAX_BUF];
 };
 
 struct verifier_conf {
