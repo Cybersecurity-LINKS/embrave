@@ -71,12 +71,12 @@ void save_timer(void){
 #endif
 }
 
-bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context) {
+bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context) {
 
   int persistent_handles = 0;
   
   // Read the # of persistent handles and check that created/existing handles really exist
-  persistent_handles = getCap_handles_persistent(esys_context, ek_handle, ak_handle);
+  persistent_handles = getCap_handles_persistent(esys_context, ek_handle);
   if (persistent_handles == -1 ) {
     printf("Error while reading persistent handles!\n");
     goto error;
@@ -86,7 +86,7 @@ error:
   return false;
 }
 
-int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, uint16_t *ak_handle) {
+int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle) {
   TSS2_RC tss_r;
   TPM2_CAP capability = TPM2_CAP_HANDLES;
   UINT32 property = TPM2_HR_PERSISTENT;
@@ -94,7 +94,7 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, u
   TPMS_CAPABILITY_DATA *capabilityData;
   TPMI_YES_NO moreData;
   char handle_hex[HANDLE_SIZE];
-  int h1 = 0, h2 = 0;
+  int h1 = 0;
 
   tss_r = Esys_GetCapability(esys_context, ESYS_TR_NONE, ESYS_TR_NONE,
     ESYS_TR_NONE, capability, property,
@@ -107,13 +107,12 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, u
     for (int i = 0; i < capabilityData->data.handles.count; i++) {
       snprintf(handle_hex, HANDLE_SIZE, "0x%X", capabilityData->data.handles.handle[i]);
       if(memcmp((void *) ek_handle, handle_hex, HANDLE_SIZE) == 0) h1 = 1;
-      if(memcmp((void *) ak_handle, handle_hex, HANDLE_SIZE) == 0) h2 = 1;
     }
     free(capabilityData);
 
-    fprintf(stdout, "EK: %d, AK: %d\n", h1, h2);
+    fprintf(stdout, "EK: %d\n", h1);
 
-    if(h1 && h2)
+    if(h1)
       return 0;
     return -1;
 }

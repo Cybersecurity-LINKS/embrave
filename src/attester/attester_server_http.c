@@ -496,57 +496,61 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
         Continue = false;  // Tell event loop to stop
         mkcred_out->len = 0; 
         return;
+    } else if (status == CREATED){
+
+      unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
+      printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
+
+      size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
+
+      mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
+      if(mkcred_out->value == NULL) {
+          fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
+          free(mkcred_out_b64);
+          //mg_http_reply(c, 500, NULL, "\n");
+          return;
+      }
+
+      //Decode b64
+      if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value) == 0){
+          fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
+          free(mkcred_out_b64);
+          //mg_http_reply(c, 500, NULL, "\n");
+          return;
+      }
+
+      /* printf("MKCRED_OUT: ");
+      for(int i=0; i<mkcred_out->len; i++){
+        printf("%02x", mkcred_out->value[i]);
+      }
+      printf("\n"); */
+      mkcred_out->len = mkcred_out_len;
+
+      fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      free(mkcred_out_b64);
+      //int ip_len = 0;
+      //char **ca_ip_addr = (char **) fn_data;
+      //*ca_ip_addr = (char *) malloc(ip_len + 1);
+
+      //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
+      //printf("ip_len = %d\n", ip_len);
+      //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
+      //(*ca_ip_addr)[ip_len] = '\0';
+      //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
+      //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
+
+      //free(ca_ip_addr);
+      
+      /* response_body[hm->body.len] = '\0';
+      fprintf(stdout, "%s\n", response_body); */
+
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      Continue = false;  // Tell event loop to stop
+
     }
 
     
-    unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
-    printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
-
-    size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
-
-    mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
-    if(mkcred_out->value == NULL) {
-        fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
-        free(mkcred_out_b64);
-        //mg_http_reply(c, 500, NULL, "\n");
-        return;
-    }
-
-    //Decode b64
-    if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value) == 0){
-        fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
-        free(mkcred_out_b64);
-        //mg_http_reply(c, 500, NULL, "\n");
-        return;
-    }
-
-    /* printf("MKCRED_OUT: ");
-    for(int i=0; i<mkcred_out->len; i++){
-      printf("%02x", mkcred_out->value[i]);
-    }
-    printf("\n"); */
-    mkcred_out->len = mkcred_out_len;
-
-    fprintf(stdout, "INFO: mkcred_out received from join service.\n");
-    free(mkcred_out_b64);
-    //int ip_len = 0;
-    //char **ca_ip_addr = (char **) fn_data;
-    //*ca_ip_addr = (char *) malloc(ip_len + 1);
-
-    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
-    //printf("ip_len = %d\n", ip_len);
-    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
-    //(*ca_ip_addr)[ip_len] = '\0';
-    //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
-
-    //free(ca_ip_addr);
-    
-    /* response_body[hm->body.len] = '\0';
-    fprintf(stdout, "%s\n", response_body); */
-
-    c->is_draining = 1;        // Tell mongoose to close this connection
-    Continue = false;  // Tell event loop to stop
+   
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }

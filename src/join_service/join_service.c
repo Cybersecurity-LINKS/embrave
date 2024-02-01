@@ -303,6 +303,43 @@ static struct ek_db_entry *retrieve_ek(char *uuid){
     return ek_entry;
 }
 
+bool check_ek_presence(char *uuid){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    bool ret = false;
+    //struct ek_db_entry *ek_entry = NULL;
+    
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return NULL;
+    }
+
+    char *sql = "SELECT * FROM attesters_ek_certs WHERE uuid = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, uuid, -1, NULL);
+        if (rc != SQLITE_OK ) {
+            return NULL;
+        }
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW)
+        ret = true;
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return ret;
+}
+
 static int insert_ak(struct ak_db_entry *ak_entry){
     sqlite3 *db;
     sqlite3_stmt *res;
@@ -440,14 +477,15 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
 
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len + 1);
+            
 
         #ifdef DEBUG
             printf("EK_CERT: %s\n", ek_cert_b64);
             printf("AK_PUB: %s\n", ak_pub_b64);
         #endif
 
-            ek_entry = retrieve_ek((char *) uuid);
-            if(ek_entry == NULL) {
+            //ek_entry = retrieve_ek();
+            if(!check_ek_presence((char *) uuid)) {
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
                     free(ek_cert_b64);
@@ -499,12 +537,25 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             #endif
             }
             else {
-            #ifdef DEBUG
-                printf("AK: %s", ak_entry->ak_pem);
-                printf("Validity: %d\n", ak_entry->validity);
-            #endif
+                //Malloc buffer
+                if(ek_cert_buff == NULL) {
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    free(ak_name_b64);
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
+                }
 
-                
+                //Decode b64
+                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff) == 0){
+                    fprintf(stderr, "ERROR: Transmission challenge data error.\n");
+                    free(ek_cert_buff);
+                    free(ek_cert_b64);
+                    free(ak_pub_b64);
+                    mg_http_reply(c, 500, NULL, "\n");
+                    return;
+                }
+
             }
 
             unsigned char *ak_name_buff = (unsigned char *) malloc(ak_name_len + 1);
@@ -605,9 +656,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
 
             insert_ak(&ak);
 
-            mg_http_reply(c, OK, APPLICATION_JSON,
+            mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
-            MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+            MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
 
             free(ak_name_buff);
             free(ek_cert_buff);

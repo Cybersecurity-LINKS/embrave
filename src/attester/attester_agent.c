@@ -87,9 +87,10 @@ int attester_init(/* struct attester_conf* conf */) {
     break;
   }
 
-  if(check_keys(ek_handle, ak_handle, esys_context)) {
-    fprintf(stdout, "INFO: AK already present at handle %s\n", (char *)ak_handle);
-
+  if(check_ek(ek_handle, esys_context)) {
+    //fprintf(stdout, "INFO: AK already present at handle %s\n", (char *)ak_handle);
+    /* tpm_createak */
+    attester_create_ak(esys_context, &attester_config);
     /* Check if present EK cert */
     FILE *fd = fopen(attester_config.ek_ecc_cert, "r");
     if(fd == NULL){
@@ -104,21 +105,29 @@ int attester_init(/* struct attester_conf* conf */) {
     }
     
     fclose(fd);
+
     return 0;
   }
 
   /* tpm_createek */
-  attester_create_ek(esys_context, algo);
+  rc_tool = attester_create_ek(esys_context, algo);
+  if(rc_tool != TPM2_RC_SUCCESS){
+    fprintf(stderr, "ERROR: attester_create_ek error\n");
+    goto error;
+  }
 
   /* tpm_createak */
-  attester_create_ak(esys_context, &attester_config);
-  attester_evictcontrol(esys_context, &attester_config);
+  rc_tool =  attester_create_ak(esys_context, &attester_config);
+  if(rc_tool != TPM2_RC_SUCCESS){
+    fprintf(stderr, "ERROR: attester_create_ak error\n");
+    goto error;
+  }
+  //attester_evictcontrol(esys_context, &attester_config);
 
   /* tpm_getekcertificate */
-  get_ek_certificates(esys_context, &attester_config);
-
-  if(!check_keys(ek_handle, ak_handle, esys_context)) {
-    fprintf(stderr, "ERROR: Could not initialize the TPM Keys\n");
+  rc_tool =  get_ek_certificates(esys_context, &attester_config);
+  if(rc_tool != TPM2_RC_SUCCESS){
+    fprintf(stderr, "ERROR: get_ek_certificates error\n");
     goto error;
   }
 
