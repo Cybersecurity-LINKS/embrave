@@ -18,7 +18,7 @@
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port", "tls_port", "tls_cert", "tls_key",
             "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip", "join_service_port"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
-            "tls_cert_ca", "db"};
+            "tls_cert_ca", "db", "join_service_ip", "join_service_port"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
             "tls_key", "tls_cert_ca", "db", "ca_x509_path"};
 
@@ -251,6 +251,14 @@ uint16_t read_config(char user, void* config_struct){
                         case VERIFIER_DB:
                             strcpy(verifier_config->db, value);
                             break;
+
+                        case VERIFIER_JOIN_SERVICE_IP:
+                            strcpy(verifier_config->join_service_ip, value);
+                            break;
+
+                        case VERIFIER_JOIN_SERVICE_PORT:
+                            verifier_config->join_service_port = (uint32_t) atoi(value);
+                        break;
 
                         case VERIFIER_NUM_CONFIG_PARAMS:
                             //unknown param
