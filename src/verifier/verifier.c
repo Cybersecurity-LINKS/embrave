@@ -49,7 +49,7 @@ int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tp
     return -1;
   } else if(ret == -2){
     printf("Unknown TPA\n");
-    refresh_tpa_entry(tpa_data);
+    refresh_verifier_database_entry(tpa_data);
     return -2;
   } else {
     printf("Quote signature verification OK\n");
@@ -119,7 +119,7 @@ int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database
     return -1;
   } else if(ret == -2){
     printf("Unknown TPA\n");
-    refresh_tpa_entry(tpa_data);
+    refresh_verifier_database_entry(tpa_data);
     return -2;
   } else {
     printf("Quote signature verification OK\n");

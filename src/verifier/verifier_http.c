@@ -406,6 +406,76 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
   return 0;
 }
 
+static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  if (ev == MG_EV_OPEN) {
+    // Connection created. Store connect expiration time in c->data
+    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+  } else if (ev == MG_EV_POLL) {
+    if (mg_millis() > *(uint64_t *) c->data &&
+        (c->is_connecting || c->is_resolving)) {
+      mg_error(c, "Connect timeout");
+    }
+  } else if (ev == MG_EV_CONNECT) {
+    size_t object_length = 0;
+    char buff[280];
+
+
+    snprintf(buff, 280, "{\"ip\":\"%s:%d\"}", verifier_config.ip, verifier_config.port);
+
+#ifdef DEBUG
+    printf("%s\n", object);
+#endif
+
+    /* Send request */
+    mg_printf(c,
+      "POST /request_join_verifier HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      strlen(buff),
+      buff);
+      fprintf(stdout, "INFO: %s\n", buff);
+  } else if (ev == MG_EV_HTTP_MSG) {
+    // Response is received. Print it
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    //struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+#ifdef DEBUG
+    printf("%.*s", (int) hm->message.len, hm->message.ptr);
+#endif
+    int status = mg_http_status(hm);
+    printf("%d\n", status);
+    if(status == -1){ /* forbidden */
+      fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
+      //mg_http_reply(c, 500, NULL, "\n");
+      return;
+    } else if (status == 0){
+        fprintf(stdout, "INFO: ak present in the join service db\n");
+        c->is_draining = 1;        // Tell mongoose to close this connection
+        Continue = false;  // Tell event loop to stop
+        //mkcred_out->len = 0; 
+        return;
+    } else if (status == 1){
+
+      //unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
+
+      //fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      
+
+
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      Continue = false;  // Tell event loop to stop
+
+    }
+
+    
+   
+  } else if (ev == MG_EV_ERROR) {
+    Continue = false;  // Error, tell event loop to stop
+  }
+}
+
+
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
@@ -427,6 +497,31 @@ int main(int argc, char *argv[]) {
   printf("verifier_config->tls_key: %s\n", verifier_config.tls_key);
   printf("verifier_config->db: %s\n", verifier_config.db);
   #endif
+
+
+  /* Contact the join service */
+  snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
+  //printf("%s\n", s_conn);
+  mg_mgr_init(&mgr);
+
+  /* request to join (receive tpm_makecredential output) */
+  c = mg_http_connect(&mgr, s_conn, request_join_verifier, NULL);
+
+  if (c == NULL) {
+    MG_ERROR(("CLIENT cant' open a connection"));
+    return -1;
+  }
+
+  while (Continue) mg_mgr_poll(&mgr, 1); //1ms
+
+  Continue = true;
+
+
+
+
+
+
+
 
   /* if(argc != 3){
     printf("Not enough arguments\n");
