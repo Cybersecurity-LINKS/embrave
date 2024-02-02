@@ -19,24 +19,21 @@
 #include "tpm_policysecret.h"
 #include "tpm_flushcontext.h"
 
-//static uint32_t ima_byte_sent = 0;
 struct attester_conf attester_config;
 
 int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32_t from_bytes);
 
 int attester_init(/* struct attester_conf* conf */) {
-  // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   tool_rc rc_tool;
   uint16_t ek_handle[HANDLE_SIZE];
-  uint16_t ak_handle[HANDLE_SIZE];
+
   int ret;
-  fprintf(stdout, "Init TPA\n");
-  //tss_r = Tss2_TctiLdr_Initialize("swtpm", &tcti_context);
+  fprintf(stdout, "INFO: agent init\n");
+
   tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
-  //tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;
@@ -49,11 +46,9 @@ int attester_init(/* struct attester_conf* conf */) {
     return -1;
   }
 
-  /* snprintf((char *)ek_handle, HANDLE_SIZE, "%s", "0x81000003"); */
-  /* snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004"); */
+  /* set ek fixed handle */
   memcpy((void *) ek_handle, (void *) "0x81000003", HANDLE_SIZE);
-  memcpy((void *) ak_handle, (void *) "0x81000004", HANDLE_SIZE);
-
+  
   /* check certificate algo for saved ek certificates */
   unsigned char rc = check_ek_cert_algo(esys_context);
   char *algo = NULL;
@@ -88,9 +83,13 @@ int attester_init(/* struct attester_conf* conf */) {
   }
 
   if(check_ek(ek_handle, esys_context)) {
-    //fprintf(stdout, "INFO: AK already present at handle %s\n", (char *)ak_handle);
+
     /* tpm_createak */
-    attester_create_ak(esys_context, &attester_config);
+    rc_tool = attester_create_ak(esys_context, &attester_config);
+    if(rc_tool != TPM2_RC_SUCCESS){
+      fprintf(stderr, "ERROR: attester_create_ak error\n");
+    goto error;
+  }
     /* Check if present EK cert */
     FILE *fd = fopen(attester_config.ek_ecc_cert, "r");
     if(fd == NULL){
@@ -122,7 +121,6 @@ int attester_init(/* struct attester_conf* conf */) {
     fprintf(stderr, "ERROR: attester_create_ak error\n");
     goto error;
   }
-  //attester_evictcontrol(esys_context, &attester_config);
 
   /* tpm_getekcertificate */
   rc_tool =  get_ek_certificates(esys_context, &attester_config);
@@ -214,16 +212,16 @@ int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
-  uint16_t ak_handle[HANDLE_SIZE];
+  //uint16_t ak_handle[HANDLE_SIZE];
   int ret;
-  snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
+  //snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
   //Set NULL pointers for safety
   rpl->ima_log = NULL;
   rpl->sig = NULL;
   rpl->quoted = NULL;
 
-  tss_r = Tss2_TctiLdr_Initialize("tabrmd", &tcti_context);
+  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;

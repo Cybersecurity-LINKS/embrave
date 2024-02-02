@@ -39,7 +39,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 int nonce_create(uint8_t *nonce)
 {
     if (!RAND_bytes(nonce, NONCE_SIZE)){
-        fprintf(stderr, "ERROR: Attestor client random generation error\n");
+        fprintf(stderr, "ERROR: random generation error\n");
         return -1;
     }
 #ifdef VERBOSE
@@ -436,7 +436,7 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_
         //Save resetCount
         tpa->resetCount = attest.clockInfo.resetCount;
     } else if(tpa->resetCount != attest.clockInfo.resetCount && rply->wholeLog == 1 ) {
-        printf("Tpa rebooted after last attestation\n");
+        fprintf(stdin, "INFO: agent rebooted after last attestation\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
@@ -485,7 +485,8 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_
     if (rc == -1) {
         goto err;
     } else if (rc == -2) {
-        printf("WARNING: PCR values failed to match quote's digest!, possible desynch\n");
+        //TODO fixed??
+        fprintf(stdin, "INFO: PCR values failed to match quote's digest!, possible desynch\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
@@ -743,7 +744,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int refresh_tpa_entry(verifier_database *tpa){
+int refresh_verifier_database_entry(verifier_database *tpa){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
@@ -751,8 +752,9 @@ int refresh_tpa_entry(verifier_database *tpa){
     int step;
     
     int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+   //int rc = sqlite3_open_v2(verifier_config->, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open the verifier database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -893,10 +895,10 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tp
         //No old PCR10 values, allocates space for saving them
 
     }
-    
+
+    /*No new event in the TPA*/
     if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
-        //No new event in the TPA
-        printf("No IMA log received, compare the old PCR10 with received one:\n");
+        fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one:\n");
         goto PCR10;
 
     } else if (rply->ima_log_size == 0 && tpa->pcr10_old_sha256 == NULL && tpa->pcr10_old_sha1 == NULL) {
@@ -951,9 +953,8 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tp
         }
 
     }
-    printf("IMA log verification OK\n");
-    
 
+    fprintf(stdout, "INFO: IMA log verification OK\n");
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
@@ -980,11 +981,12 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
         
-        //refresh tpa db entry
-        refresh_tpa_entry(tpa);
+        //refresh verifier_database entry
+        refresh_verifier_database_entry(tpa);
         goto unknown;
     }
-    printf("PCR10 calculation OK\n");
+
+    fprintf(stdout, "INFO: PCR10 calculation OK\n");
 
     //Convert PCR10 to save it
     bin_2_hash(tpa->pcr10_old_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
