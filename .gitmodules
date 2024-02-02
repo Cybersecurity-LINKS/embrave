@@ -2,3 +2,6 @@
 	path = lib/tpm2-tools
 	url = https://github.com/tpm2-software/tpm2-tools/
     ignore = all
+
+
+# checkout on this commit: 4998ecfea817cd0efdd47bdf11a02dedab51c723

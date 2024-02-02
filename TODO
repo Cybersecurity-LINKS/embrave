@@ -1,10 +1,7 @@
-js controlla se ak presente nel db
 js crea challange
-js verifica ek cert
-agnte challenge reply 
-js verifica challenge response
 dopo un join con successo, il js notifica il verifier del ip e ak del nuovo Agent
-verifier  creazione automatica del db
-debug print level 
-error log
-log
+debug print level
+file log
+wrappare funzioni db per supporto multi db
+supporto per altri schemi di attestazione
+rendere configurabile i PCR inviati

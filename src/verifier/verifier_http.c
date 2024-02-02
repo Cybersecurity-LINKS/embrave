@@ -11,7 +11,7 @@
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include "mongoose.h"
-#include "RA.h"
+#include "verifier.h"
 #include "config_parse.h"
 #include "common.h"
 
@@ -212,7 +212,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     }
 
     //Create nonce
-    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
@@ -242,7 +242,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if(n < 0){
       end = true;
       verify_val = n;
-      RA_free(&rpl, &tpa_data);
+      ra_free(&rpl, &tpa_data);
       return;
     } 
 
@@ -250,10 +250,10 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = RA_explicit_challenge_verify(&rpl, &tpa_data);
+    verify_val = ra_explicit_challenge_verify(&rpl, &tpa_data);
 
     end = true;
-    RA_free(&rpl, &tpa_data);
+    ra_free(&rpl, &tpa_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -288,7 +288,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     }
 
     //Create nonce
-    if(RA_explicit_challenge_create(&chl, &tpa_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, &tpa_data)!= 0){
       Continue = false;
       return;
     }
@@ -318,7 +318,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     if(n < 0){
       end = true;
       verify_val = n;
-      RA_free(&rpl, &tpa_data);
+      ra_free(&rpl, &tpa_data);
       return;
     } 
 
@@ -326,10 +326,10 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = RA_explicit_challenge_verify_TLS(&rpl, &tpa_data);
+    verify_val = ra_explicit_challenge_verify_TLS(&rpl, &tpa_data);
 
     end = true;
-    RA_free(&rpl, &tpa_data);
+    ra_free(&rpl, &tpa_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -428,22 +428,22 @@ int main(int argc, char *argv[]) {
   printf("verifier_config->db: %s\n", verifier_config.db);
   #endif
 
-  if(argc != 3){
+  /* if(argc != 3){
     printf("Not enough arguments\n");
     return -1;
-  }
+  } */
   //Start Timer 1
   //get_start_timer();
 
-  id = strtol(argv[2], NULL, 10);
+  /* id = strtol(argv[2], NULL, 10);
   if (get_paths(id) != 0){
     printf("Error from tpa.db\n");
     return -1;
-  }
+  } */
 
-  n = strtol(argv[1], NULL, 10);
+  //n = strtol(argv[1], NULL, 10);
 
-  if(n == 0)
+  /* if(n == 0)
     snprintf(s_conn, 250, "%s:%d", tpa_data.ip_addr, verifier_config.port);
   else if(n == 1)
     snprintf(s_conn, 250, "%s:%d", tpa_data.ip_addr, verifier_config.tls_port);
@@ -455,10 +455,10 @@ int main(int argc, char *argv[]) {
   mg_mgr_init(&mgr);
 
   if(n == 0){
-    //Explict RA
+    //Explict ra
     c = mg_http_connect(&mgr, s_conn, fn, NULL);
   } else {
-    //Explict RA TLS
+    //Explict ra TLS
     c = mg_http_connect(&mgr, s_conn, fn_tls, NULL);
   }
 
@@ -468,8 +468,39 @@ int main(int argc, char *argv[]) {
   }
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
-  //printf("%d\n", verify_val);//
-  return verify_val;
+  //printf("%d\n", verify_val);
+  return verify_val; */
+
+  mg_log_set(MG_LL_INFO);  /* Set log level */
+  mg_mgr_init(&mgr);        /* Initialize event manager */
+
+  snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
+  //snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
+
+  c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */
+
+  if (c == NULL) {
+    MG_INFO(("SERVER cant' open a connection"));
+    return 0;
+  }
+
+  /* Or TLS server */ /* Create server connection */
+
+  /* c_tls = mg_http_listen(&mgr, s_conn_tls, fn_tls, NULL); 
+  if (c_tls == NULL) {
+    MG_INFO(("SERVER cant' open a connection"));
+    return 0;
+  }  */
+
+  fprintf(stdout, "Server listen to %s \n", s_conn);
+
+  Continue = true;
+
+  while (Continue)
+    mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
+                              unless there is network activity */
+  mg_mgr_free(&mgr);         /* Free resources */
+  return 0;
 }
 
 //Print received data
