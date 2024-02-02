@@ -36,8 +36,191 @@ static tpm_makecred_ctx ctx = {
     //.key_type = "rsa",
 };
 
+static const struct {
+    TPMI_ECC_CURVE curve;
+    int nid;
+} nid_curve_map[] = {
+    { TPM2_ECC_NIST_P192, NID_X9_62_prime192v1 },
+    { TPM2_ECC_NIST_P224, NID_secp224r1        },
+    { TPM2_ECC_NIST_P256, NID_X9_62_prime256v1 },
+    { TPM2_ECC_NIST_P384, NID_secp384r1        },
+    { TPM2_ECC_NIST_P521, NID_secp521r1        },
+#if OPENSSL_VERSION_NUMBER >= 0x10101003L
+    { TPM2_ECC_SM2_P256,  NID_sm2              },
+#endif
+    /*
+     * XXX
+     * See if it's possible to support the other curves, I didn't see the
+     * mapping in OSSL:
+     *  - TPM2_ECC_BN_P256
+     *  - TPM2_ECC_BN_P638
+     *  - TPM2_ECC_SM2_P256
+     */
+};
+
 tool_rc make_external_credential_and_save(unsigned char **out_buff, size_t *out_buff_size);
 void set_default_TCG_EK_template(TPMI_ALG_PUBLIC alg);
+
+/**
+ * Maps an OSSL nid as defined obj_mac.h to a TPM2 ECC curve id.
+ * @param nid
+ *  The nid to map.
+ * @return
+ *  A valid TPM2_ECC_* or TPM2_ALG_ERROR on error.
+ */
+static TPMI_ECC_CURVE ossl_nid_to_curve(int nid) {
+
+    unsigned i;
+    for (i = 0; i < ARRAY_LEN(nid_curve_map); i++) {
+        TPMI_ECC_CURVE c = nid_curve_map[i].curve;
+        int n = nid_curve_map[i].nid;
+
+        if (n == nid) {
+            return c;
+        }
+    }
+
+    LOG_ERR("Cannot map nid \"%d\" to TPM ECC curve", nid);
+    return TPM2_ALG_ERROR;
+}
+
+static bool load_public_ECC_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
+
+    BIGNUM *y = NULL;
+    BIGNUM *x = NULL;
+    int nid;
+    unsigned keysize;
+    bool result = false;
+
+    /*
+     * Set the algorithm type
+     */
+    pub->publicArea.type = TPM2_ALG_ECC;
+    TPMS_ECC_PARMS *pp = &pub->publicArea.parameters.eccDetail;
+
+    /*
+     * Get the curve type and the public key (X and Y)
+     */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+    EC_KEY *k = EVP_PKEY_get0_EC_KEY(key);
+    if (!k) {
+        LOG_ERR("Could not retrieve ECC key");
+        goto out;
+    }
+
+    y = BN_new();
+    x = BN_new();
+    if (!x || !y) {
+        LOG_ERR("oom");
+        goto out;
+    }
+
+    const EC_GROUP *group = EC_KEY_get0_group(k);
+    nid = EC_GROUP_get_curve_name(group);
+    keysize = (EC_GROUP_get_degree(group) + 7) / 8;
+
+    const EC_POINT *point = EC_KEY_get0_public_key(k);
+
+    int ret = EC_POINT_get_affine_coordinates_tss(group, point, x, y, NULL);
+    if (!ret) {
+        LOG_ERR("Could not get X and Y affine coordinates");
+        goto out;
+    }
+#else
+    char curve_name[80];
+
+    int rc = EVP_PKEY_get_utf8_string_param(key, OSSL_PKEY_PARAM_GROUP_NAME,
+                                            curve_name, sizeof(curve_name), NULL);
+    if (!rc) {
+        LOG_ERR("Could not read ECC curve name");
+        goto out;
+    }
+    nid = OBJ_txt2nid(curve_name);
+    keysize = (EVP_PKEY_bits(key) + 7) / 8;
+
+    rc = EVP_PKEY_get_bn_param(key, OSSL_PKEY_PARAM_EC_PUB_X, &x);
+    if (!rc) {
+        LOG_ERR("Could not read public X coordinate");
+        goto out;
+    }
+
+    rc = EVP_PKEY_get_bn_param(key, OSSL_PKEY_PARAM_EC_PUB_Y, &y);
+    if (!rc) {
+        LOG_ERR("Could not read public Y coordinate");
+        goto out;
+    }
+#endif
+
+    /*
+     * Set the curve type
+     */
+    TPM2_ECC_CURVE curve_id = ossl_nid_to_curve(nid); // Not sure what lines up with NIST 256...
+    if (curve_id == TPM2_ALG_ERROR) {
+        goto out;
+    }
+    pp->curveID = curve_id;
+
+    /*
+     * Copy the X and Y coordinate data into the ECC unique field,
+     * ensuring that it fits along the way.
+     */
+    TPM2B_ECC_PARAMETER *X = &pub->publicArea.unique.ecc.x;
+    TPM2B_ECC_PARAMETER *Y = &pub->publicArea.unique.ecc.y;
+
+    if (keysize > sizeof(X->buffer)) {
+        LOG_ERR("X coordinate is too big. Got %u expected less than or equal to"
+                " %zu", keysize, sizeof(X->buffer));
+        goto out;
+    }
+
+    if (keysize > sizeof(Y->buffer)) {
+        LOG_ERR("X coordinate is too big. Got %u expected less than or equal to"
+                " %zu", keysize, sizeof(Y->buffer));
+        goto out;
+    }
+
+    X->size = BN_bn2binpad(x, X->buffer, keysize);
+    if (X->size != keysize) {
+        LOG_ERR("Error converting X point BN to binary");
+        goto out;
+    }
+
+    Y->size = BN_bn2binpad(y, Y->buffer, keysize);
+    if (Y->size != keysize) {
+        LOG_ERR("Error converting Y point BN to binary");
+        goto out;
+    }
+
+    /*
+     * no kdf - not sure what this should be
+     */
+    pp->kdf.scheme = TPM2_ALG_NULL;
+
+    /*
+     * If the scheme is not TPM2_ALG_ERROR (0),
+     * its a valid scheme so don't set it to NULL scheme
+     */
+    if (pp->scheme.scheme == TPM2_ALG_ERROR) {
+        pp->scheme.scheme = TPM2_ALG_NULL;
+        pp->scheme.details.anySig.hashAlg = TPM2_ALG_NULL;
+    }
+
+    /* NULL out sym details if not already set */
+    TPMT_SYM_DEF_OBJECT *sym = &pp->symmetric;
+    if (sym->algorithm == TPM2_ALG_ERROR) {
+        sym->algorithm = TPM2_ALG_NULL;
+        sym->keyBits.sym = 0;
+        sym->mode.sym = TPM2_ALG_NULL;
+    }
+
+    result = true;
+out:
+    BN_free(x);
+    BN_free(y);
+    return result;
+}
+
+
 
 static bool load_public_RSA_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
 
@@ -165,6 +348,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
      * Determine the type of the key and populate the TPM2B_PUBLIC structure  * accordingly
      */
     int type = EVP_PKEY_base_id(pkey);
+
     if (type == EVP_PKEY_RSA) {
         RSA *rsa = EVP_PKEY_get1_RSA(pkey);
         if (rsa == NULL) {
@@ -178,7 +362,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         /* read the key dimension */
         // const BIGNUM *n;
         // RSA_get0_key(rsa, &n, NULL, NULL);
-
+        //ctx.key_type = "rsa";
         /* set TPM2B_PUBLIC struct */
         ctx.public.publicArea.type = TPM2_ALG_RSA;
         // ctx.public.publicArea.unique.rsa.size = BN_num_bytes(n);
@@ -204,6 +388,16 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         // Populate ctx.public with the EC key details
         // This part depends on the specifics of your TPM2B_PUBLIC structure and the EC key
         // You may need to convert the EC key into a format suitable for your TPM2B_PUBLIC structure
+        /* set TPM2B_PUBLIC struct */
+        ctx.public.publicArea.type = TPM2_ALG_ECC;
+        if(!load_public_ECC_from_key(pkey, &ctx.public)){
+            fprintf(stderr, "Failed to load ECC key\n");
+            EVP_PKEY_free(pkey);
+            X509_free(cert);
+            BIO_free(bio);
+            return 1;
+        }
+        
         EC_KEY_free(ec);
     } else {
         fprintf(stderr, "Unsupported key type\n");
@@ -221,140 +415,6 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
     return 0;
 }
 
-/* EVP_PKEY *read_pubkey_from_pem_file(FILE *file) {
-    X509 *cert;
-    EVP_PKEY *pkey;
-
-    // Read the X509 certificate from the file
-    cert = PEM_read_X509(file, NULL, NULL, NULL);
-    if (cert == NULL) {
-        return NULL;
-    }
-
-    // Get the public key from the certificate
-    pkey = X509_get_pubkey(cert);
-    if (pkey == NULL) {
-        X509_free(cert);
-        return NULL;
-    }
-
-    // Clean up
-    X509_free(cert);
-
-    return pkey;
-} */
-
-/* static bool load_public_RSA_from_pem(FILE *f, const char *path,
-        TPM2B_PUBLIC *pub) {
-
-    //
-     // Public PEM files appear in two formats:
-     // 1. PEM format, read with PEM_read_RSA_PUBKEY
-     // 2. PKCS#1 format, read with PEM_read_RSAPublicKey
-     //
-     // See:
-     //  - https://stackoverflow.com/questions/7818117/why-i-cant-read-openssl-generated-rsa-pub-key-with-pem-read-rsapublickey
-     //
-    EVP_PKEY *k = // PEM_read_PUBKEY(f, NULL, NULL, NULL);
-                    read_pubkey_from_pem_file(f);
-    if (!k) {
-        ERR_print_errors_fp(stderr);
-        LOG_ERR("Reading public PEM file \"%s\" failed", path);
-        return false;
-    }
-
-    bool result = false;
-    if (EVP_PKEY_base_id(k) == EVP_PKEY_RSA) {
-        result = load_public_RSA_from_key(k, pub);
-    }
-
-    EVP_PKEY_free(k);
-
-    return result;
-} */
-
-
-/* bool tpm_load_public(char *buff, int buff_size, TPMI_ALG_PUBLIC alg,
-        TPM2B_PUBLIC *pub) {
-
-    // Create a memory stream
-    FILE *stream = fmemopen(buff, buff_size, "rb");
-    if (stream == NULL) {
-        fprintf(stderr, "Failed to open certificate memory stream\n");
-        //free(buff);
-        return false;
-    }
-
-    bool result = false;
-
-    switch (alg) {
-    case TPM2_ALG_RSA:
-        result = load_public_RSA_from_pem(stream, "placeholder", pub);
-        break;
-    case TPM2_ALG_ECC:
-        //result = load_public_ECC_from_pem(stream, "placeholder", pub);
-        break;
-        //Skip AES here, as we can only load this one from a private file 
-    default:
-        LOG_ERR("Unkown public format: 0x%x", alg);
-    }
-
-    fclose(stream);
-
-    return result;
-} */
-
-/* static int convert_der_to_pem(unsigned char *der_data, int der_len, unsigned char **pem_data, int *pem_len) {
-    BIO *bio_der, *bio_pem;
-    X509 *cert;
-    BUF_MEM *pem_ptr;
-
-    // Create a BIO for the DER data
-    bio_der = BIO_new_mem_buf(der_data, der_len);
-    if (bio_der == NULL) {
-        return -1;
-    }
-
-    // Read the DER certificate from the BIO
-    cert = d2i_X509_bio(bio_der, NULL);
-    BIO_free(bio_der);
-    if (cert == NULL) {
-        return -1;
-    }
-
-    // Create a BIO for the PEM data
-    bio_pem = BIO_new(BIO_s_mem());
-    if (bio_pem == NULL) {
-        X509_free(cert);
-        return -1;
-    }
-
-    // Write the X509 object to the PEM BIO
-    if (!PEM_write_bio_X509(bio_pem, cert)) {
-        BIO_free(bio_pem);
-        X509_free(cert);
-        return -1;
-    }
-
-    // Read the PEM data from the BIO
-    BIO_get_mem_ptr(bio_pem, &pem_ptr);
-    *pem_data = (unsigned char *)malloc(pem_ptr->length + 1);
-    if (*pem_data == NULL) {
-        BIO_free(bio_pem);
-        X509_free(cert);
-        return -1;
-    }
-    memcpy(*pem_data, pem_ptr->data, pem_ptr->length);
-    (*pem_data)[pem_ptr->length] = '\0';
-    *pem_len = pem_ptr->length;
-
-    // Clean up
-    BIO_free(bio_pem);
-    X509_free(cert);
-
-    return 0;
-} */
-
 //input
 //-u EK PEM
 //-s The secret which will be protected by the key derived from the random seed. It can be specified as a file or passed from stdin
@@ -365,28 +425,9 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
 /* it is resposability of the caller to free out_buf */
 int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size){
 
-    TPMI_ALG_PUBLIC alg = TPM2_ALG_RSA;
-
-    /* if (ctx.public_key_path) {
-        bool result = alg != TPM2_ALG_NULL ?
-            tpm2_openssl_load_public(ctx.public_key_path, alg,
-            &ctx.public) : files_load_public(ctx.public_key_path, &ctx.public);
-        if (!result) {
-            return tool_rc_general_error;
-        }
-    } */
-    unsigned char *pem_data;
-    int pem_len;
-
-    /* if(convert_der_to_pem(ek_cert_der, ek_cert_len, &pem_data, &pem_len) != 0){
-        fprintf(stderr, "ERROR: Failed to convert DER to PEM\n");
-        return tool_rc_general_error;
-    } */
-
-    /* if(!tpm_load_public(pem_data, pem_len, alg, &ctx.public)){
-        fprintf(stderr, "ERROR: Failed to load public key\n");
-        return tool_rc_general_error;
-    } */
+    /* 
+     * Extract the EK pub key from the certificate in DER format
+     */
 
     if(read_der_key_from_buf(ek_cert_der, ek_cert_len)){
         fprintf(stderr, "ERROR: Failed to load public key\n");
@@ -408,41 +449,21 @@ int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned ch
 #endif
 
     /*
-     * Since it is a PEM we will fixate the key properties from TCG EK
+     * Set the key properties from TCG EK
      * template since we had to choose "a template".
      */
-    ctx.key_type = "rsa";
-    if (ctx.key_type) {
-        /*  ctx.public.publicArea.type */
-        set_default_TCG_EK_template(alg);
-    }
-
-/*     if (!ctx.flags.s) {
-        LOG_ERR("Specify the secret either as a file or a '-' for stdin");
-        return tool_rc_option_error;
-    }
-
-    if (!ctx.flags.e || !ctx.flags.n || !ctx.flags.o) {
-        LOG_ERR("Expected mandatory options e, n, o.");
-        return tool_rc_option_error;
-    } */
+    
+    set_default_TCG_EK_template(ctx.public.publicArea.type);
 
     /*
      * Maximum size of the allowed secret-data size  to fit in TPM2B_DIGEST
      */
-    ctx.credential.size = strlen(secret);
+    ctx.credential.size = strlen((char *) secret);
     memcpy(ctx.credential.buffer, secret, ctx.credential.size);
 
 #ifdef DEBUG   
     printf("Loaded secret: %s\n", ctx.credential.buffer);
 #endif
-
-    /* read the secret from a buffer */
-    /* bool result = files_load_bytes_from_buffer_or_file_or_stdin(secret,
-        NULL, &ctx.credential.size, ctx.credential.buffer);
-    if (!result) {
-        return -1;
-    } */
 
     /*
      * If input was read from stdin, check if a larger data set was specified
@@ -513,7 +534,7 @@ static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET 
     result = true;
 
     *out_buff_size = ftell(stream);
-    fprintf(stdout, "INFO: tpm_makecredential output size: %ld\n", *out_buff_size);
+    fprintf(stdout, "INFO: tpm_makecredential output size: %d\n", *out_buff_size);
 
 out:
     fclose(stream);

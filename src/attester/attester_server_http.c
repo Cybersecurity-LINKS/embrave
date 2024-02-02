@@ -17,6 +17,7 @@
 #include "mongoose.h"
 #include "attester_agent.h"
 #include "config_parse.h"
+#include "join_service.h"
 
 struct mkcred_out {
   unsigned char *value;
@@ -249,7 +250,7 @@ int create_request_body(size_t *object_length, char *object){
   size_t ret, tot_sz = 0;
   int fd, n;
   unsigned char *ek_cert = NULL, *ak_pub = NULL, *ak_name = NULL;
-  char *b64_buff_ek = NULL, *b64_buff_ak = NULL, *ak_name_b64 = NULL, uuid = NULL;
+  char *b64_buff_ek = NULL, *ak_name_b64 = NULL;
 
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
@@ -280,7 +281,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ek_cert);
     free(ek_cert);
-    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -337,7 +338,7 @@ int create_request_body(size_t *object_length, char *object){
     free(b64_buff_ek);
     fclose(fd_ak_pub);
     free(ak_pub);
-    fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -370,7 +371,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ak_name);
     free(ak_name);
-    fprintf(stderr, "ERROR: cannot read the whole AK name. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK name. %d/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -462,9 +463,9 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       exit(-1);
     }
 
-//#ifdef DEBUG
+#ifdef DEBUG
     printf("%s\n", object);
-//#endif
+#endif
 
     /* Send request */
     mg_printf(c,
@@ -479,74 +480,77 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    /* char response_body[1024];
-    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
-//#ifdef DEBUG
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
-//#endif
-    
-    if(mg_http_status(hm) == 403){ /* forbidden */
+#endif
+    int status = mg_http_status(hm);
+    printf("%d\n", status);
+    if(status == FORBIDDEN){ /* forbidden */
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
       //mg_http_reply(c, 500, NULL, "\n");
       return;
-    }
-
-    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
-    unsigned char *mkcred_out_b64 = mg_json_get_str(hm->body, "$.mkcred_out");
-    printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
-
-    size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen(mkcred_out_b64));
-
-    /* Calculate the actual length removing base64 padding ('=') */
-    /* for(int i=0; i<strlen(mkcred_out_b64); i++){
-        if(mkcred_out_b64[i] == '='){
-            mkcred_out_len--;
-        }
-    } */
-
-    mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
-    if(mkcred_out->value == NULL) {
-        fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
-        free(mkcred_out_b64);
-        //mg_http_reply(c, 500, NULL, "\n");
+    } else if (status == ALREDY_JOINED){
+        fprintf(stdout, "INFO: ak present in the join service db\n");
+        c->is_draining = 1;        // Tell mongoose to close this connection
+        Continue = false;  // Tell event loop to stop
+        mkcred_out->len = 0; 
         return;
+    } else if (status == CREATED){
+
+      unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
+      printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
+
+      size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
+
+      mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
+      if(mkcred_out->value == NULL) {
+          fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
+          free(mkcred_out_b64);
+          //mg_http_reply(c, 500, NULL, "\n");
+          return;
+      }
+
+      //Decode b64
+      if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value) == 0){
+          fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
+          free(mkcred_out_b64);
+          //mg_http_reply(c, 500, NULL, "\n");
+          return;
+      }
+
+      /* printf("MKCRED_OUT: ");
+      for(int i=0; i<mkcred_out->len; i++){
+        printf("%02x", mkcred_out->value[i]);
+      }
+      printf("\n"); */
+      mkcred_out->len = mkcred_out_len;
+
+      fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      free(mkcred_out_b64);
+      //int ip_len = 0;
+      //char **ca_ip_addr = (char **) fn_data;
+      //*ca_ip_addr = (char *) malloc(ip_len + 1);
+
+      //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
+      //printf("ip_len = %d\n", ip_len);
+      //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
+      //(*ca_ip_addr)[ip_len] = '\0';
+      //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
+      //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
+
+      //free(ca_ip_addr);
+      
+      /* response_body[hm->body.len] = '\0';
+      fprintf(stdout, "%s\n", response_body); */
+
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      Continue = false;  // Tell event loop to stop
+
     }
 
-    //Decode b64
-    if(mg_base64_decode(mkcred_out_b64, strlen(mkcred_out_b64), mkcred_out->value) == 0){
-        fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
-        free(mkcred_out_b64);
-        //mg_http_reply(c, 500, NULL, "\n");
-        return;
-    }
-
-    /* printf("MKCRED_OUT: ");
-    for(int i=0; i<mkcred_out->len; i++){
-      printf("%02x", mkcred_out->value[i]);
-    }
-    printf("\n"); */
-    mkcred_out->len = mkcred_out_len;
-
-    fprintf(stdout, "INFO: mkcred_out received from join service.\n");
-    free(mkcred_out_b64);
-    //int ip_len = 0;
-    //char **ca_ip_addr = (char **) fn_data;
-    //*ca_ip_addr = (char *) malloc(ip_len + 1);
-
-    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
-    //printf("ip_len = %d\n", ip_len);
-    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
-    //(*ca_ip_addr)[ip_len] = '\0';
-    //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
-
-    //free(ca_ip_addr);
     
-    /* response_body[hm->body.len] = '\0';
-    fprintf(stdout, "%s\n", response_body); */
-
-    c->is_draining = 1;        // Tell mongoose to close this connection
-    Continue = false;  // Tell event loop to stop
+   
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }
@@ -562,7 +566,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    size_t object_length = 0;
+    //size_t object_length = 0;
     char object[4096];
 
     /* if (create_request_body(&object_length, object) != 0){
@@ -607,7 +611,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
-    if(mg_base64_encode((const unsigned char *)secret, secret_len, secret_b64) == 0){
+    if(mg_base64_encode((const unsigned char *)secret, secret_len, (char *) secret_b64) == 0){
       fprintf(stderr, "ERROR: base64 encoding secret\n");
       free(secret_b64);
       return;
@@ -638,7 +642,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
     if(ret != size){
       fclose(fd_ak_pub);
       free(ak_pub);
-      fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+      fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%d bytes read\n", ret, size);
       return;
     }
 
@@ -704,8 +708,8 @@ static int join_procedure(){
   char s_conn[280];
 
   /* Contact the join service */
-  snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, 8000);
-  //printf("%s\n", s_conn);
+  snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
+  printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
 
   struct mkcred_out mkcred_out;
@@ -726,21 +730,26 @@ static int join_procedure(){
   printf("\n"); */
 
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+  
+  /* mkcred_out.len == 0 means ak alredy present in the js db so no challenge to reply*/
+  if(mkcred_out.len != 0){
+    /* send back the value calculated with tpm_activatecredential */
+    Continue = true;
+    c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
 
-  /* send back the value calculated with tpm_activatecredential */
-  Continue = true;
-  c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
+    if (c == NULL) {
+      MG_ERROR(("CLIENT cant' open a connection"));
+      return -1;
+    }
 
-  if (c == NULL) {
-    MG_ERROR(("CLIENT cant' open a connection"));
-    return -1;
+    while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+    if(mkcred_out.value != NULL){
+      free(mkcred_out.value);
+    }
+    
   }
 
-  while (Continue) mg_mgr_poll(&mgr, 10); //10ms
-
-  if(mkcred_out.value != NULL){
-    free(mkcred_out.value);
-  }
 
   return 0;
 }

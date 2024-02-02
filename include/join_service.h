@@ -15,6 +15,9 @@
 
 #include "mongoose.h"
 #include <sqlite3.h>
+
+#define SECRET_SIZE 8
+
 /* methods */
 #define GET "GET"
 #define POST "POST"
@@ -23,8 +26,11 @@
 
 /* codes */
 #define OK 200
+#define ALREDY_JOINED 200
+#define CREATED 201
 #define ANAUTHORIZED 401
 #define FORBIDDEN 403
+
 
 /* responses */
 #define APPLICATION_JSON "Content-Type: application/json\r\n"

@@ -73,8 +73,8 @@ typedef struct {
     uint32_t byte_rcv;
 } verifier_database;
 
-bool check_keys(uint16_t *ek_handle, uint16_t  *ak_handle, ESYS_CONTEXT *esys_context);
-int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle, uint16_t *ak_handle);
+bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context);
+int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle);
 int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsigned char *digest, int *digest_len);
 void get_start_timer(void);
 void get_finish_timer(void);

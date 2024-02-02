@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include "x509.h"
 
-int verify_x509_cert(unsigned char *cert_buff, int cert_len) {
+int verify_x509_cert(unsigned char *cert_buff, int cert_len, char* ca_x509_path) {
     // Load from memory the certificate to be verified
     // BIO_new_file("/home/enrico/Documents/PoliTo/PhD/LINKS/test_cert_verify/RSA_EK_cert.bin", "rb");
     BIO *bio = BIO_new_mem_buf((void *) cert_buff, cert_len);
@@ -41,7 +41,7 @@ int verify_x509_cert(unsigned char *cert_buff, int cert_len) {
         fprintf(stderr, "ERROR: creating X509_LOOKUP.\n");
         return 1;
     }
-    if (X509_LOOKUP_add_dir(lookup, "/home/linux/Documents/lemon/tpm_ca_certs_hash_dir", X509_FILETYPE_PEM) != 1) {
+    if (X509_LOOKUP_add_dir(lookup, ca_x509_path, X509_FILETYPE_PEM) != 1) {
         fprintf(stderr, "ERROR: adding ca certs hash directory to X509_LOOKUP.\n");
         return 1;
     }

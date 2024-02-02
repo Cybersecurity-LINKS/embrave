@@ -16,11 +16,11 @@
 #include "config_parse.h"
 
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port", "tls_port", "tls_cert", "tls_key",
-            "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip"};
+            "ek_rsa_cert", "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip", "join_service_port"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
             "tls_cert_ca", "db"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
-            "tls_key", "tls_cert_ca", "db", "ca_ip"};
+            "tls_key", "tls_cert_ca", "db", "ca_x509_path"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -194,6 +194,10 @@ uint16_t read_config(char user, void* config_struct){
                             strcpy(attester_config->join_service_ip, value);
                             break;
 
+                        case ATTESTER_JOIN_SERVICE_PORT:
+                            attester_config->join_service_port = (uint32_t) atoi(value);
+                        break;
+                        
                         case ATTESTER_NUM_CONFIG_PARAMS:
                             //unknown param
                             break;
@@ -274,6 +278,10 @@ uint16_t read_config(char user, void* config_struct){
                     enum join_service_keys_config param = join_service_parse_key(key);
 
                     switch((int) param){
+                        case JOIN_SERVICE_IP:
+                            strcpy(join_service_config->ip, value);
+                        break;
+                        
                         case JOIN_SERVICE_PORT:
                             join_service_config->port = (uint32_t) atoi(value);
                             break;
@@ -297,6 +305,10 @@ uint16_t read_config(char user, void* config_struct){
                         case JOIN_SERVICE_DB:
                             strcpy(join_service_config->db, value);
                             break;
+
+                        case JOIN_SERVICE_CA_X509:
+                            strcpy(join_service_config->ca_x509_path, value);
+                        break;
 
                         case JOIN_SERVICE_NUM_CONFIG_PARAMS:
                             //unknown param
