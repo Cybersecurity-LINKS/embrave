@@ -224,7 +224,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     }
 
     // Send request
-  
     mg_printf(c,
       "POST /api/quote HTTP/1.1\r\n"
       "Content-Type: application/json\r\n"
@@ -300,7 +299,6 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     }
 
     // Send request
-  
     mg_printf(c,
       "POST /api/quote HTTP/1.1\r\n"
       "Content-Type: application/json\r\n"
@@ -437,7 +435,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    //struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+
 #ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 #endif
@@ -448,10 +446,9 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
-      //mg_http_reply(c, 500, NULL, "\n");
       return;
     } else if (status == OK){
-      fprintf(stdout, "INFO: Topic id: %s\n", hm->body);
+      
       verifier_config.topic_id = mg_json_get_long(hm->body, "$.topic_id", -1);  
 
       fprintf(stdout, "INFO: Topic id: %d\n", verifier_config.topic_id);
@@ -465,17 +462,116 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
   }
 }
 
+static void verifier_manager(struct mg_connection *c, int ev, void *ev_data, void *fn_data){
+  if (ev == MG_EV_HTTP_MSG) {
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+      //#ifdef DEBUG
+            printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
+
+      //#endif
+      /* Read post */
+        /*
+          {
+            "uuid": "aaaaaaaaa",
+            "ip_port": "aaaaaaaaa",
+            "ak_pub_b64": "aaaaaaaa"
+          }
+        */
+     /* Get attester data */
+
+     /*add attester dato to verifier db*/
+
+    }
+    else {
+      mg_http_reply(c, 500, NULL, "\n");
+    }
+  }
+}
+
+static int init_database(void){
+  sqlite3_stmt *res= NULL;
+  sqlite3 *db = NULL;
+  char *sql = "CREATE TABLE IF NOT EXISTS attesters (\
+                    uuid TEXT NOT NULL,\
+                    ak_pub TEXT NOT NULL,\
+                    ip_addr TEXT NOT NULL,\
+                    goldenvalue_database  NOT NULL,\
+                    pcr10_sha256 TEXT,\
+                    pcr10_sha1 TEXT,\
+                    timestamp TEXT,\
+                    resetCount INT,\
+                    byte_rcv INT,\
+                    PRIMARY KEY (uuid, ak_pub)\
+  );";
+
+  /*
+    tls_pem_path text NOT NULL,
+      ca_pem_path text NOT NULL,
+  */
+
+  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+  if ( rc != SQLITE_OK) {
+    printf("Cannot open or create the verifier database, error %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+
+  //attesters table
+  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+
+  rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) {
+    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+  
+  sqlite3_close(db);
+  return 0;
+}
 
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[250];
+  struct stat st = {0};
+
+  if (stat("/var/lemon", &st) == -1) {
+    if(!mkdir("/var/lemon", 0711)) {
+      fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
+    }
+    else {
+      fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
+      exit(-1);
+    }
+  } 
+  
+  if (stat("/var/lemon/verifier", &st) == -1) {
+    if(!mkdir("/var/lemon/verifier", 0711)) {
+      fprintf(stdout, "INFO: /var/lemon/verifier directory successfully created\n");
+    }
+    else {
+      fprintf(stderr, "ERROR: cannot create /var/lemon/verifier directory\n");
+    }
+  }
 
   /* read configuration from cong file */
   if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
     int err = errno;
     fprintf(stderr, "ERROR: could not read configuration file\n");
     exit(err);
+  }
+
+  /* init database */
+  if(init_database()){
+    fprintf(stderr, "ERROR: could not init the db\n");
+    exit(-1);
   }
 
   #ifdef VERBOSE
@@ -504,6 +600,27 @@ int main(int argc, char *argv[]) {
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
   Continue = true;
+
+  mg_log_set(MG_LL_INFO);  /* Set log level */
+  mg_mgr_init(&mgr);        /* Initialize event manager */
+
+  snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
+  c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
+
+  if (c == NULL) {
+    MG_ERROR(("Cannot listen on http://%s:%d", verifier_config.ip, verifier_config.port));
+    exit(EXIT_FAILURE);
+  }
+
+  MG_INFO(("Listening on http://%s:%d", verifier_config.ip, verifier_config.port));
+
+  Continue = true;
+
+  while (Continue)
+    mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
+                              unless there is network activity */
+  mg_mgr_free(&mgr);         /* Free resources */
+  return 0;
 
   /* if(argc != 3){
     printf("Not enough arguments\n");
@@ -548,36 +665,7 @@ int main(int argc, char *argv[]) {
   //printf("%d\n", verify_val);
   return verify_val; */
 
-  mg_log_set(MG_LL_INFO);  /* Set log level */
-  mg_mgr_init(&mgr);        /* Initialize event manager */
 
-  snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
-  //snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
-
-  c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */
-
-  if (c == NULL) {
-    MG_INFO(("SERVER cant' open a connection"));
-    return 0;
-  }
-
-  /* Or TLS server */ /* Create server connection */
-
-  /* c_tls = mg_http_listen(&mgr, s_conn_tls, fn_tls, NULL); 
-  if (c_tls == NULL) {
-    MG_INFO(("SERVER cant' open a connection"));
-    return 0;
-  }  */
-
-  fprintf(stdout, "Server listen to %s \n", s_conn);
-
-  Continue = true;
-
-  while (Continue)
-    mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
-                              unless there is network activity */
-  mg_mgr_free(&mgr);         /* Free resources */
-  return 0;
 }
 
 //Print received data
