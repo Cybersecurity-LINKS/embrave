@@ -81,6 +81,7 @@ struct attester_conf {
 
 struct verifier_conf {
     char db[MAX_LINE_LENGTH];
+    uint32_t topic_id;
     uint32_t port;
     uint32_t tls_port;
     uint32_t join_service_port;

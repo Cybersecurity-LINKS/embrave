@@ -416,9 +416,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    size_t object_length = 0;
     char buff[280];
-
 
     snprintf(buff, 280, "{\"ip\":\"%s:%d\"}", verifier_config.ip, verifier_config.port);
 
@@ -445,31 +443,23 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 #endif
     int status = mg_http_status(hm);
     printf("%d\n", status);
-    if(status == -1){ /* forbidden */
+    if(status == 403){ /* forbidden */
+      /*TODO ERRORI*/
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      Continue = false;  // Tell event loop to stop
       //mg_http_reply(c, 500, NULL, "\n");
       return;
-    } else if (status == 0){
-        fprintf(stdout, "INFO: ak present in the join service db\n");
-        c->is_draining = 1;        // Tell mongoose to close this connection
-        Continue = false;  // Tell event loop to stop
-        //mkcred_out->len = 0; 
-        return;
-    } else if (status == 1){
+    } else if (status == OK){
+      fprintf(stdout, "INFO: Topic id: %s\n", hm->body);
+      verifier_config.topic_id = mg_json_get_long(hm->body, "$.topic_id", -1);  
 
-      //unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
-
-      //fprintf(stdout, "INFO: mkcred_out received from join service.\n");
-      
-
-
+      fprintf(stdout, "INFO: Topic id: %d\n", verifier_config.topic_id);
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
 
-    }
-
-    
-   
+      return;
+    } 
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }
@@ -480,7 +470,6 @@ int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[250];
-  int n, id;
 
   /* read configuration from cong file */
   if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
@@ -515,13 +504,6 @@ int main(int argc, char *argv[]) {
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
   Continue = true;
-
-
-
-
-
-
-
 
   /* if(argc != 3){
     printf("Not enough arguments\n");

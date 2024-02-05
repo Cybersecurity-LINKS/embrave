@@ -303,6 +303,42 @@ static int set_ak_valid(unsigned char *ak, char *uuid){
     return ek_entry;
 } */
 
+int check_verifier_presence(char *ip){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    int val = 0;
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    char *sql = "SELECT id FROM verifiers WHERE ip = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ip, -1, NULL);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW){
+        val = sqlite3_column_int(res, 0);
+    }
+        
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return val;
+}
+
 bool check_ek_presence(char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
@@ -343,13 +379,14 @@ bool check_ek_presence(char *uuid){
 static int insert_verifier(char *ip){
     sqlite3 *db;
     sqlite3_stmt *res;
-    
+    int ret = -1;
+
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
         fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return 1;
+        return -1;
     }
 
     char *sql = "INSERT INTO verifiers (ip) values (?);";
@@ -368,15 +405,16 @@ static int insert_verifier(char *ip){
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
         fprintf(stdout, "INFO: verifier succesfully inserted into the db\n");
+        ret = sqlite3_last_insert_rowid(db);
     }
     else {
         fprintf(stderr, "ERROR: could not insert verifier ip into the db\n");
     }
-
+    
     sqlite3_finalize(res);
     sqlite3_close(db);
     
-    return 0;
+    return ret;
 }
 
 static int insert_ak(struct ak_db_entry *ak_entry){
@@ -388,7 +426,7 @@ static int insert_ak(struct ak_db_entry *ak_entry){
     if (rc != SQLITE_OK) {        
         fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return 1;
+        return -1;
     }
 
     char *sql = "INSERT INTO attesters_credentials values (?, ?, ?, ?);";
@@ -792,20 +830,33 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             /* notify the verifiers */
             //TODO
         }else if (mg_http_match_uri(hm, API_JOIN_VERIFIER) && !strncmp(hm->method.ptr, POST, hm->method.len)){
+
+            int ret;
             /* Read post */
             /*
                 {
                     "ip": "0.0.0.0:22",
                 }
             */
-           char* verifier_ip = mg_json_get_str(hm->body, "$.ip");
-           if(verifier_ip == NULL){
+            char* verifier_ip = mg_json_get_str(hm->body, "$.ip");
+            if(verifier_ip == NULL){
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
-           }
-           fprintf(stdout, "INFO: verifier ip: %s wants to join\n", verifier_ip);
+            }
 
-           insert_verifier(verifier_ip);
+            fprintf(stdout, "INFO: verifier ip: %s wants to join\n", verifier_ip);
+
+            ret = check_verifier_presence(verifier_ip);
+            if(ret == 0){
+                ret = insert_verifier(verifier_ip);
+                mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
+                MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
+            }
+            else {
+                fprintf(stdout, "INFO: verifier alredy joined, id: %d\n", ret);
+                mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
+                MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
+           }
 
         }
         else {
