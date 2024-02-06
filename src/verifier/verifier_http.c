@@ -14,6 +14,7 @@
 #include "verifier.h"
 #include "config_parse.h"
 #include "common.h"
+#include "mqtt_client.h"
 
 static bool Continue = true;
 static bool end = false;
@@ -408,6 +409,7 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
 
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
+  struct mg_mgr mgr_mqtt;
   struct mg_connection *c;
   char s_conn[250];
   int n, id;
@@ -419,7 +421,7 @@ int main(int argc, char *argv[]) {
     exit(err);
   }
 
-  #ifdef VERBOSE
+  #ifdef DEBUG
   printf("verifier_config->ip: %s\n", verifier_config.ip);
   printf("verifier_config->port: %d\n", verifier_config.port);
   printf("verifier_config->tls_port: %d\n", verifier_config.tls_port);
@@ -427,6 +429,10 @@ int main(int argc, char *argv[]) {
   printf("verifier_config->tls_key: %s\n", verifier_config.tls_key);
   printf("verifier_config->db: %s\n", verifier_config.db);
   #endif
+
+  /* setup mqtt connection */
+  mg_mgr_init(&mgr_mqtt);
+  mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
 
   /* if(argc != 3){
     printf("Not enough arguments\n");
@@ -496,10 +502,12 @@ int main(int argc, char *argv[]) {
 
   Continue = true;
 
-  while (Continue)
-    mg_mgr_poll(&mgr, 1);     /* Infinite event loop, blocks for upto 1ms
-                              unless there is network activity */
+  while (Continue){
+    mg_mgr_poll(&mgr, 1);   /* Infinite event loop, blocks for upto 1ms */
+    mg_mgr_poll(&mgr_mqtt, 1000);
+  }                          /* unless there is network activity */
   mg_mgr_free(&mgr);         /* Free resources */
+  mg_mgr_free(&mgr_mqtt); 
   return 0;
 }
 
