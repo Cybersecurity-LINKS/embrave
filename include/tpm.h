@@ -69,5 +69,5 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tp
 int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context);
 int PCR9softbindig_verify(tpm_challenge_reply *rply, verifier_database * tpa_data);
 int check_pcr9(ESYS_CONTEXT *esys_context);
-int refresh_tpa_entry(verifier_database *tpa);
+int refresh_verifier_database_entry(verifier_database *tpa);
 #endif

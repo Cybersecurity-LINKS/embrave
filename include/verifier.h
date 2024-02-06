@@ -21,6 +21,10 @@
 
 #include "tpm.h"
 
+/* APIs */
+#define API_ATTEST "/request_attestation"
+
+
 int ra_explicit_challenge_create(tpm_challenge *chl, verifier_database *tpa_data);
 int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tpa_data);
 int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database *tpa_data);

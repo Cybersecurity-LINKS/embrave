@@ -20,6 +20,12 @@
 #define REVOKED 0
 
 static unsigned char secret [B64ENCODE_OUT_SAFESIZE(SECRET_SIZE)];
+static int verifier_num = 0;
+static int last_requested_verifier = 0;
+static struct join_service_conf js_config;
+
+int notify_verifier(int id);
+int get_verifier_id(void);
 
 struct ek_db_entry {
     char uuid[1024];
@@ -33,7 +39,7 @@ struct ak_db_entry {
     int validity;
 };
 
-static struct join_service_conf js_config;
+
 
 
 int create_secret(unsigned char * secret)
@@ -252,7 +258,7 @@ static int set_ak_valid(unsigned char *ak, char *uuid){
 } */
 
 /* responsibility of the caller to free the ek_db_entry */
-static struct ek_db_entry *retrieve_ek(char *uuid){
+/* static struct ek_db_entry *retrieve_ek(char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
     struct ek_db_entry *ek_entry = NULL;
@@ -301,18 +307,53 @@ static struct ek_db_entry *retrieve_ek(char *uuid){
     sqlite3_close(db);
     
     return ek_entry;
+} */
+
+int check_verifier_presence(char *ip){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    int val = 0;
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    char *sql = "SELECT id FROM verifiers WHERE ip = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ip, -1, NULL);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW){
+        val = sqlite3_column_int(res, 0);
+    }
+        
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return val;
 }
 
 bool check_ek_presence(char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
     bool ret = false;
-    //struct ek_db_entry *ek_entry = NULL;
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return NULL;
     }
@@ -326,7 +367,7 @@ bool check_ek_presence(char *uuid){
             return NULL;
         }
     } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
         
     int step = sqlite3_step(res);
@@ -340,6 +381,90 @@ bool check_ek_presence(char *uuid){
     return ret;
 }
 
+static int insert_verifier(char *ip){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    int ret = -1;
+
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    char *sql = "INSERT INTO verifiers (ip) values (?);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ip, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+        fprintf(stdout, "INFO: verifier succesfully inserted into the db\n");
+        ret = sqlite3_last_insert_rowid(db);
+        verifier_num ++;
+    }
+    else {
+        fprintf(stderr, "ERROR: could not insert verifier ip into the db\n");
+    }
+    
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return ret;
+}
+
+int get_verifier_ip(int id, char ** ip){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    int val = -1;
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    char *sql = "SELECT ip FROM verifiers WHERE id = ?;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_int(res, 1, id);
+        if (rc != SQLITE_OK ) {
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(res);
+        sqlite3_close(db);
+        return -1;
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW){
+        strcpy(*ip, (char *) sqlite3_column_text(res, 0));
+        val = 0;
+    } else {
+        fprintf(stderr, "ERROR: Verifier id %d not found\n", id);
+    }
+        
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return val;
+}
+
 static int insert_ak(struct ak_db_entry *ak_entry){
     sqlite3 *db;
     sqlite3_stmt *res;
@@ -347,9 +472,9 @@ static int insert_ak(struct ak_db_entry *ak_entry){
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return 1;
+        return -1;
     }
 
     char *sql = "INSERT INTO attesters_credentials values (?, ?, ?, ?);";
@@ -398,7 +523,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return 1;
     }
@@ -456,7 +581,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             unsigned char* ek_cert_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ek_cert_b64");
             unsigned char* ak_pub_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
             unsigned char* ak_name_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_name_b64");
-            struct ek_db_entry *ek_entry;
+            
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
@@ -727,7 +852,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
 
             // Set the AK in the database as valid (=1) */
             //set_ak_valid(ak_pub, uuid);
-
+           // mg_print_ip4(stdout, "%M",c->rem.ip);
+            //fprintf(stdout, "INFO:  %d\n", c->rem.ip);
             /* Set the AK in the database as confirmed (=1) and valid (=1)*/
             if(set_ak_confirmed_and_valid(ak_pub, (char *) uuid) != 0){
                 //TODO database error ??
@@ -738,24 +864,110 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            free(secret_buff);
-            free(secret_b64);
-            free(uuid);
-            free(ak_pub);
-
-            
             /* reply the agent  */
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
 
-            /* notify the verifiers */
+            /* notify a verifier */
             //TODO
+            if (notify_verifier(get_verifier_id())){
+
+            }
+            /* notify all verifiers?? */
+            free(secret_buff);
+            free(secret_b64);
+            free(uuid);
+            free(ak_pub);
+
+        }else if (mg_http_match_uri(hm, API_JOIN_VERIFIER) && !strncmp(hm->method.ptr, POST, hm->method.len)){
+
+            int ret;
+            /* Read post */
+            /*
+                {
+                    "ip": "0.0.0.0:22",
+                }
+            */
+            char* verifier_ip = mg_json_get_str(hm->body, "$.ip");
+            if(verifier_ip == NULL){
+                mg_http_reply(c, 500, NULL, "\n");
+                return;
+            }
+
+            fprintf(stdout, "INFO: verifier ip: %s wants to join\n", verifier_ip);
+
+            ret = check_verifier_presence(verifier_ip);
+            if(ret == 0){
+                ret = insert_verifier(verifier_ip);
+                mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
+                MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
+            }
+            else {
+                fprintf(stdout, "INFO: verifier alredy joined, id: %d\n", ret);
+                mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
+                MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
+           }
+
         }
         else {
             mg_http_reply(c, 500, NULL, "\n");
         }
     }
+}
+
+static void request_attestation(struct mg_connection *c, int ev, void *ev_data, void *fn_data){
+
+}
+
+int notify_verifier(int id){
+    char *buff = malloc(100);
+    char url[MAX_BUF];
+    struct mg_mgr mgr;  // Event manager
+    struct mg_connection *c;
+    bool Continue = true;
+
+    if(buff == NULL){
+        fprintf(stderr, "ERROR: malloc error\n");
+        return -1;
+    }
+    fprintf(stdout, "INFO: Retrieve verifier information id: %d\n", id);
+
+    if (get_verifier_ip(id, &buff) != 0){
+        fprintf(stderr, "ERROR: get_verifier_ip\n");
+        free(buff);
+        return -1;
+    }
+
+    /* Contact the join service */
+    snprintf(url, 280, "http://%s", buff);
+    free(buff);
+
+    fprintf(stdout, "INFO: ip: %s\n", url);
+
+    /* Connect to the verifier */
+
+    mg_mgr_init(&mgr);
+
+    c = mg_http_connect(&mgr, url, request_attestation, &Continue);
+    if (c == NULL) {
+        MG_ERROR(("CLIENT cant' open a connection"));
+        return -1;
+    }
+
+    while (Continue) mg_mgr_poll(&mgr, 1); //1ms
+
+
+    return 0;
+}
+
+/* return the DB id of a verifier based on a round-robin selection*/
+int get_verifier_id(void){
+    //last_requested_verifier++;
+    if (last_requested_verifier == verifier_num){
+        last_requested_verifier = 0;
+    }
+    return ++last_requested_verifier;
 }
 
 /*Create db connection and, if not presents, create the keys databases
@@ -772,6 +984,12 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
     attester_ek_certs
     ------------------
     | uuid | ek_cert |
+    ------------------
+
+    -------------
+    verifiers
+    ------------------
+    | id     | ip     |
     ------------------
 */
 static int init_database(void){
@@ -790,12 +1008,36 @@ static int init_database(void){
         ek_cert text NOT NULL,\
         PRIMARY KEY (uuid)\
     );";
+    char *sql3 = "CREATE TABLE IF NOT EXISTS verifiers (\
+        id INTEGER PRIMARY KEY AUTOINCREMENT,\
+        ip text NOT NULL\
+    );";
+    char *sql4 = "SELECT COUNT(id) FROM verifiers;";
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         printf("Cannot open or create the join service database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
+    }
+
+
+        //attesters_credentials table
+    rc = sqlite3_prepare_v2(db, sql4, -1, &res, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    
+    if (sqlite3_step(res) == SQLITE_ROW){
+        /*Db present with verifiers*/
+        verifier_num = sqlite3_column_int(res, 0);
+        fprintf(stdout, "INFO: old database present with %d verifiers\n", verifier_num);
+        sqlite3_finalize(res);
+        sqlite3_close(db);
+        return 0;
     }
 
     //attesters_credentials table
@@ -822,6 +1064,21 @@ static int init_database(void){
     }
 
     rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    //verifiers table
+    rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return -1;
+    }
+
+    rc = sqlite3_exec(db, sql3, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);

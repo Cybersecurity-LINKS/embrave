@@ -706,14 +706,11 @@ static int join_procedure(){
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[280];
+  struct mkcred_out mkcred_out;
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
-  printf("%s\n", s_conn);
   mg_mgr_init(&mgr);
-
-  struct mkcred_out mkcred_out;
-  printf("MKCRED_OUT ptr before passing it: %p\n", &mkcred_out);
 
   /* request to join (receive tpm_makecredential output) */
   c = mg_http_connect(&mgr, s_conn, request_join, (void *) &mkcred_out);

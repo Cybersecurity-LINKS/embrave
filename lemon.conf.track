@@ -82,6 +82,11 @@ tls_key = /var/lemon/verifier/tls/key.pem
 # Path of the verfier database (sqlite)
 db = file:/var/lemon/verifier/db.sqlite
 
+# Join Service IP address
+join_service_ip = localhost
+
+# Port where it runs the http Join Service server
+join_service_port = 8000
 ######################################
 # Join Service configuration section #
 ######################################

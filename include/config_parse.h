@@ -20,7 +20,7 @@
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 14
-#define VERIFIER_NUM_CONFIG_PARAMS 7
+#define VERIFIER_NUM_CONFIG_PARAMS 9
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
 
 enum attester_keys_config{
@@ -46,7 +46,9 @@ enum verifier_keys_config{
     VERIFIER_TLS_CERT,
     VERIFIER_TLS_KEY,
     VERIFIER_TLS_CERT_CA,
-    VERIFIER_DB
+    VERIFIER_DB,
+    VERIFIER_JOIN_SERVICE_IP,
+    VERIFIER_JOIN_SERVICE_PORT
 };
 enum join_service_keys_config{
     JOIN_SERVICE_IP,
@@ -74,16 +76,20 @@ struct attester_conf {
     char ak_cert[MAX_BUF];
     char join_service_ip[MAX_BUF];
     char uuid[MAX_BUF];
+    //char pcr_parse_selections[MAX_BUF];
 };
 
 struct verifier_conf {
     char db[MAX_LINE_LENGTH];
+    uint32_t topic_id;
     uint32_t port;
     uint32_t tls_port;
+    uint32_t join_service_port;
     char ip[MAX_BUF];
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
+    char join_service_ip[MAX_BUF];
 };
 
 struct join_service_conf {
