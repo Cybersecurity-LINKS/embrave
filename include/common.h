@@ -51,10 +51,11 @@
 #define API_QUOTE "/api/quote"
 
 // calculate the size of 'output' buffer required for a 'input' buffer of length x during Base64 encoding operation
-#define B64ENCODE_OUT_SAFESIZE(x) ((((x) + 3 - 1)/3) * 4 + 2) 
+//#define B64ENCODE_OUT_SAFESIZE(x) ((((x) + 3 - 1)/ 3) * 4 + 2) 
+#define B64ENCODE_OUT_SAFESIZE(x) (((x / 3) + (x % 3 ? 1 : 0)) * 4 + 1)
 
 // calculate the size of 'output' buffer required for a 'input' buffer of length x during Base64 decoding operation
-#define B64DECODE_OUT_SAFESIZE(x) ((((x)*3)/4)  + 2)
+#define B64DECODE_OUT_SAFESIZE(x) ((((x) / 4) * 3)  + 1)
 
 enum { NS_PER_SECOND = 1000000000 };
 

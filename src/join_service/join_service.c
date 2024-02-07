@@ -587,27 +587,25 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
-            printf("%d\n", (ek_cert_len));
-
             /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen((char *) ek_cert_b64); i++){
+/*             for(int i=0; i<strlen((char *) ek_cert_b64); i++){
                 if(ek_cert_b64[i] == '='){
                     ek_cert_len--;
                 }
-            }
+            } */
 
-            printf("%d\n", (ek_cert_len));
+            //printf("%d\n", (ek_cert_len));
 
             /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen((char *) ak_name_b64); i++){
+/*             for(int i=0; i<strlen((char *) ak_name_b64); i++){
                 if(ak_name_b64[i] == '='){
                     ak_name_len--;
                 }
-            }
+            } */
 
             printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
 
-            unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len + 1);
+            unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
             
 
         #ifdef DEBUG
@@ -680,8 +678,11 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     return;
                 }
                 printf("QUIIIIIIIIII333333333333333333333333\n");
+                printf("%s\n", ek_cert_b64);
+                printf("%d\n", ek_cert_len);
+                printf("%d\n", strlen((char *) ek_cert_b64));
                 //Decode b64
-                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff, 2488025088 ) == 0){
+                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64) + 1, (char *) ek_cert_buff, ek_cert_len ) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
@@ -702,7 +703,11 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff, ak_name_len + 1) == 0){
+            printf("%s\n", ak_name_b64);
+            printf("%d\n", ak_name_len);
+            printf("%d\n", strlen((char *) ak_name_b64));
+
+            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff, ak_name_len) == 0){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(ek_cert_buff);
                 free(ek_cert_b64);

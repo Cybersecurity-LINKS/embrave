@@ -524,7 +524,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
         printf("%02x", mkcred_out->value[i]);
       }
       printf("\n"); 
-      
+      printf("MKCRED_OUT leN:%d\n", mkcred_out->len);
 
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
       free(mkcred_out_b64);
