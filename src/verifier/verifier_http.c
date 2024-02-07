@@ -191,7 +191,7 @@ int get_paths(int id){
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 // Print HTTP response and signal that we're done
-static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -263,7 +263,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 }
 
 // Print HTTP response and signal that we're done
-static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -277,7 +277,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data
     size_t buff_length = 0;
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
-    struct mg_tls_opts opts = {.ca = tpa_data.ca};
+    struct mg_tls_opts opts = {.ca = mg_str(tpa_data.ca)};
     mg_tls_init(c, &opts);
 
     //If PCRs10 from tpa db are null, ask all ima log
@@ -348,7 +348,7 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
   if(byte_buff == NULL) return -1;
 
   //Decode b64
-  if(mg_base64_decode(hm->body.ptr, b64_sz, byte_buff) == 0){
+  if(mg_base64_decode(hm->body.ptr, b64_sz, byte_buff, byte_sz) == 0){
     printf("Transmission challenge data error \n");
     return -1;
   }
@@ -396,7 +396,7 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
 }
 
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
-  *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff);
+  *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff, *buff_length);
   if(buff_length == 0){
     printf("mg_base64_encode error\n");
     return -1;
@@ -405,7 +405,7 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
   return 0;
 }
 
-static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -463,7 +463,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
   }
 }
 
-static void verifier_manager(struct mg_connection *c, int ev, void *ev_data, void *fn_data){
+static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
@@ -586,8 +586,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* setup mqtt connection */
-  mg_mgr_init(&mgr_mqtt);
-  mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
+  //mg_mgr_init(&mgr_mqtt);
+  //mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
@@ -623,11 +623,11 @@ int main(int argc, char *argv[]) {
 
   while (Continue) {
     mg_mgr_poll(&mgr, 1);     
-    mg_mgr_poll(&mgr_mqtt, 1000);
+    //mg_mgr_poll(&mgr_mqtt, 1000);
   }
 
   mg_mgr_free(&mgr);        
-  mg_mgr_free(&mgr_mqtt); 
+  //mg_mgr_free(&mgr_mqtt); 
 
   return 0;
 }

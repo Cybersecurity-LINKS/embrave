@@ -24,8 +24,7 @@ static int verifier_num = 0;
 static int last_requested_verifier = 0;
 static struct join_service_conf js_config;
 
-int notify_verifier(int id);
-int get_verifier_id(void);
+static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 struct ek_db_entry {
     char uuid[1024];
@@ -34,12 +33,15 @@ struct ek_db_entry {
 
 struct ak_db_entry {
     char uuid[1024];
+    char ip[100];
     unsigned char ak_pem[1024];
     int confirmed;
     int validity;
+    bool Continue;
 };
 
-
+int notify_verifier(int id, struct ak_db_entry * ak_entry);
+int get_verifier_id(void);
 
 
 int create_secret(unsigned char * secret)
@@ -60,7 +62,7 @@ int create_secret(unsigned char * secret)
         return -1;
     }
 
-    if(mg_base64_encode(data, SECRET_SIZE, (char *) secret) == 0){
+    if(mg_base64_encode(data, SECRET_SIZE, (char *) secret, B64ENCODE_OUT_SAFESIZE(SECRET_SIZE)) == 0){
         fprintf(stderr, "ERROR: could not encode secret buf.\n");
         return -1;
     }
@@ -423,7 +425,7 @@ static int insert_verifier(char *ip){
     return ret;
 }
 
-int get_verifier_ip(int id, char ** ip){
+int get_verifier_ip(int id, char * ip){
     sqlite3 *db;
     sqlite3_stmt *res;
     int val = -1;
@@ -453,7 +455,7 @@ int get_verifier_ip(int id, char ** ip){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_ROW){
-        strcpy(*ip, (char *) sqlite3_column_text(res, 0));
+        strcpy(ip, (char *) sqlite3_column_text(res, 0));
         val = 0;
     } else {
         fprintf(stderr, "ERROR: Verifier id %d not found\n", id);
@@ -559,7 +561,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
     return 0;
 }
 
-static void join_service_manager(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void join_service_manager(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
@@ -585,12 +587,16 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
+            printf("%d\n", (ek_cert_len));
+
             /* Calculate the actual length removing base64 padding ('=') */
             for(int i=0; i<strlen((char *) ek_cert_b64); i++){
                 if(ek_cert_b64[i] == '='){
                     ek_cert_len--;
                 }
             }
+
+            printf("%d\n", (ek_cert_len));
 
             /* Calculate the actual length removing base64 padding ('=') */
             for(int i=0; i<strlen((char *) ak_name_b64); i++){
@@ -619,9 +625,12 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-
+                
+                printf("%s\n", ek_cert_b64);
+                printf("%d\n", ek_cert_len);
+                printf("%d\n", strlen((char *) ek_cert_b64));
                 //Decode b64
-                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff) == 0){
+                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff, ek_cert_len + 1) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
@@ -629,7 +638,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-
+                printf("QUIIIIIIIIII222222222222222222222222222222\n");
                 /* Verify the X509 certificate of the EK */
                 if(verify_x509_cert(ek_cert_buff, ek_cert_len, js_config.ca_x509_path)){
                     mg_http_reply(c, OK, APPLICATION_JSON,
@@ -670,9 +679,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-
+                printf("QUIIIIIIIIII333333333333333333333333\n");
                 //Decode b64
-                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff) == 0){
+                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff, 2488025088 ) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
@@ -693,7 +702,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff) == 0){
+            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff, ak_name_len + 1) == 0){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(ek_cert_buff);
                 free(ek_cert_b64);
@@ -760,7 +769,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            if(mg_base64_encode(out_buf, out_buf_size, mkcred_out_b64) == 0){
+            if(mg_base64_encode(out_buf, out_buf_size, mkcred_out_b64, mkcred_out_b64_len + 1) == 0){
                 fprintf(stderr, "ERROR: could not encode mkcred out buf.\n");
                 free(ek_cert_buff);
                 free(ek_cert_b64);
@@ -803,7 +812,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             MG_INFO(("%s %s %d", POST, API_JOIN, OK)); */
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-            
+            struct ak_db_entry ak_entry;
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -825,7 +834,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             }
 
             /* Decode b64 */
-            if(!mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff)){
+            if(!mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len + 1)){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(secret_buff);
                 free(secret_b64);
@@ -847,13 +856,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 return;
             }
 
-            // Set the AK in the database as confirmed (=1) */
-            //set_ak_confirmed(ak_pub, uuid);
-
-            // Set the AK in the database as valid (=1) */
-            //set_ak_valid(ak_pub, uuid);
-           // mg_print_ip4(stdout, "%M",c->rem.ip);
-            //fprintf(stdout, "INFO:  %d\n", c->rem.ip);
             /* Set the AK in the database as confirmed (=1) and valid (=1)*/
             if(set_ak_confirmed_and_valid(ak_pub, (char *) uuid) != 0){
                 //TODO database error ??
@@ -868,10 +870,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
-
+            c->is_draining = 1;
+            /* copy agent data */
+            memcpy(uuid, ak_entry.uuid, strlen((char *) uuid));
+            memcpy(ak_pub, ak_entry.ak_pem, strlen((char *) ak_pub));
             /* notify a verifier */
             //TODO
-            if (notify_verifier(get_verifier_id())){
+            if (notify_verifier(get_verifier_id(), &ak_entry)){
 
             }
             /* notify all verifiers?? */
@@ -909,53 +914,88 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data,
                 MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
            }
 
-        }
+        } 
         else {
             mg_http_reply(c, 500, NULL, "\n");
         }
+    } else if (ev == MG_EV_WAKEUP) {
+        struct mg_str *data = (struct mg_str *) ev_data;
+        mg_http_reply(c, 200, "", "Result: %.*s\n", data->len, data->ptr);
+  }
+}
+
+static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
+    if (ev == MG_EV_OPEN) {
+        // Connection created. Store connect expiration time in c->data
+        *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+    } else if (ev == MG_EV_POLL) {
+        if (mg_millis() > *(uint64_t *) c->data && (c->is_connecting || c->is_resolving)) {
+            mg_error(c, "Connect timeout");
+        }
+    } else if (ev == MG_EV_CONNECT){
+        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
+        size_t object_length = 0;
+        char object[4096];
+
+        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+
+        object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+
+        /* Send request */
+        mg_printf(c,
+        "POST /request_attestation HTTP/1.1\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "\r\n"
+        "%s\n",
+        object_length,
+        object);
+
+    } else if (ev == MG_EV_HTTP_MSG) {
+        // Response is received. Print it
+    } else if (ev == MG_EV_ERROR) {
+        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
+        ak_entry->Continue = false;  // Error, tell event loop to stop
     }
+
+
+
+
+
+    /////
 }
 
-static void request_attestation(struct mg_connection *c, int ev, void *ev_data, void *fn_data){
-
-}
-
-int notify_verifier(int id){
-    char *buff = malloc(100);
+int notify_verifier(int id, struct ak_db_entry  * ak_entry){
+    //char *buff = malloc(100);
     char url[MAX_BUF];
     struct mg_mgr mgr;  // Event manager
     struct mg_connection *c;
-    bool Continue = true;
+    
+    ak_entry->Continue = true;
 
-    if(buff == NULL){
-        fprintf(stderr, "ERROR: malloc error\n");
-        return -1;
-    }
     fprintf(stdout, "INFO: Retrieve verifier information id: %d\n", id);
 
-    if (get_verifier_ip(id, &buff) != 0){
+    if (get_verifier_ip(id, ak_entry->ip) != 0){
         fprintf(stderr, "ERROR: get_verifier_ip\n");
-        free(buff);
         return -1;
     }
-
+    
     /* Contact the join service */
-    snprintf(url, 280, "http://%s", buff);
-    free(buff);
-
+    snprintf(url, 280, "http://%s", ak_entry->ip);
+    
     fprintf(stdout, "INFO: ip: %s\n", url);
 
     /* Connect to the verifier */
 
     mg_mgr_init(&mgr);
 
-    c = mg_http_connect(&mgr, url, request_attestation, &Continue);
+    c = mg_http_connect(&mgr, url, request_attestation, ak_entry);
     if (c == NULL) {
         MG_ERROR(("CLIENT cant' open a connection"));
         return -1;
     }
 
-    while (Continue) mg_mgr_poll(&mgr, 1); //1ms
+    while (ak_entry->Continue) mg_mgr_poll(&mgr, 1); //1ms
 
 
     return 0;
@@ -1021,26 +1061,35 @@ static int init_database(void){
         return -1;
     }
 
-
-        //attesters_credentials table
+    /*Checking if already joined verifiers are present*/
     rc = sqlite3_prepare_v2(db, sql4, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        if (sqlite3_step(res) == SQLITE_ROW){
+            /*Db present with verifiers*/
+            verifier_num = sqlite3_column_int(res, 0);
+            fprintf(stdout, "INFO: Old database present with %d verifiers joined\n", verifier_num);
+            sqlite3_finalize(res);
+            sqlite3_close(db);
+            return 0;
+        }
+    }
+
+    //verifiers table
+    rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
-    
-    if (sqlite3_step(res) == SQLITE_ROW){
-        /*Db present with verifiers*/
-        verifier_num = sqlite3_column_int(res, 0);
-        fprintf(stdout, "INFO: old database present with %d verifiers\n", verifier_num);
-        sqlite3_finalize(res);
+    rc = sqlite3_exec(db, sql3, NULL, NULL, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return 0;
+        return -1;
     }
 
-    //attesters_credentials table
+    //attesters_ek_certs table
     rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
@@ -1055,7 +1104,7 @@ static int init_database(void){
         return -1;
     }
 
-    //attesters_ek_certs table
+    //attesters_credentials table
     rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
@@ -1064,21 +1113,6 @@ static int init_database(void){
     }
 
     rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //verifiers table
-    rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    rc = sqlite3_exec(db, sql3, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);

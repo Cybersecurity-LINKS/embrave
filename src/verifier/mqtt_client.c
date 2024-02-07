@@ -10,7 +10,7 @@ static struct mg_connection *s_conn;              // Client connection
 /* static int s_signo;
 static void signal_handler(int signo) { s_signo = signo; } */
 
-static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     MG_INFO(("%lu CREATED", c->id));
     // c->is_hexdumping = 1;
@@ -20,7 +20,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   } else if (ev == MG_EV_CONNECT) {
     // If target URL is SSL/TLS, command client connection to use TLS
     if (mg_url_is_ssl(s_url)) {
-      struct mg_tls_opts opts = {.ca = "ca.pem"};
+      struct mg_tls_opts opts = {.ca = mg_str("ca.pem")};
       mg_tls_init(c, &opts);
     }
   } else if (ev == MG_EV_MQTT_OPEN) {
@@ -51,7 +51,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     MG_INFO(("%lu CLOSED", c->id));
     s_conn = NULL;  // Mark that we're closed
   }
-  (void) fn_data;
+  (void) c->fn_data;
 }
 
 // Timer function - recreate client connection if it is closed

@@ -37,7 +37,7 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
   printf("%s\n", hm->body.ptr);
 #endif
 
-  mg_base64_decode(hm->body.ptr, hm->body.len, (char *) chl->nonce);
+  mg_base64_decode(hm->body.ptr, hm->body.len, (char *) chl->nonce, NONCE_SIZE);
   if(chl == NULL && chl->nonce == NULL){
     printf("Transmission challenge data error \n");
     return -1;
@@ -116,7 +116,7 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   }
 
   //Encode in b64
-  n = mg_base64_encode((const unsigned char *)byte_buff, total_sz, b64_buff);
+  n = mg_base64_encode((const unsigned char *)byte_buff, total_sz, b64_buff, B64ENCODE_OUT_SAFESIZE(total_sz));
   if(n == 0){
     printf("ERROR: mg_base64_encode error\n");
     return -1;
@@ -156,7 +156,7 @@ void print_sent_data(tpm_challenge_reply *rpl){
   printf("IMA whole log size sent:%d\n", rpl->wholeLog);
 }
 
-static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     if (mg_http_match_uri(hm, API_QUOTE)) {
@@ -195,11 +195,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     }
 }
 
-static void fn_tls(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
   if(ev == MG_EV_ACCEPT){
         struct mg_tls_opts opts = {
-        .cert = attester_config.tls_cert,
-        .certkey = attester_config.tls_key
+        .cert = mg_str(attester_config.tls_cert),
+        .key = mg_str(attester_config.tls_key)
     };
     mg_tls_init(c, &opts);
   }
@@ -297,7 +297,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  n = mg_base64_encode((const unsigned char *)ek_cert, size, b64_buff_ek);
+  n = mg_base64_encode((const unsigned char *)ek_cert, size, b64_buff_ek, tot_sz);
   if(n == 0){
     fprintf(stderr, "ERROR: mg_base64_encode error\n");
     free(ek_cert);
@@ -385,7 +385,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  n = mg_base64_encode((const unsigned char *)ak_name, size, ak_name_b64);
+  n = mg_base64_encode((const unsigned char *)ak_name, size, ak_name_b64, size_b64);
   if(n == 0){
     fprintf(stderr, "ERROR: mg_base64_encode error\n");
     free(ak_name);
@@ -445,7 +445,7 @@ int create_request_body(size_t *object_length, char *object){
 }
 
 
-static void request_join(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void request_join(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -480,7 +480,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
 #ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 #endif
@@ -503,7 +503,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
 
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
 
-      mkcred_out->value = (unsigned char *) malloc(mkcred_out_len + 1);
+      mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
           fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
           free(mkcred_out_b64);
@@ -512,19 +512,19 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
       }
 
       //Decode b64
-      if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value) == 0){
+      if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value, mkcred_out_len) == 0){
           fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
           free(mkcred_out_b64);
           //mg_http_reply(c, 500, NULL, "\n");
           return;
       }
-
-      /* printf("MKCRED_OUT: ");
+      mkcred_out->len = mkcred_out_len;
+      printf("MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
       }
-      printf("\n"); */
-      mkcred_out->len = mkcred_out_len;
+      printf("\n"); 
+      
 
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
       free(mkcred_out_b64);
@@ -556,7 +556,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data, void *f
   }
 }
 
-static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -576,7 +576,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
     unsigned char *secret;
     unsigned char *secret_b64;
     unsigned int secret_len, secret_b64_len;
-    struct mkcred_out *mkcred_out = (struct mkcred_out *) fn_data;
+    struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
     printf("MKCRED_OUT ptr after having it passed: %p\n", mkcred_out);
 
     /* printf("MKCRED_OUT: ");
@@ -611,7 +611,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
       return;
     }
 
-    if(mg_base64_encode((const unsigned char *)secret, secret_len, (char *) secret_b64) == 0){
+    if(mg_base64_encode((const unsigned char *)secret, secret_len, (char *) secret_b64, secret_b64_len+1) == 0){
       fprintf(stderr, "ERROR: base64 encoding secret\n");
       free(secret_b64);
       return;
@@ -674,6 +674,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data, v
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
     /* char response_body[1024];
     memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
 //#ifdef DEBUG
