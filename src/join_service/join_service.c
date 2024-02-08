@@ -587,23 +587,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
-            /* Calculate the actual length removing base64 padding ('=') */
-/*             for(int i=0; i<strlen((char *) ek_cert_b64); i++){
-                if(ek_cert_b64[i] == '='){
-                    ek_cert_len--;
-                }
-            } */
-
-            //printf("%d\n", (ek_cert_len));
-
-            /* Calculate the actual length removing base64 padding ('=') */
-/*             for(int i=0; i<strlen((char *) ak_name_b64); i++){
-                if(ak_name_b64[i] == '='){
-                    ak_name_len--;
-                }
-            } */
-
-            printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
+            //printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
 
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
             
@@ -636,7 +620,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-                printf("QUIIIIIIIIII222222222222222222222222222222\n");
+
                 /* Verify the X509 certificate of the EK */
                 if(verify_x509_cert(ek_cert_buff, ek_cert_len, js_config.ca_x509_path)){
                     mg_http_reply(c, OK, APPLICATION_JSON,
@@ -677,12 +661,10 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-                printf("QUIIIIIIIIII333333333333333333333333\n");
-                printf("%s\n", ek_cert_b64);
-                printf("%d\n", ek_cert_len);
-                printf("%d\n", strlen((char *) ek_cert_b64));
+
                 //Decode b64
-                if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64) + 1, (char *) ek_cert_buff, ek_cert_len ) == 0){
+                ek_cert_len = mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64) + 1, (char *) ek_cert_buff, ek_cert_len );
+                if(ek_cert_len == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
@@ -703,11 +685,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-            printf("%s\n", ak_name_b64);
-            printf("%d\n", ak_name_len);
-            printf("%d\n", strlen((char *) ak_name_b64));
-
-            if(mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff, ak_name_len) == 0){
+            ak_name_len = mg_base64_decode((char *) ak_name_b64, strlen((char *) ak_name_b64), (char *) ak_name_buff, ak_name_len);
+            if(ak_name_len == 0){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(ek_cert_buff);
                 free(ek_cert_b64);
@@ -752,17 +731,17 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
             }
 
-            printf("OUT_BUF: ");
+/*             printf("OUT_BUF: ");
             for(int i=0; i<out_buf_size; i++){
                 printf("%02x", out_buf[i]);
             }
-            printf("\n");
+            printf("\n"); */
 
             //insert_ak(ak_pub_b64);
             char *mkcred_out_b64;
             size_t mkcred_out_b64_len = B64ENCODE_OUT_SAFESIZE(out_buf_size);
 
-            mkcred_out_b64 = (char *) malloc(mkcred_out_b64_len + 1);
+            mkcred_out_b64 = (char *) malloc(mkcred_out_b64_len);
             if(mkcred_out_b64 == NULL) {
                 free(ek_cert_buff);
                 free(ek_cert_b64);
@@ -824,22 +803,16 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             unsigned char* ak_pub = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
             size_t secret_len = B64DECODE_OUT_SAFESIZE(strlen((char *) secret_b64));
 
-            /* Calculate the actual length removing base64 padding ('=') */
-            for(int i=0; i<strlen((char *) secret_b64); i++){
-                if(secret_b64[i] == '='){
-                    secret_len--;
-                }
-            }
-
             unsigned char *secret_buff = (unsigned char *) malloc(secret_len + 1);
             if(secret_buff == NULL) {
                 free(secret_b64);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
-
+            printf("%d  %d\n", strlen((char *) secret_b64), secret_len + 1);
             /* Decode b64 */
-            if(!mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len + 1)){
+            secret_len = mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len);
+            if(secret_len == 0){
                 fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                 free(secret_buff);
                 free(secret_b64);

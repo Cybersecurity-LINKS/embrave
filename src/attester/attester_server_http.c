@@ -502,6 +502,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
 
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
+      printf("MKCRED_OUT leN:%d\n", mkcred_out_len);
 
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
@@ -510,15 +511,15 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
           //mg_http_reply(c, 500, NULL, "\n");
           return;
       }
-
+      mkcred_out->len = mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value, mkcred_out_len);
       //Decode b64
-      if(mg_base64_decode((char *) mkcred_out_b64, strlen((char *) mkcred_out_b64), (char *) mkcred_out->value, mkcred_out_len) == 0){
+      if(mkcred_out->len == 0){
           fprintf(stderr, "ERROR: base64 decoding mkcred ouput received from join service.\n");
           free(mkcred_out_b64);
           //mg_http_reply(c, 500, NULL, "\n");
           return;
       }
-      mkcred_out->len = mkcred_out_len;
+      //mkcred_out->len = mkcred_out_len;
       printf("MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
@@ -618,7 +619,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     }
 
     /* Read AK pub key */
-    /* fprintf(stdout, "%s\n", attester_config.ak_pub); */
     FILE *fd_ak_pub = fopen(attester_config.ak_pub, "r");
     if(fd_ak_pub == NULL){
       fprintf(stderr, "ERROR: AK pub key pem not present\n");
@@ -653,28 +653,20 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     free(secret_b64);
 
     /* Send request */
-    /* mg_printf(c,
-      "POST /confirm_credential HTTP/1.1\r\n"
-      "Content-Type: application/json\r\n"
-      "Content-Length: %ld\r\n"
-      "\r\n"
-      "%s\n",
-      object_length,
-      object); */
 
-      mg_printf(c,
-      "POST /confirm_credential HTTP/1.1\r\n"
-      "Content-Type: application/json\r\n"
-      "Content-Length: %ld\r\n"
-      "\r\n"
-      "%s\n",
-      strlen(object),
-      object); 
+    mg_printf(c,
+    "POST /confirm_credential HTTP/1.1\r\n"
+    "Content-Type: application/json\r\n"
+    "Content-Length: %ld\r\n"
+    "\r\n"
+    "%s\n",
+    strlen(object),
+    object); 
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+
     /* char response_body[1024];
     memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
 //#ifdef DEBUG
