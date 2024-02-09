@@ -43,6 +43,107 @@ struct ak_db_entry {
 int notify_verifier(int id, struct ak_db_entry * ak_entry);
 int get_verifier_id(void);
 
+pthread_mutex_t mutex;
+pthread_cond_t cond;
+int stop_event = 0;
+
+struct queue_entry {
+  char uuid[128];
+  struct queue_entry *next;
+  struct queue_entry *previous;
+};
+
+/* FIFO queue */
+struct queue_entry *head = NULL;
+struct queue_entry *tail = NULL;
+
+int is_empty(struct queue_entry *head){
+  if(head == NULL)
+    return 1;
+
+  return 0;
+}
+
+void push_uuid(char *uuid){
+  struct queue_entry *entry;
+  struct queue_entry *tmp;
+
+  entry = malloc(sizeof(struct queue_entry));
+  if(entry == NULL){
+    fprintf(stderr, "ERROR: could not allocate memory for queue entry\n");
+    return;
+  }
+
+  strcpy(entry->uuid, uuid);
+
+  /* first element */
+  if(head == NULL){
+    head = entry;
+    tail = entry;
+    entry->next = NULL;
+    entry->previous = NULL;
+    return;
+  }
+
+  tmp = head;
+  head = entry;
+  entry->next = tmp;
+  entry->previous = NULL;
+  tmp->previous = entry;
+}
+
+void pop_uuid(char *uuid){
+  if(uuid == NULL){
+    fprintf(stderr, "ERROR: uuid output buffer is NULL\n");
+    return;
+  }
+
+  if(tail == NULL){
+    fprintf(stdout, "INFO: could not pop from queue because it is empty\n");
+    return;
+  }
+
+  struct queue_entry *tmp;
+
+  strcpy(uuid, tail->uuid);
+
+  tmp = tail;
+  if(tmp->previous == NULL){
+    head = NULL;
+    tail = NULL;
+    goto out;
+  }
+  tail = tail->previous;
+
+out:
+  free(tmp);
+}
+
+void queue_manager(void *vargp){
+    pthread_mutex_lock(&mutex);
+    printf("INFO: queue manager started\n");
+    fflush(stdout);
+    while(!stop_event){
+        while (is_empty(head)) {
+            pthread_cond_wait(&cond, &mutex);
+            // Equivalent to:
+            // pthread_mutex_unlock(&mutex);
+            // wait for signal on condFuel
+            // pthread_mutex_lock(&mutex);
+        }
+        // consume queue
+        char uuid[128];
+
+        pop_uuid(uuid);
+
+        printf("INFO: popped uuid: %s\n", uuid);
+        fflush(stdout);
+    }
+    pthread_mutex_unlock(&mutex);
+
+    printf("INFO: queue manager ended\n");
+    fflush(stdout);
+}
 
 int create_secret(unsigned char * secret)
 {
@@ -774,6 +875,11 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
             insert_ak(&ak);
 
+            pthread_mutex_lock(&mutex);
+            push_uuid(ak.uuid);
+            pthread_mutex_unlock(&mutex);
+            pthread_cond_signal(&cond);
+
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
@@ -1106,6 +1212,17 @@ int main(int argc, char *argv[]) {
     struct mg_connection *c;
     mg_mgr_init(&mgr);
     char url[MAX_BUF];
+    pthread_t thread_id;  // queue manager thread
+    stop_event = 0;
+
+    int ret = pthread_create(&thread_id, NULL, queue_manager, NULL);
+    if(ret != 0){
+        fprintf(stderr, "ERROR: could not create queue manager thread\n");
+        exit(ret);
+    }
+
+    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&mutex, NULL);
 
     struct stat st = {0};
     if (stat("/var/lemon", &st) == -1) {
@@ -1116,6 +1233,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
         }
     }
+
     if (stat("/var/lemon/join_service", &st) == -1) {
         if(!mkdir("/var/lemon/join_service", 0711)) {
             fprintf(stdout, "INFO: /var/lemon/join_service directory successfully created\n");
