@@ -46,6 +46,7 @@ int get_verifier_id(void);
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 int stop_event = 0;
+static int stop_polling = 1;
 
 struct queue_entry {
   char uuid[128];
@@ -92,15 +93,15 @@ void push_uuid(char *uuid){
   tmp->previous = entry;
 }
 
-void pop_uuid(char *uuid){
+int pop_uuid(char *uuid){
   if(uuid == NULL){
     fprintf(stderr, "ERROR: uuid output buffer is NULL\n");
-    return;
+    return 1;
   }
 
   if(tail == NULL){
     fprintf(stdout, "INFO: could not pop from queue because it is empty\n");
-    return;
+    return 1;
   }
 
   struct queue_entry *tmp;
@@ -117,13 +118,120 @@ void pop_uuid(char *uuid){
 
 out:
   free(tmp);
+  return 0;
 }
 
-void queue_manager(void *vargp){
-    pthread_mutex_lock(&mutex);
+/* responsibility of the caller to free the ak_db_entry */
+static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
+    sqlite3 *db;
+    sqlite3_stmt *res;
+    struct ak_db_entry *ak_entry = NULL;
+    
+    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+    if (rc != SQLITE_OK) {        
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return NULL;
+    }
+
+    char *sql = ak == NULL ? "SELECT * FROM attesters_credentials WHERE uuid = ?" : "SELECT * FROM attesters_credentials WHERE uuid = ? AND ak_pub = ?";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, uuid, -1, NULL);
+        if (rc != SQLITE_OK ) {
+            return NULL;
+        }
+        if(ak != NULL){
+            rc = sqlite3_bind_text(res, 2, (char *) ak, -1, NULL);
+            if (rc != SQLITE_OK ) {
+                return NULL;
+            }
+        }
+    } else {
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+        
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_ROW) {
+        ak_entry = (struct ak_db_entry *) malloc(sizeof(struct ak_db_entry));
+        if(ak_entry == NULL) {
+            fprintf(stderr, "ERROR: could not allocate ak_db_struct\n");
+            return NULL;
+        }
+        strcpy(ak_entry->uuid, (char *) sqlite3_column_text(res, 0));
+        strcpy((char *) ak_entry->ak_pem, (char *) sqlite3_column_text(res, 1));
+        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 2));
+        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 3));
+    #ifdef DEBUG
+        printf("%s: ", sqlite3_column_text(res, 0));
+        printf("%s\n", sqlite3_column_text(res, 1));
+    #endif
+    }
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return ak_entry;
+}
+
+void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
+    if (ev == MG_EV_OPEN) {
+        // Connection created. Store connect expiration time in c->data
+        *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+    } else if (ev == MG_EV_POLL) {
+        if (mg_millis() > *(uint64_t *) c->data &&
+            (c->is_connecting || c->is_resolving)) {
+        mg_error(c, "Connect timeout");
+        }
+    } else if (ev == MG_EV_CONNECT) {
+        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
+        size_t object_length = 0;
+        char object[4096];
+
+        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+
+        object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+
+        /* Send request */
+        mg_printf(c,
+        "POST /request_attestation HTTP/1.1\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %ld\r\n"
+        "\r\n"
+        "%s\n",
+        object_length,
+        object);
+
+    } else if (ev == MG_EV_HTTP_MSG) {
+        struct http_message *hm = (struct http_message *) ev_data;
+        int status = mg_http_status(hm);
+        if (status == 200) {
+            MG_INFO(("200 OK"));
+            stop_polling = 0;
+        } else {
+            MG_ERROR(("HTTP ERROR: %d", status));
+            stop_polling = 0;
+        }
+    } else if (ev == MG_EV_CLOSE) {
+        MG_INFO(("Connection closed"));
+        stop_polling = 0;
+    }
+}
+
+void *queue_manager(void *vargp){
+    struct mg_mgr mgr;
+    struct mg_connection *c;
+    char s_conn[280];
+
+    mg_mgr_init(&mgr);
+
     printf("INFO: queue manager started\n");
     fflush(stdout);
     while(!stop_event){
+        pthread_mutex_lock(&mutex);
         while (is_empty(head)) {
             pthread_cond_wait(&cond, &mutex);
             // Equivalent to:
@@ -134,12 +242,33 @@ void queue_manager(void *vargp){
         // consume queue
         char uuid[128];
 
-        pop_uuid(uuid);
+        if(pop_uuid(uuid) != 0)
+            continue;
+
+        pthread_mutex_unlock(&mutex);
 
         printf("INFO: popped uuid: %s\n", uuid);
         fflush(stdout);
+
+        char ip[MAX_BUF];
+        struct ak_db_entry *ak_entry = retrieve_ak(uuid, NULL);
+        int id = get_verifier_id();
+        /* if(id == -1){
+            fprintf(stderr, "ERROR: could not get verifier id\n");
+            continue;
+        } */
+        get_verifier_ip(id, ip);
+
+        snprintf(s_conn, 280, "http://%s", ip);
+
+        c = mg_http_connect(&mgr, s_conn, single_attestation, (void *) ak_entry);
+        if (c == NULL) {
+            MG_ERROR(("CLIENT cant' open a connection"));
+            continue;
+        }
+        while (stop_polling) mg_mgr_poll(&mgr, 10); //10ms
     }
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_unlock(&mutex);
 
     printf("INFO: queue manager ended\n");
     fflush(stdout);
@@ -173,60 +302,6 @@ int create_secret(unsigned char * secret)
 #endif
     
     return 0;
-}
-
-/* responsibility of the caller to free the ak_db_entry */
-static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
-    sqlite3 *db;
-    sqlite3_stmt *res;
-    struct ak_db_entry *ak_entry = NULL;
-    
-    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-    
-    if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return NULL;
-    }
-
-    char *sql = "SELECT * FROM attesters_credentials WHERE uuid = ? AND ak_pub = ?";
-
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, uuid, -1, NULL);
-        if (rc != SQLITE_OK ) {
-            return NULL;
-        }
-        rc = sqlite3_bind_text(res, 2, (char *) ak, -1, NULL);
-        if (rc != SQLITE_OK ) {
-            return NULL;
-        }
-    } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-    }
-        
-    int step = sqlite3_step(res);
-    
-    if (step == SQLITE_ROW) {
-        ak_entry = (struct ak_db_entry *) malloc(sizeof(struct ak_db_entry));
-        if(ak_entry == NULL) {
-            fprintf(stderr, "ERROR: could not allocate ak_db_struct\n");
-            return NULL;
-        }
-        strcpy(ak_entry->uuid, (char *) sqlite3_column_text(res, 0));
-        strcpy((char *) ak_entry->ak_pem, (char *) sqlite3_column_text(res, 1));
-        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 2));
-        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 3));
-    #ifdef DEBUG
-        printf("%s: ", sqlite3_column_text(res, 0));
-        printf("%s\n", sqlite3_column_text(res, 1));
-    #endif
-    }
-
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    
-    return ak_entry;
 }
 
 static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
@@ -1088,6 +1163,10 @@ int notify_verifier(int id, struct ak_db_entry  * ak_entry){
 /* return the DB id of a verifier based on a round-robin selection*/
 int get_verifier_id(void){
     //last_requested_verifier++;
+    if(verifier_num == 0){
+        return -1;
+    }
+
     if (last_requested_verifier == verifier_num){
         last_requested_verifier = 0;
     }
