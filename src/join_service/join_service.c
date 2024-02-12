@@ -42,6 +42,7 @@ struct ak_db_entry {
 
 int notify_verifier(int id, struct ak_db_entry * ak_entry);
 int get_verifier_id(void);
+int get_verifier_ip(int id, char * ip);
 
 pthread_mutex_t mutex;
 pthread_cond_t cond;
@@ -251,14 +252,20 @@ void *queue_manager(void *vargp){
         fflush(stdout);
 
         char ip[MAX_BUF];
+
+        /*Uuid and AK pem*/
         struct ak_db_entry *ak_entry = retrieve_ak(uuid, NULL);
         int id = get_verifier_id();
         /* if(id == -1){
             fprintf(stderr, "ERROR: could not get verifier id\n");
             continue;
         } */
+
+        
         get_verifier_ip(id, ip);
 
+        memcpy(ak_entry->ip, ip, strlen(ip));
+        
         snprintf(s_conn, 280, "http://%s", ip);
 
         c = mg_http_connect(&mgr, s_conn, single_attestation, (void *) ak_entry);
@@ -1031,13 +1038,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             MG_INFO(("%s %s %d", POST, API_JOIN, OK));
             c->is_draining = 1;
             /* copy agent data */
-            memcpy(uuid, ak_entry.uuid, strlen((char *) uuid));
-            memcpy(ak_pub, ak_entry.ak_pem, strlen((char *) ak_pub));
+            //memcpy(uuid, ak_entry.uuid, strlen((char *) uuid));
+           // memcpy(ak_pub, ak_entry.ak_pem, strlen((char *) ak_pub));
             /* notify a verifier */
             //TODO
-            if (notify_verifier(get_verifier_id(), &ak_entry)){
-
-            }
+           // if (notify_verifier(get_verifier_id(), &ak_entry)){
+//
+            //}
             /* notify all verifiers?? */
             free(secret_buff);
             free(secret_b64);
