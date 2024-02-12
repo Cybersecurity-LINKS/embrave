@@ -39,5 +39,5 @@
 #define API_JOIN "/request_join"
 #define API_JOIN_VERIFIER "/request_join_verifier"
 #define API_CONFIRM_CREDENTIAL "/confirm_credential"
-
+#define API_REQUEST_ATTESTATION "/request_attestation"
 #endif

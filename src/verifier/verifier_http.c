@@ -25,6 +25,7 @@ static tpm_challenge_reply rpl;
 static verifier_database tpa_data;
 
 static struct verifier_conf verifier_config;
+static struct agent_list *agents = NULL;
 
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
 int try_read(struct mg_iobuf *r, size_t size, void * dst);
@@ -467,22 +468,50 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+      
       //#ifdef DEBUG
-            printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
-
-      //#endif
-      /* Read post */
+      //printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
+      /* Read post  */
         /*
           {
             "uuid": "aaaaaaaaa",
             "ip_port": "aaaaaaaaa",
             "ak_pub_b64": "aaaaaaaa"
           }
-        */
-     /* Get attester data */
+      */
 
-     /*add attester dato to verifier db*/
+      char* uuid = mg_json_get_str(hm->body, "$.uuid");
+      char* ak_pub = mg_json_get_str(hm->body, "$.ak_pem");
+      char* ip_addr = mg_json_get_str(hm->body, "$.ip_addr");
 
+      struct agent_list *ptr = agents;
+      while (ptr != NULL){
+        ptr = ptr->next_ptr;
+      }
+      
+      ptr = agent_list_new();
+
+      /* Get attester data */
+      memcpy(ptr->ip_addr, ip_addr, strlen(ip_addr));
+      memcpy(ptr->ak_pub, ak_pub, strlen(ak_pub));
+      memcpy(ptr->uuid, uuid, strlen(uuid));
+
+      printf("%s \n%s \n%s\n", ptr->uuid, ptr->ak_pub, ptr->ip_addr);
+
+      /*add attester dato to verifier db*/
+    
+
+      mg_http_reply(c, 200, NULL, "\n");
+
+      //#endif
+
+     
+
+     
+
+      free(uuid);
+      free(ak_pub);
+      free(ip_addr);
     }
     else {
       mg_http_reply(c, 500, NULL, "\n");
@@ -586,8 +615,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* setup mqtt connection */
-  //mg_mgr_init(&mgr_mqtt);
-  //mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
+  mg_mgr_init(&mgr_mqtt);
+  mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
@@ -623,11 +652,11 @@ int main(int argc, char *argv[]) {
 
   while (Continue) {
     mg_mgr_poll(&mgr, 1);     
-    //mg_mgr_poll(&mgr_mqtt, 1000);
+    mg_mgr_poll(&mgr_mqtt, 1000);
   }
 
   mg_mgr_free(&mgr);        
-  //mg_mgr_free(&mgr_mqtt); 
+  mg_mgr_free(&mgr_mqtt); 
 
   return 0;
 }
@@ -655,3 +684,5 @@ void print_data(tpm_challenge_reply *rpl){
   printf("IMA whole log %d\n", rpl->wholeLog);
   
 }
+
+

@@ -251,6 +251,7 @@ int create_request_body(size_t *object_length, char *object){
   int fd, n;
   unsigned char *ek_cert = NULL, *ak_pub = NULL, *ak_name = NULL;
   char *b64_buff_ek = NULL, *ak_name_b64 = NULL;
+  char buff[500];
 
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
@@ -398,31 +399,6 @@ int create_request_body(size_t *object_length, char *object){
 
   printf("AK name : %s\n", ak_name_b64);
 
-  /* tot_sz += B64ENCODE_OUT_SAFESIZE(size);
-  b64_buff_ak = malloc(tot_sz);
-  if(b64_buff_ak == NULL) {
-    fprintf(stderr, "ERROR: b64_buff malloc error\n");
-    free(b64_buff_ek);
-    free(ak_cert);
-    return -1;
-  }
-
-  n = mg_base64_encode((const unsigned char *)ak_cert, size, b64_buff_ak);
-  if(n == 0){
-    fprintf(stderr, "ERROR: mg_base64_encode error\n");
-    free(b64_buff_ek);
-    free(ak_cert);
-    free(b64_buff_ak);
-    return -1;
-  } */
-
-  //printf("EK cert base64: %s\n", b64_buff_ak);
-
-  //free(ak_cert);
-
-  //OTHER DATA TO SEND HERE
-
-  //*object = (char *)  malloc(tot_sz + 1);
   if(object == NULL) {
     fprintf(stderr, "ERROR: object buff is NULL\n");
     free(b64_buff_ek);
@@ -430,7 +406,9 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64);
+  snprintf(buff, 500, "http://%s:%d", attester_config.ip, attester_config.port);
+
+  sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\",\"ip_addr\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64, buff);
   *object_length = strlen(object);
 
 #ifdef DEBUG
@@ -569,11 +547,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_CONNECT) {
     //size_t object_length = 0;
     char object[4096];
-
-    /* if (create_request_body(&object_length, object) != 0){
-      fprintf(stderr, "ERROR: cannot create the http body conatcting the join_service\n");
-      exit(-1);
-    } */
     unsigned char *secret;
     unsigned char *secret_b64;
     unsigned int secret_len, secret_b64_len;
@@ -648,7 +621,9 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
 
     fclose(fd_ak_pub);
 
-    sprintf(object, "{\"secret_b64\":\"%s\",\"uuid\":\"%s\",\"ak_pub_b64\":\"%s\"}", secret_b64, attester_config.uuid, ak_pub);
+    
+
+    snprintf(object, 4096, "{\"secret_b64\":\"%s\",\"uuid\":\"%s\",\"ak_pub_b64\":\"%s\"}", secret_b64, attester_config.uuid, ak_pub);
 
     free(secret_b64);
 

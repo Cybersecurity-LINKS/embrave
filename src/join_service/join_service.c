@@ -164,8 +164,9 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
         }
         strcpy(ak_entry->uuid, (char *) sqlite3_column_text(res, 0));
         strcpy((char *) ak_entry->ak_pem, (char *) sqlite3_column_text(res, 1));
-        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 2));
-        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 3));
+        strcpy(ak_entry->ip, (char *) sqlite3_column_text(res, 2));
+        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 3));
+        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 4));
     #ifdef DEBUG
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
@@ -207,7 +208,7 @@ void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
         object);
 
     } else if (ev == MG_EV_HTTP_MSG) {
-        struct http_message *hm = (struct http_message *) ev_data;
+        const struct mg_http_message *hm = (const struct mg_http_message *) ev_data;
         int status = mg_http_status(hm);
         if (status == 200) {
             MG_INFO(("200 OK"));
@@ -253,7 +254,7 @@ void *queue_manager(void *vargp){
 
         char ip[MAX_BUF];
 
-        /*Uuid and AK pem*/
+        /*Uuid and AK pem and ip address*/
         struct ak_db_entry *ak_entry = retrieve_ak(uuid, NULL);
         int id = get_verifier_id();
         /* if(id == -1){
@@ -264,8 +265,6 @@ void *queue_manager(void *vargp){
         
         get_verifier_ip(id, ip);
 
-        memcpy(ak_entry->ip, ip, strlen(ip));
-        
         snprintf(s_conn, 280, "http://%s", ip);
 
         c = mg_http_connect(&mgr, s_conn, single_attestation, (void *) ak_entry);
@@ -279,6 +278,7 @@ void *queue_manager(void *vargp){
 
     printf("INFO: queue manager ended\n");
     fflush(stdout);
+    return NULL;
 }
 
 int create_secret(unsigned char * secret)
@@ -311,7 +311,7 @@ int create_secret(unsigned char * secret)
     return 0;
 }
 
-static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
+static int set_agent_data(unsigned char *ak, char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
     
@@ -329,10 +329,12 @@ static int set_ak_confirmed_and_valid(unsigned char *ak, char *uuid){
     if (rc == SQLITE_OK) {
         rc = sqlite3_bind_text(res, 1, (char *) ak, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
         rc = sqlite3_bind_text(res, 2, uuid, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
     } else {
@@ -662,24 +664,33 @@ static int insert_ak(struct ak_db_entry *ak_entry){
         return -1;
     }
 
-    char *sql = "INSERT INTO attesters_credentials values (?, ?, ?, ?);";
+    char *sql = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?);";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
         rc = sqlite3_bind_text(res, 1, ak_entry->uuid, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
         rc = sqlite3_bind_text(res, 2, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
-        rc = sqlite3_bind_int(res, 3, ak_entry->validity);
+        rc = sqlite3_bind_text(res, 3, (char *) ak_entry->ip, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
-        rc = sqlite3_bind_int(res, 4, ak_entry->confirmed);
+        rc = sqlite3_bind_int(res, 4, ak_entry->validity);
         if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        rc = sqlite3_bind_int(res, 5, ak_entry->confirmed);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
             return -1;
         }
     } else {
@@ -759,18 +770,19 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     "uuid": "aaaaaaaaa",
                     "ek_cert_b64": "aaaaaaaaa",
                     "ak_pub_b64": "aaaaaaaa",
-                    "ak_name_b64": "aaaaaaaa"
+                    "ak_name_b64": "aaaaaaaa",
+                    "ip_addr": "ip:port"
                 }
             */
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
             unsigned char* ek_cert_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ek_cert_b64");
             unsigned char* ak_pub_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
             unsigned char* ak_name_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_name_b64");
-            
+            char* ip_addr = mg_json_get_str(hm->body, "$.ip_addr");
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
-            //printf("EK_BASE64_LEN: %d\n", strlen((char *) ek_cert_b64));
+            printf("%s\n", ip_addr);
 
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
             
@@ -790,16 +802,18 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-                
+                #ifdef DEBUG
                 printf("%s\n", ek_cert_b64);
                 printf("%d\n", ek_cert_len);
                 printf("%d\n", strlen((char *) ek_cert_b64));
+                #endif
                 //Decode b64
                 if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff, ek_cert_len + 1) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
                     free(ek_cert_buff);
                     free(ek_cert_b64);
                     free(ak_pub_b64);
+                    free(ip_addr);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -812,6 +826,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
                     free(ek_cert_buff);
                     free(ek_cert_b64);
+                    free(ip_addr);
                     free(ak_pub_b64);
                     return;
                 }
@@ -841,6 +856,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ak_name_b64);
+                    free(ip_addr);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -852,6 +868,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_buff);
                     free(ek_cert_b64);
                     free(ak_pub_b64);
+                    free(ip_addr);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -864,6 +881,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_pub_b64);
                 free(ak_name_b64);
                 free(ek_cert_buff);
+                free(ip_addr);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -875,6 +893,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ek_cert_b64);
                 free(ak_pub_b64);
                 free(ak_name_b64);
+                free(ip_addr);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -932,6 +951,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_name_b64);
                 free(ak_name_buff);
                 free(out_buf);
+                free(ip_addr);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -945,6 +965,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_name_buff);
                 free(out_buf);
                 free(mkcred_out_b64);
+                free(ip_addr);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -952,6 +973,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             struct ak_db_entry ak;
             strcpy((char *) ak.ak_pem, (char *) ak_pub_b64);
             strcpy(ak.uuid, (char *) uuid);
+            strcpy(ak.ip, ip_addr);
             ak.confirmed = 0;
             ak.validity = 0;
 
@@ -972,23 +994,16 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ak_entry);
             free(ek_cert_b64);
             free(ak_pub_b64);
+            free(ip_addr);
 
-            /* Check if AK already present in the database or in the revoked db */
-
-            /* if present send OK */
-
-            /* if not present => challenge */
-
-            /* mg_http_reply(c, OK, APPLICATION_JSON,
-                        "OK\n");
-            MG_INFO(("%s %s %d", POST, API_JOIN, OK)); */
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-            struct ak_db_entry ak_entry;
+           // struct ak_db_entry ak_entry;
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
             unsigned char* ak_pub = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
+            
             size_t secret_len = B64DECODE_OUT_SAFESIZE(strlen((char *) secret_b64));
 
             unsigned char *secret_buff = (unsigned char *) malloc(secret_len + 1);
@@ -997,7 +1012,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
-            printf("%d  %d\n", strlen((char *) secret_b64), secret_len + 1);
+            
             /* Decode b64 */
             secret_len = mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len);
             if(secret_len == 0){
@@ -1023,7 +1038,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             }
 
             /* Set the AK in the database as confirmed (=1) and valid (=1)*/
-            if(set_ak_confirmed_and_valid(ak_pub, (char *) uuid) != 0){
+            if(set_agent_data(ak_pub, (char *) uuid) != 0){
                 //TODO database error ??
                 free(secret_buff);
                 free(secret_b64);
@@ -1050,6 +1065,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(secret_b64);
             free(uuid);
             free(ak_pub);
+            
 
         }else if (mg_http_match_uri(hm, API_JOIN_VERIFIER) && !strncmp(hm->method.ptr, POST, hm->method.len)){
 
@@ -1186,9 +1202,9 @@ int get_verifier_id(void){
     0 OK
     -------------
     attester_credentials
-    ----------------------------------------
-    | uuid | ak_pub | validity | confirmed |
-    ----------------------------------------
+    ---------------------------------------------
+    | uuid | ak_pub | ip | validity | confirmed |
+    ---------------------------------------------
 
     -------------
     attester_ek_certs
@@ -1205,23 +1221,37 @@ int get_verifier_id(void){
 static int init_database(void){
     sqlite3_stmt *res= NULL;
     sqlite3 *db = NULL;
-    char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
-        uuid text NOT NULL,\
-        ak_pub text NOT NULL,\
-        validity INT NOT NULL,\
-        confirmed INT NOT NULL,\
-        PRIMARY KEY (uuid, ak_pub)\
-        FOREIGN KEY (uuid) REFERENCES attesters_ek_certs\
-    );";
+
     char *sql1 = "CREATE TABLE IF NOT EXISTS attesters_ek_certs (\
         uuid text NOT NULL,\
         ek_cert text NOT NULL,\
         PRIMARY KEY (uuid)\
     );";
+
+/*     char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
+        uuid text NOT NULL,\
+        ak_pub text NOT NULL,\
+        ip text NOT NULL,\
+        validity INT NOT NULL,\
+        confirmed INT NOT NULL,\
+        PRIMARY KEY (uuid, ak_pub)\
+        FOREIGN KEY (uuid) REFERENCES attesters_ek_certs\
+    );"; */
+
+    char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
+        uuid text NOT NULL,\
+        ak_pub text NOT NULL,\
+        ip text NOT NULL,\
+        validity INT NOT NULL,\
+        confirmed INT NOT NULL,\
+        PRIMARY KEY (uuid, ak_pub)\
+    );";
+
     char *sql3 = "CREATE TABLE IF NOT EXISTS verifiers (\
         id INTEGER PRIMARY KEY AUTOINCREMENT,\
         ip text NOT NULL\
     );";
+
     char *sql4 = "SELECT COUNT(id) FROM verifiers;";
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);

@@ -188,3 +188,22 @@ void ra_free(tpm_challenge_reply *rpl, verifier_database *tpa_data){
   if(tpa_data->ip_addr != NULL)
     free(tpa_data->ip_addr);
 }
+
+struct agent_list * agent_list_new(void){
+  struct agent_list * ptr = malloc(sizeof(struct agent_list));
+  if(!ptr)
+    ptr->next_ptr = NULL;
+  return ptr;
+}
+
+void agent_list_free(struct agent_list * ptr){
+  struct agent_list * nxt_ptr = NULL;
+  if(ptr == NULL)
+    return; 
+  do {
+    nxt_ptr = ptr->next_ptr;
+    free(ptr);
+    ptr = nxt_ptr;
+  } while (ptr != NULL);
+  
+}

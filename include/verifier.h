@@ -25,8 +25,21 @@
 #define API_ATTEST "/request_attestation"
 
 
+#define MAX_BUF 255
+
+struct agent_list {
+    char ip_addr[MAX_BUF];
+    char ak_pub[MAX_BUF];
+    char uuid[MAX_BUF];
+    bool stop;
+    struct agent_list * next_ptr;
+};
+
+
 int ra_explicit_challenge_create(tpm_challenge *chl, verifier_database *tpa_data);
 int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tpa_data);
 int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database *tpa_data);
 void ra_free(tpm_challenge_reply *rpl, verifier_database *tpa_data);
+struct agent_list * agent_list_new(void);
+void agent_list_free(struct agent_list * ptr);
 #endif
