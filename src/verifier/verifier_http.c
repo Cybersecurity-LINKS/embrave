@@ -27,6 +27,10 @@ static struct verifier_conf verifier_config;
 static agent_list *agents = NULL;
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
+struct mg_mgr mgr_mqtt;
+struct mg_connection *c_mqtt;
+int id;
+
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
 void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
@@ -45,6 +49,38 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
                     byte_rcv INT,\
                     PRIMARY KEY (uuid, ak_pub)\
   );"; */
+
+static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
+  if (ev == MG_EV_OPEN) {
+    MG_INFO(("%lu CREATED", c->id));
+    // c->is_hexdumping = 1;
+  } else if (ev == MG_EV_ERROR) {
+    // On error, log error message
+    MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+  } else if (ev == MG_EV_CONNECT) {
+    // If target URL is SSL/TLS, command client connection to use TLS
+    /* if (mg_url_is_ssl(s_url)) {
+      struct mg_tls_opts opts = {.ca = mg_str("ca.pem")};
+      mg_tls_init(c, &opts);
+    } */
+  } else if (ev == MG_EV_MQTT_OPEN) {
+    // MQTT connect is successful
+    /* struct mg_str subt = mg_str(s_sub_topic);
+    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
+    MG_INFO(("%lu CONNECTED", c->id));
+    
+    
+  } else if (ev == MG_EV_MQTT_MSG) {
+    // When we get echo response, print it
+    struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+    MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
+              mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
+  } else if (ev == MG_EV_CLOSE) {
+    MG_INFO(("%lu CLOSED", c->id));
+    //s_conn = NULL;  // Mark that we're closed
+  }
+  (void) c->fn_data;
+}
 
 int add_agent_data(agent_list * ptr){
   sqlite3 *db;
@@ -151,7 +187,7 @@ int add_agent_data(agent_list * ptr){
     return -1;
   }
 
-  //convert the sql statament 
+  //convert the sql statament
   rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
   if (rc == SQLITE_OK) {
     //Set the parametrized input
@@ -161,7 +197,7 @@ int add_agent_data(agent_list * ptr){
   } else {
     fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
   }
-    
+
   //Execute the sql query
   step = sqlite3_step(res);
   if (step == SQLITE_ROW) {
@@ -515,9 +551,14 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       return;
     } else if (status == OK){
       
-      verifier_config.topic_id = mg_json_get_long(hm->body, "$.topic_id", -1);  
+      //verifier_config.topic_id = mg_json_get_long(hm->body, "$.topic_id", -1);
+      id = mg_json_get_long(hm->body, "$.topic_id", -1);
 
-      fprintf(stdout, "INFO: Topic id: %d\n", verifier_config.topic_id);
+      char topic[25];
+      sprintf(topic, "attest/%d", id);
+      mqtt_subscribe(c_mqtt, topic);
+
+      fprintf(stdout, "INFO: Topic id: %d\n", id);
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
 
@@ -634,11 +675,10 @@ static int init_database(void){
 
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
-  struct mg_mgr mgr_mqtt;
   struct mg_connection *c;
   char s_conn[250];
   struct stat st = {0};
-
+  
   if (stat("/var/lemon", &st) == -1) {
     if(!mkdir("/var/lemon", 0711)) {
       fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
@@ -657,6 +697,8 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "ERROR: cannot create /var/lemon/verifier directory\n");
     }
   }
+
+  c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler);
 
   /* read configuration from cong file */
   if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
@@ -679,10 +721,6 @@ int main(int argc, char *argv[]) {
   printf("verifier_config->tls_key: %s\n", verifier_config.tls_key);
   printf("verifier_config->db: %s\n", verifier_config.db);
 #endif
-
-  /* setup mqtt connection */
-  mg_mgr_init(&mgr_mqtt);
-  mg_timer_add(&mgr_mqtt, 3000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_fn, &mgr_mqtt);
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
