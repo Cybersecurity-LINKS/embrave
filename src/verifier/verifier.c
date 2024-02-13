@@ -12,17 +12,17 @@
 
 #include "verifier.h"
 
-int ra_explicit_challenge_create(tpm_challenge *chl, verifier_database *tpa_data)
+int ra_explicit_challenge_create(tpm_challenge *chl, agent_list *agent_data)
 {
-  if(tpa_data->pcr10_old_sha256 != NULL)
-    chl->send_from_byte = tpa_data->byte_rcv;
+  if(agent_data->pcr10_sha256 != NULL)
+    chl->send_from_byte = agent_data->byte_rcv;
   else
     chl->send_from_byte = 0;
   
   return nonce_create(chl->nonce);
 }
 
-int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tpa_data)
+int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
 {
   int ret;
   sqlite3 *db;
@@ -43,13 +43,13 @@ int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tp
   //get_start_timer();
 
   //verify quote
-  ret = verify_quote(rpl, tpa_data->ak_path,  tpa_data);
+  ret = verify_quote(rpl, agent_data->ak_pub,  agent_data);
   if (ret == -1){
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
     return -1;
   } else if(ret == -2){
-    printf("Unknown TPA\n");
-    refresh_verifier_database_entry(tpa_data);
+    printf("Unknown agent\n");
+    refresh_verifier_database_entry(agent_data);
     return -2;
   } else {
     printf("Quote signature verification OK\n");
@@ -63,23 +63,23 @@ int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, verifier_database *tp
   //get_start_timer();
 
   //Open the goldenvalues DB
-  int rc = sqlite3_open_v2((const char *) tpa_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2((const char *) agent_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
     ret = -1;
     goto end;
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db, tpa_data);
+  ret = verify_ima_log(rpl, db, agent_data);
   if (ret == -1){
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
   } else if (ret == -2){
-    printf("Unknown TPA\n");
+    printf("Unknown agent\n");
   } else {
-    printf("Trusted TPA\n");
+    printf("Trusted agent\n");
     //End timer 3
     //get_finish_timer();
     //print_timer(3);
@@ -92,7 +92,7 @@ end:
   return ret;
 }
 
-int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database *tpa_data)
+int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *agent_data)
 {
   int ret;
   sqlite3 *db;
@@ -113,13 +113,13 @@ int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database
   //get_start_timer();
 
   //verify quote
-  ret = verify_quote(rpl, (const char *) tpa_data->ak_path,  tpa_data);
+  ret = verify_quote(rpl, agent_data->ak_pub,  agent_data);
   if (ret == -1){
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
     return -1;
   } else if(ret == -2){
-    printf("Unknown TPA\n");
-    refresh_verifier_database_entry(tpa_data);
+    printf("Unknown agent\n");
+    refresh_verifier_database_entry(agent_data);
     return -2;
   } else {
     printf("Quote signature verification OK\n");
@@ -133,32 +133,32 @@ int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, verifier_database
   //get_start_timer();
 
   //Softbindings verify
-  ret = PCR9softbindig_verify(rpl, tpa_data);
+  ret = PCR9softbindig_verify(rpl, agent_data);
   if (ret != 0){
-    printf("Untrusted TPA (PCR9softbindig_verify)\n");
+    printf("Untrusted agent (PCR9softbindig_verify)\n");
     return -1;
   }else {
     printf("Softbindings verification OK\n");
   }
 
   //Open the goldenvalues DB
-  int rc = sqlite3_open_v2((const char *) tpa_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
+  int rc = sqlite3_open_v2((const char *) agent_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
     ret = -1;
     goto end;
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db, tpa_data);
+  ret = verify_ima_log(rpl, db, agent_data);
   if (ret == -1){
-    printf("Untrusted TPA\n");
+    printf("Untrusted agent\n");
   } else if (ret == -2){
-    printf("Unknown TPA\n");
+    printf("Unknown agent\n");
   } else {
-    printf("Trusted TPA\n");
+    printf("Trusted agent\n");
     //End timer 3
     //get_finish_timer();
     //print_timer(3);
@@ -171,33 +171,38 @@ end:
   return ret;
 }
 
-void ra_free(tpm_challenge_reply *rpl, verifier_database *tpa_data){
+void ra_free(tpm_challenge_reply *rpl, agent_list *agent_data){
   free(rpl->sig);
   free(rpl->quoted);
-  free(tpa_data->ak_path);
-  free(tpa_data->gv_path);
-  free(tpa_data->tls_path);
-  if(tpa_data->pcr10_old_sha1 != NULL){
-    free(tpa_data->pcr10_old_sha1);
+  //free(agent_data->ak_pub);
+  //free(agent_data->gv_path);
+  //free(agent_data->tls_path);
+  if(agent_data->pcr10_sha1 != NULL){
+    free(agent_data->pcr10_sha1);
   }
-  if(tpa_data->pcr10_old_sha256 != NULL){
-    free(tpa_data->pcr10_old_sha256);
+  if(agent_data->pcr10_sha256 != NULL){
+    free(agent_data->pcr10_sha256);
   }
-  if(tpa_data->timestamp != NULL)
-    free(tpa_data->timestamp);
-  if(tpa_data->ip_addr != NULL)
-    free(tpa_data->ip_addr);
+  if(agent_data->ip_addr != NULL)
+    free(agent_data->ip_addr);
 }
 
-struct agent_list * agent_list_new(void){
-  struct agent_list * ptr = malloc(sizeof(struct agent_list));
+agent_list * agent_list_new(void){
+  agent_list * ptr = malloc(sizeof(agent_list));
   if(!ptr)
     ptr->next_ptr = NULL;
   return ptr;
 }
 
-void agent_list_free(struct agent_list * ptr){
-  struct agent_list * nxt_ptr = NULL;
+agent_list * agent_list_last(agent_list * ptr){
+  while (ptr != NULL){
+    ptr = ptr->next_ptr;
+  }
+  return ptr;
+}
+
+void agent_list_free(agent_list * ptr){
+  agent_list * nxt_ptr = NULL;
   if(ptr == NULL)
     return; 
   do {

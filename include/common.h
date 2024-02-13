@@ -31,9 +31,6 @@
 
 #define RA_TYPE_EXPLICIT 0
 #define RA_TYPE_DAA 1
-#ifndef FRESH
-    #define FRESH 60
-#endif
 
 /* methods */
 #define GET "GET"
@@ -57,22 +54,40 @@
 // calculate the size of 'output' buffer required for a 'input' buffer of length x during Base64 decoding operation
 #define B64DECODE_OUT_SAFESIZE(x) ((((x) / 4) * 3)  + 1)
 
+#define MAX_BUF 255
+
 enum { NS_PER_SECOND = 1000000000 };
 
-typedef struct {
+/* typedef struct {
     int id;
     //char *sha_ak;
-    char *ak_path;
+    char *ak_pub;
     char *gv_path;
     char *tls_path;
     char *pcr10_old_sha1;
     char *pcr10_old_sha256;
-    char *timestamp;
+    //char *timestamp;
     char *ca;
     char *ip_addr;
     uint32_t resetCount;
     uint32_t byte_rcv;
-} verifier_database;
+} verifier_database; */
+
+typedef struct  {
+    char ip_addr[MAX_BUF];
+    char ak_pub[MAX_BUF];
+    char uuid[MAX_BUF];
+    char gv_path[MAX_BUF];
+    bool stop;
+    char *tls_path;//tOGLIERE??
+    char* pcr10_sha1;
+    char* pcr10_sha256;
+    //char *timestamp;
+    char ca[MAX_BUF]; //tOGLIERE??
+    uint32_t resetCount;
+    uint32_t byte_rcv;
+    struct agent_list * next_ptr;
+} agent_list;
 
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle);

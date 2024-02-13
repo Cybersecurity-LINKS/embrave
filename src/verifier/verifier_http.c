@@ -22,41 +22,131 @@ static int verify_val;
 static bool send_all_log = false;
 
 static tpm_challenge_reply rpl;
-static verifier_database tpa_data;
 
 static struct verifier_conf verifier_config;
-static struct agent_list *agents = NULL;
+static agent_list *agents = NULL;
+static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
-int try_read(struct mg_iobuf *r, size_t size, void * dst);
 void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
 
 // Load the AK path, the TLS certificate, the last PCR10 if present, 
-// and the goldenvalue db path for a certain tpa
-int get_paths(int id){
+// and the goldenvalue db path for a certain agent
+
+/*   char *sql = "CREATE TABLE IF NOT EXISTS attesters (\
+                    uuid TEXT NOT NULL,\
+                    ak_pub TEXT NOT NULL,\
+                    ip_addr TEXT NOT NULL,\
+                    goldenvalue_database  NOT NULL,\
+                    pcr10_sha256 TEXT,\
+                    pcr10_sha1 TEXT,\
+                    resetCount INT,\
+                    byte_rcv INT,\
+                    PRIMARY KEY (uuid, ak_pub)\
+  );"; */
+
+int add_agent_data(agent_list * ptr){
+  sqlite3 *db;
+  sqlite3_stmt *res;
+    
+  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+  if (rc != SQLITE_OK) {        
+    fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+
+  char *sql = "INSERT INTO attesters values (?, ?, ?, ?, ?, ?, ?, ?);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_bind_text(res, 1, ptr->uuid, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        rc = sqlite3_bind_text(res, 2, ptr->ak_pub, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        rc = sqlite3_bind_text(res, 3, ptr->ip_addr, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        rc = sqlite3_bind_text(res, 4, ptr->gv_path, -1, SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        /*SHA256*/
+        rc = sqlite3_bind_null(res, 5);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        /*SHA1*/
+        rc = sqlite3_bind_null(res, 6);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        /*resetCount*/
+        rc = sqlite3_bind_null(res, 7);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+        /*byte_rcv*/
+        rc = sqlite3_bind_int(res, 7, 0);
+        if (rc != SQLITE_OK ) {
+            sqlite3_close(db);
+            return -1;
+        }
+    } else {
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    }
+
+    int step = sqlite3_step(res);
+    
+    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+        fprintf(stdout, "INFO: attester succesfully inserted into the db\n");
+    }
+    else {
+        fprintf(stderr, "ERROR: could not insert attester into the db\n");
+    }
+
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    
+    return 0;
+}
+
+
+
+/* int get_agent_data(char *uuid, agent_list * ptr){
   sqlite3_stmt *res= NULL;
   sqlite3 *db = NULL;
   int byte;
-  char *sql = "SELECT * FROM tpa WHERE id = @id";
+  char *sql = "SELECT * FROM attesters WHERE uuid = @uuid";
   int step, idx;
-  time_t ltime_now;
-  struct tm t;
-  double fresh = (double) FRESH;
 
-  tpa_data.pcr10_old_sha256 = NULL;
-  tpa_data.pcr10_old_sha1 = NULL;
-  tpa_data.ak_path = NULL;
-  tpa_data.gv_path = NULL;
-  tpa_data.tls_path = NULL;
-  tpa_data.timestamp = NULL;
-  tpa_data.ca = NULL;
-  tpa_data.resetCount = 0;
-  tpa_data.ip_addr = NULL;
+  ptr->pcr10_old_sha256 = NULL;
+  agent_data.pcr10_old_sha1 = NULL;
+  agent_data.ak_pub = NULL;
+  agent_data.gv_path = NULL;
+  agent_data.tls_path = NULL;
+  //agent_data.timestamp = NULL;
+  agent_data.ca = NULL;
+  agent_data.resetCount = 0;
+  agent_data.ip_addr = NULL;
 
   int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
-    printf("Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+    printf("Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return -1;
   }
@@ -65,8 +155,8 @@ int get_paths(int id){
   rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
   if (rc == SQLITE_OK) {
     //Set the parametrized input
-    idx = sqlite3_bind_parameter_index(res, "@id");
-    sqlite3_bind_int(res, idx, id);
+    idx = sqlite3_bind_parameter_index(res, "@uuid");
+    sqlite3_bind_text(res, idx, uuid, -1, NULL);
 
   } else {
     fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
@@ -78,104 +168,75 @@ int get_paths(int id){
     //N byte entry -> malloc -> memcpy
 
     //ID
-    tpa_data.id = sqlite3_column_int(res, 0);
+    agent_data.id = sqlite3_column_int(res, 0);
     
     //SHA256 of AK
     //byte = sqlite3_column_bytes(res, 1);
-    //tpa_data.sha_ak = malloc(byte);
-    //memcpy(tpa_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
+    //agent_data.sha_ak = malloc(byte);
+    //memcpy(agent_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
 
     //Ak file path
     byte = sqlite3_column_bytes(res, 2);
-    tpa_data.ak_path = malloc((byte + 1) * sizeof(char));
-    memcpy(tpa_data.ak_path, (char *) sqlite3_column_text(res, 2), byte);
-    tpa_data.ak_path[byte] = '\0';
+    agent_data.ak_pub = malloc((byte + 1) * sizeof(char));
+    memcpy(agent_data.ak_pub, (char *) sqlite3_column_text(res, 2), byte);
+    agent_data.ak_pub[byte] = '\0';
 
     //Goldenvalue db path
     byte = sqlite3_column_bytes(res, 5);
-    tpa_data.gv_path = malloc((byte + 1) * sizeof(char));
-    memcpy(tpa_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
-    tpa_data.gv_path[byte] = '\0';
-    //printf("%s\n", tpa_data.gv_path);
+    agent_data.gv_path = malloc((byte + 1) * sizeof(char));
+    memcpy(agent_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
+    agent_data.gv_path[byte] = '\0';
+    //printf("%s\n", agent_data.gv_path);
 
     //TLS cert path
     byte = sqlite3_column_bytes(res, 6);
-    tpa_data.tls_path = malloc((byte + 1) *sizeof(char));
-    memcpy(tpa_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
-    tpa_data.tls_path[byte] = '\0';
+    agent_data.tls_path = malloc((byte + 1) *sizeof(char));
+    memcpy(agent_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
+    agent_data.tls_path[byte] = '\0';
 
     //CA cert path
     byte = sqlite3_column_bytes(res, 7);
-    tpa_data.ca = malloc((byte + 1) *sizeof(char));
-    memcpy(tpa_data.ca, (char *) sqlite3_column_text(res, 7), byte);
-    tpa_data.ca[byte] = '\0';
-    //printf("%s\n", tpa_data.ca);
+    agent_data.ca = malloc((byte + 1) *sizeof(char));
+    memcpy(agent_data.ca, (char *) sqlite3_column_text(res, 7), byte);
+    agent_data.ca[byte] = '\0';
+    //printf("%s\n", agent_data.ca);
 
     //Agent ip address
     byte = sqlite3_column_bytes(res, 11);
     printf("%d\n", byte);
     if(byte == 0){
-      printf("ERROR: missing ip address in the tpa db");
+      printf("ERROR: missing ip address in the agent db");
       sqlite3_finalize(res);
       sqlite3_close(db);
     return -1;
     }
-    tpa_data.ip_addr = malloc((byte + 1) * sizeof(char));
-    memcpy(tpa_data.ip_addr, (char *) sqlite3_column_text(res, 11), byte);  
-    tpa_data.ip_addr[byte] = '\0';
+    agent_data.ip_addr = malloc((byte + 1) * sizeof(char));
+    memcpy(agent_data.ip_addr, (char *) sqlite3_column_text(res, 11), byte);  
+    agent_data.ip_addr[byte] = '\0';
 
-    //Timestamp, could be null    
-    byte = sqlite3_column_bytes(res, 8);
+    //PCR10s sha256, could be null
+    byte = sqlite3_column_bytes(res, 3);
     if(byte != 0){
-      tpa_data.timestamp = malloc((byte + 1) *sizeof(char));
-      memcpy(tpa_data.timestamp, (char *) sqlite3_column_text(res, 8), byte);
-      tpa_data.timestamp[byte] = '\0';
-      //printf("%s\n", tpa_data.timestamp);
-
-      //Check if still fresh
-      memset(&t, 0, sizeof t);  // set all fields to 0
-      sscanf(tpa_data.timestamp,"%d %d %d %d %d %d %d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec, &t.tm_isdst);
-      ltime_now = time(NULL);
-   
-      //printf("%s\n", s)
-      //double x = difftime(ltime_now, mktime(&t));
-      difftime(ltime_now, mktime(&t));
+      //SHA256
+      agent_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
+      memcpy(agent_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
+      agent_data.pcr10_old_sha256[byte] = '\0';
       
-      //printf("%f\n", x);
-      if(difftime(ltime_now, mktime(&t)) > fresh){
-        printf("Entry too old, send all IMA log\n");
-        send_all_log = true;
-      } else {
-        //Entry still fresh so read old pcr10
-            
-        //PCR10s sha256, could be null
-        byte = sqlite3_column_bytes(res, 3);
-        if(byte != 0){
-          //SHA256
-          tpa_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
-          memcpy(tpa_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
-          tpa_data.pcr10_old_sha256[byte] = '\0';
-          //SHA1
-          byte = sqlite3_column_bytes(res, 4);
-          tpa_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
-          memcpy(tpa_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
-          tpa_data.pcr10_old_sha1[byte] = '\0';
-        } else {
-          //Possibile to have valid timestamp and no pcr10?
-          send_all_log = true;
-        }
-
-        //Reset count
-        tpa_data.resetCount = sqlite3_column_int(res, 9);
-        
-        //Received bytes
-        tpa_data.byte_rcv = sqlite3_column_int(res, 10);
-
-      }
+      //SHA1
+      byte = sqlite3_column_bytes(res, 4);
+      agent_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
+      memcpy(agent_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
+      agent_data.pcr10_old_sha1[byte] = '\0';
     } else {
-      //No previus timestamp in the db
+      //Possibile to have valid timestamp and no pcr10?
       send_all_log = true;
     }
+
+    //Reset count
+    agent_data.resetCount = sqlite3_column_int(res, 9);
+        
+    //Received bytes
+    agent_data.byte_rcv = sqlite3_column_int(res, 10);
 
     sqlite3_finalize(res);
     sqlite3_close(db);
@@ -183,13 +244,12 @@ int get_paths(int id){
         
   } 
   
-  printf("No id found in the tpa databse for %d\n", id);
+  printf("No id found in the agent databse for uuid: %s\n", uuid);
   sqlite3_finalize(res);
   sqlite3_close(db);
   return -1;
 }
-
-static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
+ */
 
 // Print HTTP response and signal that we're done
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
@@ -202,11 +262,12 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
     tpm_challenge chl;
     size_t buff_length = 0;
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
-    //If PCRs10 from tpa db are null, ask all ima log
+    //If PCRs10 from agent db are null, ask all ima log
     if(send_all_log){
       chl.send_wholeLog = 1;
     } else {
@@ -214,7 +275,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     }
 
     //Create nonce
-    if(ra_explicit_challenge_create(&chl, &tpa_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, &agent_data)!= 0){
       Continue = false;
       return;
     }
@@ -237,13 +298,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     );
 
   } else if (ev == MG_EV_HTTP_MSG) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
       end = true;
       verify_val = n;
-      ra_free(&rpl, &tpa_data);
+      ra_free(&rpl, &agent_data);
       return;
     } 
 
@@ -251,10 +313,10 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = ra_explicit_challenge_verify(&rpl, &tpa_data);
+    verify_val = ra_explicit_challenge_verify(&rpl, &agent_data);
 
     end = true;
-    ra_free(&rpl, &tpa_data);
+    ra_free(&rpl, &agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -274,14 +336,15 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
     tpm_challenge chl;
     size_t buff_length = 0;
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
-    struct mg_tls_opts opts = {.ca = mg_str(tpa_data.ca)};
-    mg_tls_init(c, &opts);
+    //struct mg_tls_opts opts = {.ca = mg_str(agent_data.ca)};
+   // mg_tls_init(c, &opts);
 
-    //If PCRs10 from tpa db are null, ask all ima log
+    //If PCRs10 from agent db are null, ask all ima log
     if(send_all_log){
       chl.send_wholeLog = 1;
     } else {
@@ -289,7 +352,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     }
 
     //Create nonce
-    if(ra_explicit_challenge_create(&chl, &tpa_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, &agent_data)!= 0){
       Continue = false;
       return;
     }
@@ -312,13 +375,14 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     );
 
   } else if (ev == MG_EV_HTTP_MSG) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
       end = true;
       verify_val = n;
-      ra_free(&rpl, &tpa_data);
+      ra_free(&rpl, &agent_data);
       return;
     } 
 
@@ -326,10 +390,10 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = ra_explicit_challenge_verify_TLS(&rpl, &tpa_data);
+    verify_val = ra_explicit_challenge_verify_TLS(&rpl, &agent_data);
 
     end = true;
-    ra_free(&rpl, &tpa_data);
+    ra_free(&rpl, &agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -484,21 +548,24 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
       char* ak_pub = mg_json_get_str(hm->body, "$.ak_pem");
       char* ip_addr = mg_json_get_str(hm->body, "$.ip_addr");
 
-      struct agent_list *ptr = agents;
-      while (ptr != NULL){
-        ptr = ptr->next_ptr;
-      }
+      agent_list *last_ptr = agents;
+
+      last_ptr = agent_list_last(last_ptr);
       
-      ptr = agent_list_new();
-
+      last_ptr = agent_list_new();
+      
       /* Get attester data */
-      memcpy(ptr->ip_addr, ip_addr, strlen(ip_addr));
-      memcpy(ptr->ak_pub, ak_pub, strlen(ak_pub));
-      memcpy(ptr->uuid, uuid, strlen(uuid));
+      strcpy(last_ptr->ip_addr, ip_addr);
+      strcpy(last_ptr->ak_pub, ak_pub);
+      strcpy(last_ptr->uuid, uuid);
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
 
-      printf("%s \n%s \n%s\n", ptr->uuid, ptr->ak_pub, ptr->ip_addr);
+      printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
 
       /*add attester dato to verifier db*/
+      add_agent_data(last_ptr);
+
+      
     
 
       mg_http_reply(c, 200, NULL, "\n");
@@ -529,7 +596,6 @@ static int init_database(void){
                     goldenvalue_database  NOT NULL,\
                     pcr10_sha256 TEXT,\
                     pcr10_sha1 TEXT,\
-                    timestamp TEXT,\
                     resetCount INT,\
                     byte_rcv INT,\
                     PRIMARY KEY (uuid, ak_pub)\
