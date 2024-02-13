@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Directory containing the CA certificates
-ca_directory="../tpm_ca_certs_hash_dir"
-cp -r "../tpm_ca_certs" $ca_directory
+ca_directory="$1/tpm_ca_certs_hash_dir"
+cp -r "$1/tpm_ca_certs" $ca_directory
 
 # Array to keep track of the number of files with the same hash
 declare -A hash_counts

@@ -11,6 +11,8 @@ set(join_service_srcdir ${CMAKE_SOURCE_DIR}/src/join_service)
 set(agent_wrkdir ${CMAKE_BINARY_DIR}/agent.build)
 set(verifier_wrkdir ${CMAKE_BINARY_DIR}/verifier.build)
 set(join_service_wrkdir ${CMAKE_BINARY_DIR}/join_service.build)
+set(scripts_wrkdir ${CMAKE_SOURCE_DIR}/scripts)
+set(ca_hash_dir ${CMAKE_SOURCE_DIR}/tpm_ca_certs_hash_dir)
 
 ###############################################################################
 ## MACROS
@@ -60,9 +62,17 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied PRE_BUILD
 
 add_custom_target(patch_tpm2-tools ALL DEPENDS ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied)  #${patch}.applied
 
+###############################################################################
+## generate hash of root CA certificates
+###############################################################################
+
 # create hash of root CA certificates
-execute_process ( COMMAND ${CMAKE_SOURCE_DIR}/scripts/create_hash_dir.sh
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})  
+#execute_process (COMMAND ${scripts_wrkdir}/create_hash_dir.sh ${CMAKE_SOURCE_DIR}
+#  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_custom_command(OUTPUT ${ca_hash_dir} PRE_BUILD COMMAND ${scripts_wrkdir}/create_hash_dir.sh ${CMAKE_SOURCE_DIR})
+
+add_custom_target(tpm_ca_certs_hash_dir ALL DEPENDS ${ca_hash_dir})
 
 ###############################################################################
 ## attester agent
@@ -92,7 +102,7 @@ target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss
 add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
-file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
+file(GLOB_RECURSE sources sources src/tpm.c src/common.c src/mqtt_client.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
@@ -114,7 +124,7 @@ target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-
 add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${join_service_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${join_service_wrkdir})
-file(GLOB_RECURSE sources sources src/config_parse.c src/join_service/*.c lib/sqlite3/*  lib/tpm2-tools/lib/*.c lib/mongoose/*)
+file(GLOB_RECURSE sources sources src/config_parse.c src/mqtt_client.c src/join_service/*.c lib/sqlite3/*  lib/tpm2-tools/lib/*.c lib/mongoose/*)
 include_directories("include" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
