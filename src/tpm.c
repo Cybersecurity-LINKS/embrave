@@ -170,7 +170,7 @@ int check_pcr9(ESYS_CONTEXT *esys_context){
 
 }
 
-int PCR9softbindig_verify(tpm_challenge_reply *rply, verifier_database * tpa_data)
+int PCR9softbindig_verify(tpm_challenge_reply *rply, agent_list * agent_data)
 {
     unsigned char *pem = NULL;
     unsigned char *digest_buff = NULL;
@@ -178,7 +178,7 @@ int PCR9softbindig_verify(tpm_challenge_reply *rply, verifier_database * tpa_dat
     int sz;
 
     //Open the servers's public certificate
-    int ret = openPEM((const char*) tpa_data->tls_path, &pem);
+    int ret = openPEM((const char*) agent_data->tls_path, &pem);
     if(ret == -1){
         fprintf(stderr, "ERROR: openPEM error\n");
         return -1;
@@ -372,7 +372,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
 }
 
 
-int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_database *tpa)
+int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
 {
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -381,11 +381,11 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPML_PCR_SELECTION pcr_select;
-    if( rply == NULL || pem_file_name == NULL) return -1;
+    if( rply == NULL || ak_pub == NULL) return -1;
 
-    bio = BIO_new_file(pem_file_name, "rb");
+    bio = BIO_new_file(ak_pub, "rb");
     if (!bio) {
-        fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", pem_file_name, ERR_error_string(ERR_get_error(), NULL));
+        fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", ak_pub, ERR_error_string(ERR_get_error(), NULL));
         return -1;
     }
 
@@ -432,10 +432,10 @@ int verify_quote(tpm_challenge_reply *rply, const char* pem_file_name, verifier_
         goto err;
     }
 
-    if(tpa->pcr10_old_sha256 == NULL ){
+    if(agent->pcr10_sha256 == NULL ){
         //Save resetCount
-        tpa->resetCount = attest.clockInfo.resetCount;
-    } else if(tpa->resetCount != attest.clockInfo.resetCount && rply->wholeLog == 1 ) {
+        agent->resetCount = attest.clockInfo.resetCount;
+    } else if(agent->resetCount != attest.clockInfo.resetCount && rply->wholeLog == 1 ) {
         fprintf(stdin, "INFO: agent rebooted after last attestation\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
@@ -744,14 +744,14 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int refresh_verifier_database_entry(verifier_database *tpa){
+int refresh_verifier_database_entry(agent_list *agent){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
-    int idx;
+    char *sql = "UPDATE agent SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
+    //int idx;
     int step;
     
-    int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
    //int rc = sqlite3_open_v2(verifier_config->, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         fprintf(stderr, "ERROR: Cannot open the verifier database, error %s\n", sqlite3_errmsg(db));
@@ -763,8 +763,8 @@ int refresh_verifier_database_entry(verifier_database *tpa){
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
         //Set the parametrized input
-        idx = sqlite3_bind_parameter_index(res, "@id");
-        sqlite3_bind_int(res, idx, tpa->id);
+        //idx = sqlite3_bind_parameter_index(res, "@id");
+        //sqlite3_bind_int(res, idx, agent->id);
     } else if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -786,29 +786,22 @@ int refresh_verifier_database_entry(verifier_database *tpa){
     
     sqlite3_finalize(res);
     sqlite3_close(db);
-    //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
+    //printf("%d %s %s\n", agent->id, agent->pcr10_old_sha1, agent->pcr10_old_sha256);
     return 0;
 
 }
 
-int save_pcr10(verifier_database *tpa){
+int save_pcr10(agent_list *agent){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE tpa SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, timestamp = @tm, resetCount =@resetCount, byte_rcv =@bytercv WHERE id = @id ";
+    char *sql = "UPDATE agents SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
     int idx, idx2, idx3, idx4, idx5, idx6;
     int step;
-    time_t ltime;
-    struct tm *t;
-    char buff [50];
-    ltime = time(NULL);
-    t = localtime(&ltime);
-
-    snprintf(buff, 50, "%d %d %d %d %d %d %d", t->tm_year, t->tm_mon, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec, t->tm_isdst);
 
     printf("Save PCR10 \n");
-    int rc = sqlite3_open_v2("file:/home/ale/Scrivania/lemon/certs/tpa.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the tpa  database, error %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -818,22 +811,19 @@ int save_pcr10(verifier_database *tpa){
     if (rc == SQLITE_OK) {
         //Set the parametrized input
         idx = sqlite3_bind_parameter_index(res, "@sha256");
-        sqlite3_bind_text(res, idx, tpa->pcr10_old_sha256, strlen(tpa->pcr10_old_sha256), NULL);
+        sqlite3_bind_text(res, idx, agent->pcr10_sha256, strlen(agent->pcr10_sha256), NULL);
 
         idx2 = sqlite3_bind_parameter_index(res, "@sha1");
-        sqlite3_bind_text(res, idx2, tpa->pcr10_old_sha1, strlen(tpa->pcr10_old_sha1), NULL);
+        sqlite3_bind_text(res, idx2, agent->pcr10_sha1, strlen(agent->pcr10_sha1), NULL);
 
-        idx3 = sqlite3_bind_parameter_index(res, "@id");
-        sqlite3_bind_int(res, idx3, tpa->id);
-
-        idx4 = sqlite3_bind_parameter_index(res, "@tm");
-        sqlite3_bind_text(res, idx4, buff, strlen(buff), NULL);
+        idx3 = sqlite3_bind_parameter_index(res, "@uuid");
+        sqlite3_bind_text(res, idx3, agent->uuid, -1, NULL);
 
         idx5 = sqlite3_bind_parameter_index(res, "@resetCount");
-        sqlite3_bind_int(res, idx5, tpa->resetCount);
+        sqlite3_bind_int(res, idx5, agent->resetCount);
 
         idx6 = sqlite3_bind_parameter_index(res, "@bytercv");
-        sqlite3_bind_int(res, idx6, tpa->byte_rcv);
+        sqlite3_bind_int(res, idx6, agent->byte_rcv);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -843,7 +833,6 @@ int save_pcr10(verifier_database *tpa){
     //Execute the sql query
     step = sqlite3_step(res);
     if (step == SQLITE_ROW) {
-        //Golden value found, IMA row OK
         fprintf(stderr, "ERROR: error sql insert pcr10\n");
         //printf("%s\n", sqlite3_column_text(res, 1));
         sqlite3_finalize(res);
@@ -853,12 +842,11 @@ int save_pcr10(verifier_database *tpa){
     } 
     sqlite3_finalize(res);
     sqlite3_close(db);
-    //printf("%d %s %s\n", tpa->id, tpa->pcr10_old_sha1, tpa->pcr10_old_sha256);
     return 0;
 
 }
 
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tpa){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -881,28 +869,28 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, verifier_database *tp
         return -1;
     }
 
-    if(tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL && !rply->wholeLog){
+    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL && !rply->wholeLog){
         //Old PCR 10 values to use, convert to byte
-        tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha256, &sz, pcr10_sha256);
-        tpm2_util_bin_from_hex_or_file(tpa->pcr10_old_sha1, &sz1, pcr10_sha1);
+        tpm2_util_bin_from_hex_or_file(agent->pcr10_sha256, &sz, pcr10_sha256);
+        tpm2_util_bin_from_hex_or_file(agent->pcr10_sha1, &sz1, pcr10_sha1);
         //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         //printf("\n");
     } else {
-        if(tpa->pcr10_old_sha256 == NULL){
-            tpa->pcr10_old_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
-            tpa->pcr10_old_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+        if(agent->pcr10_sha256 == NULL){
+            agent->pcr10_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
+            agent->pcr10_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
         }
         //No old PCR10 values, allocates space for saving them
 
     }
 
-    /*No new event in the TPA*/
-    if(rply->ima_log_size == 0 && tpa->pcr10_old_sha256 != NULL && tpa->pcr10_old_sha1 != NULL){
+    /*No new event in the agent*/
+    if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
         fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one:\n");
         goto PCR10;
 
-    } else if (rply->ima_log_size == 0 && tpa->pcr10_old_sha256 == NULL && tpa->pcr10_old_sha1 == NULL) {
-        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 in the tpa db error\n");
+    } else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
+        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 in the agent db error\n");
         goto error;
     }
     
@@ -981,21 +969,21 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
         
-        //refresh verifier_database entry
-        refresh_verifier_database_entry(tpa);
+        //refresh_verifier_database_entry
+        refresh_verifier_database_entry(agent);
         goto unknown;
     }
 
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
 
     //Convert PCR10 to save it
-    bin_2_hash(tpa->pcr10_old_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    bin_2_hash(tpa->pcr10_old_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
     //Update the number of recievd bytes
-    tpa->byte_rcv += rply->ima_log_size;
+    agent->byte_rcv += rply->ima_log_size;
     //Store the PCRs10 for future incremental IMA log
-    ret = save_pcr10(tpa);
+    ret = save_pcr10(agent);
     if(ret == -1)
         goto error;
 

@@ -929,6 +929,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     return;
                 }
             }
+
             /* create secret */
             if (create_secret(secret) != 0){
                 fprintf(stderr, "ERROR: create_secret failed\n");
@@ -1237,16 +1238,6 @@ static int init_database(void){
         PRIMARY KEY (uuid)\
     );";
 
-/*     char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
-        uuid text NOT NULL,\
-        ak_pub text NOT NULL,\
-        ip text NOT NULL,\
-        validity INT NOT NULL,\
-        confirmed INT NOT NULL,\
-        PRIMARY KEY (uuid, ak_pub)\
-        FOREIGN KEY (uuid) REFERENCES attesters_ek_certs\
-    );"; */
-
     char *sql2 = "CREATE TABLE IF NOT EXISTS attesters_credentials (\
         uuid text NOT NULL,\
         ak_pub text NOT NULL,\
@@ -1254,6 +1245,7 @@ static int init_database(void){
         validity INT NOT NULL,\
         confirmed INT NOT NULL,\
         PRIMARY KEY (uuid, ak_pub)\
+        FOREIGN KEY (uuid) REFERENCES attesters_ek_certs\
     );";
 
     char *sql3 = "CREATE TABLE IF NOT EXISTS verifiers (\
