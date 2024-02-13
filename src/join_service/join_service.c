@@ -15,6 +15,7 @@
 #include "x509.h"
 #include "common.h"
 #include "tpm_makecredential.h"
+#include "mqtt_client.h"
 
 #define VALID 1
 #define REVOKED 0
@@ -23,6 +24,8 @@ static unsigned char secret [B64ENCODE_OUT_SAFESIZE(SECRET_SIZE)];
 static int verifier_num = 0;
 static int last_requested_verifier = 0;
 static struct join_service_conf js_config;
+struct mg_connection *c_mqtt;
+struct mg_mgr mgr_mqtt;
 
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
@@ -252,8 +255,6 @@ void *queue_manager(void *vargp){
         printf("INFO: popped uuid: %s\n", uuid);
         fflush(stdout);
 
-        char ip[MAX_BUF];
-
         /*Uuid and AK pem and ip address*/
         struct ak_db_entry *ak_entry = retrieve_ak(uuid, NULL);
         int id = get_verifier_id();
@@ -261,18 +262,26 @@ void *queue_manager(void *vargp){
             fprintf(stderr, "ERROR: could not get verifier id\n");
             continue;
         } */
-
         
-        get_verifier_ip(id, ip);
+        //get_verifier_ip(id, ip);
+        char topic[25];
+        sprintf(topic, "attest/%d", id);
+        char object[4096];
 
-        snprintf(s_conn, 280, "http://%s", ip);
+        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+
+        size_t object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+
+        mqtt_publish(c_mqtt, topic, object);
+
+        /* snprintf(s_conn, 280, "http://%s", ip);
 
         c = mg_http_connect(&mgr, s_conn, single_attestation, (void *) ak_entry);
         if (c == NULL) {
             MG_ERROR(("CLIENT cant' open a connection"));
             continue;
         }
-        while (stop_polling) mg_mgr_poll(&mgr, 10); //10ms
+        while (stop_polling) mg_mgr_poll(&mgr, 10); //10ms */
     }
     //pthread_mutex_unlock(&mutex);
 
@@ -1050,7 +1059,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             /* reply the agent  */
             mg_http_reply(c, OK, APPLICATION_JSON,
                         "OK\n");
-            MG_INFO(("%s %s %d", POST, API_JOIN, OK));
+            MG_INFO(("%s %s %d", POST, API_CONFIRM_CREDENTIAL, OK));
             c->is_draining = 1;
             /* copy agent data */
             //memcpy(uuid, ak_entry.uuid, strlen((char *) uuid));
@@ -1323,6 +1332,38 @@ static int init_database(void){
     return 0;
 }
 
+static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
+  if (ev == MG_EV_OPEN) {
+    MG_INFO(("%lu CREATED", c->id));
+    // c->is_hexdumping = 1;
+  } else if (ev == MG_EV_ERROR) {
+    // On error, log error message
+    MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+  } else if (ev == MG_EV_CONNECT) {
+    // If target URL is SSL/TLS, command client connection to use TLS
+    /* if (mg_url_is_ssl(s_url)) {
+      struct mg_tls_opts opts = {.ca = mg_str("ca.pem")};
+      mg_tls_init(c, &opts);
+    } */
+  } else if (ev == MG_EV_MQTT_OPEN) {
+    // MQTT connect is successful
+    /* struct mg_str subt = mg_str(s_sub_topic);
+    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
+    MG_INFO(("%lu CONNECTED", c->id));
+    
+    
+  } else if (ev == MG_EV_MQTT_MSG) {
+    // When we get echo response, print it
+    struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+    MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
+             mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
+  } else if (ev == MG_EV_CLOSE) {
+    MG_INFO(("%lu CLOSED", c->id));
+    //s_conn = NULL;  // Mark that we're closed
+  }
+  (void) c->fn_data;
+}
+
 int main(int argc, char *argv[]) {
     struct mg_mgr mgr;
     struct mg_connection *c;
@@ -1330,6 +1371,9 @@ int main(int argc, char *argv[]) {
     char url[MAX_BUF];
     pthread_t thread_id;  // queue manager thread
     stop_event = 0;
+
+    mg_mgr_init(&mgr_mqtt);
+    c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler);
 
     int ret = pthread_create(&thread_id, NULL, queue_manager, NULL);
     if(ret != 0){
@@ -1390,7 +1434,11 @@ int main(int argc, char *argv[]) {
 
     MG_INFO(("Listening on http://%s:%d", js_config.ip, js_config.port));
 
-    for (;;) mg_mgr_poll(&mgr, 1000);                         // Event loop
+    for (;;) {
+        mg_mgr_poll(&mgr, 1000);    //http
+        mg_mgr_poll(&mgr_mqtt, 1000);   //mqtt
+    }
+
     mg_mgr_free(&mgr);                                        // Cleanup
     return 0;
 }
