@@ -78,7 +78,7 @@ typedef struct  {
     char ak_pub[MAX_BUF];
     char uuid[MAX_BUF];
     char gv_path[MAX_BUF];
-    bool stop;
+    bool running;
     char *tls_path;//tOGLIERE??
     char* pcr10_sha1;
     char* pcr10_sha256;
@@ -86,6 +86,7 @@ typedef struct  {
     char ca[MAX_BUF]; //tOGLIERE??
     uint32_t resetCount;
     uint32_t byte_rcv;
+    int attestation_value;
     struct agent_list * next_ptr;
 } agent_list;
 

@@ -42,12 +42,13 @@ int nonce_create(uint8_t *nonce)
         fprintf(stderr, "ERROR: random generation error\n");
         return -1;
     }
-#ifdef VERBOSE
+//#ifdef VERBOSE
     printf("NONCE created:");
     for(int i= 0; i < NONCE_SIZE; i++)
         printf("%02X", nonce[i]);
     printf("\n"); 
-#endif
+//#endif
+    fflush(stdout);
     return 0;
 }
 
@@ -229,7 +230,7 @@ int PCR9softbindig_verify(tpm_challenge_reply *rply, agent_list * agent_data)
 
 int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
-    char handle[11]= "0x81000004";
+    char handle[27]= "/var/lemon/attester/ak.ctx";
     TPML_PCR_SELECTION pcr_select;
     int ret;
     tpm2_algorithm algs;
@@ -313,7 +314,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
 
     rply->sig = copy_signature(&(rply->sig_size));
     if(rply->sig == NULL) return -1;
-    //print_signature(&(rply->sig_size), rply->sig);
+    print_signature(&(rply->sig_size), rply->sig);
 
     //Free used data 
     ret = tpm2_quote_free();
@@ -383,7 +384,8 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
     TPML_PCR_SELECTION pcr_select;
     if( rply == NULL || ak_pub == NULL) return -1;
 
-    bio = BIO_new_file(ak_pub, "rb");
+   // bio = BIO_new(, "rb");
+    bio = BIO_new_mem_buf((void *) ak_pub, strlen(ak_pub));
     if (!bio) {
         fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", ak_pub, ERR_error_string(ERR_get_error(), NULL));
         return -1;
@@ -791,15 +793,15 @@ int refresh_verifier_database_entry(agent_list *agent){
 
 }
 
-int save_pcr10(agent_list *agent){
+int save_pcr10(agent_list *agent, char * db_path){
     sqlite3_stmt *res;
     sqlite3 *db;
-    char *sql = "UPDATE agents SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
+    char *sql = "UPDATE attesters SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
     int idx, idx2, idx3, idx4, idx5, idx6;
     int step;
 
     printf("Save PCR10 \n");
-    int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
+    int rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         fprintf(stderr, "ERROR: Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
@@ -846,7 +848,7 @@ int save_pcr10(agent_list *agent){
 
 }
 
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, char * db_path){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -983,7 +985,7 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     //Update the number of recievd bytes
     agent->byte_rcv += rply->ima_log_size;
     //Store the PCRs10 for future incremental IMA log
-    ret = save_pcr10(agent);
+    ret = save_pcr10(agent, db_path);
     if(ret == -1)
         goto error;
 

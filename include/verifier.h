@@ -24,9 +24,9 @@
 /* APIs */
 #define API_ATTEST "/request_attestation"
 
-int ra_explicit_challenge_create(tpm_challenge *chl, agent_list *tpa_data);
-int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *tpa_data);
-int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *tpa_data);
+int ra_explicit_challenge_create(tpm_challenge *chl, agent_list *agent_data);
+int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path);
+int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path);
 void ra_free(tpm_challenge_reply *rpl, agent_list *tpa_data);
 agent_list * agent_list_new(void);
 agent_list * agent_list_last(agent_list * ptr);

@@ -32,24 +32,27 @@ void print_sent_data(tpm_challenge_reply *rpl);
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
-#ifdef DEBUG
+///#ifdef DEBUG
   printf("load challenge request\n");
   printf("%s\n", hm->body.ptr);
-#endif
+  printf("%d\n", hm->body.len);
+//#endif
+  size_t dec = B64DECODE_OUT_SAFESIZE(hm->body.len);
 
-  mg_base64_decode(hm->body.ptr, hm->body.len, (char *) chl->nonce, NONCE_SIZE);
-  if(chl == NULL && chl->nonce == NULL){
+  size_t sz = mg_base64_decode(hm->body.ptr, hm->body.len,(char *) chl, dec);
+  if(sz == 0){
     printf("Transmission challenge data error \n");
     return -1;
   }
 
-#ifdef DEBUG
+//#ifdef DEBUG
   printf("NONCE Received:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
     printf("%02X", chl->nonce[i]);
   printf("\n");
   printf("Send all IMA LOG? %d\n", chl->send_wholeLog);
-#endif
+  printf("frombyte %d\n", chl->send_from_byte);
+//#endif
 
   return 0;
 } 
@@ -128,9 +131,9 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   free(byte_buff);
   free(b64_buff);
 
-#ifdef DEBUG
+//#ifdef DEBUG
   print_sent_data(rpl);
-#endif     
+//#endif     
 
   return 0;
 }
@@ -171,6 +174,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         return;
       }
 
+      printf("tpa_explicit_challenge\n");
+
       //Compute the challenge
       if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
@@ -179,6 +184,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         tpa_free(&rpl);
         return;
       }
+
+      printf("send_challenge_reply\n");
 
       //Send the challenge reply
       if (send_challenge_reply(c, &rpl) != 0){

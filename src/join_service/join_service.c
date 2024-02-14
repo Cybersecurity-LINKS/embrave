@@ -989,11 +989,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
             insert_ak(&ak);
 
-            pthread_mutex_lock(&mutex);
-            push_uuid(ak.uuid);
-            pthread_mutex_unlock(&mutex);
-            pthread_cond_signal(&cond);
-
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
@@ -1062,14 +1057,12 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_CONFIRM_CREDENTIAL, OK));
             c->is_draining = 1;
-            /* copy agent data */
-            //memcpy(uuid, ak_entry.uuid, strlen((char *) uuid));
-           // memcpy(ak_pub, ak_entry.ak_pem, strlen((char *) ak_pub));
-            /* notify a verifier */
-            //TODO
-           // if (notify_verifier(get_verifier_id(), &ak_entry)){
-//
-            //}
+
+            pthread_mutex_lock(&mutex);
+            push_uuid((char *) uuid);
+            pthread_mutex_unlock(&mutex);
+            pthread_cond_signal(&cond);
+
             /* notify all verifiers?? */
             free(secret_buff);
             free(secret_b64);

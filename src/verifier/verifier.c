@@ -22,7 +22,7 @@ int ra_explicit_challenge_create(tpm_challenge *chl, agent_list *agent_data)
   return nonce_create(chl->nonce);
 }
 
-int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
+int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path)
 {
   int ret;
   sqlite3 *db;
@@ -73,7 +73,7 @@ int ra_explicit_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_dat
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db, agent_data);
+  ret = verify_ima_log(rpl, db, agent_data, db_path);
   if (ret == -1){
     printf("Untrusted agent\n");
   } else if (ret == -2){
@@ -92,7 +92,7 @@ end:
   return ret;
 }
 
-int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *agent_data)
+int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path)
 {
   int ret;
   sqlite3 *db;
@@ -152,7 +152,7 @@ int ra_explicit_challenge_verify_TLS(tpm_challenge_reply *rpl, agent_list *agent
   }
 
   //verify IMA log
-  ret = verify_ima_log(rpl, db, agent_data);
+  ret = verify_ima_log(rpl, db, agent_data, db_path);
   if (ret == -1){
     printf("Untrusted agent\n");
   } else if (ret == -2){

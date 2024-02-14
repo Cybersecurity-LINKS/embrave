@@ -34,7 +34,8 @@ int id;
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
 void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
-
+void creat_attestation_thread(agent_list * agent);
+int add_agent_data(agent_list * ptr);
 // Load the AK path, the TLS certificate, the last PCR10 if present, 
 // and the goldenvalue db path for a certain agent
 
@@ -70,10 +71,70 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("%lu CONNECTED", c->id));
     
   } else if (ev == MG_EV_MQTT_MSG) {
+
     // When we get echo response, print it
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
     MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
               mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
+
+            /*
+          {
+            "uuid": "aaaaaaaaa",
+            "ip_port": "aaaaaaaaa",
+            "ak_pub_b64": "aaaaaaaa"
+          }
+      */
+
+    char* uuid = mg_json_get_str(mm->data, "$.uuid");
+      char* ak_pub = mg_json_get_str(mm->data, "$.ak_pem");
+      char* ip_addr = mg_json_get_str(mm->data, "$.ip_addr");
+
+      agent_list *last_ptr = agents;
+
+      last_ptr = agent_list_last(last_ptr);
+      
+      last_ptr = agent_list_new();
+      
+      /* Get attester data */
+      strcpy(last_ptr->ip_addr, ip_addr);
+      strcpy(last_ptr->ak_pub, ak_pub);
+      strcpy(last_ptr->uuid, uuid);
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
+
+      printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
+
+      /*add attester dato to verifier db*/
+      add_agent_data(last_ptr);
+
+      creat_attestation_thread(last_ptr);
+
+      
+    
+
+      mg_http_reply(c, 200, NULL, "\n");
+
+      //#endif
+
+     
+
+     
+
+      free(uuid);
+      free(ak_pub);
+      free(ip_addr);
+
+
+
+
+
+
+
+
+
+
+
+
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
     //s_conn = NULL;  // Mark that we're closed
@@ -287,7 +348,7 @@ int add_agent_data(agent_list * ptr){
  */
 
 // Print HTTP response and signal that we're done
-static void fn(struct mg_connection *c, int ev, void *ev_data) {
+static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -303,14 +364,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
     //If PCRs10 from agent db are null, ask all ima log
-    if(send_all_log){
+   // if(send_all_log){
       chl.send_wholeLog = 1;
-    } else {
-      chl.send_wholeLog = 0;
-    }
+    //} else {
+      //chl.send_wholeLog = 0;
+   // }
 
     //Create nonce
-    if(ra_explicit_challenge_create(&chl, &agent_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, agent_data)!= 0){
       Continue = false;
       return;
     }
@@ -331,6 +392,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       buff_length,
       buff
     );
+    printf("CHALLANGE %s\n", buff);
+    fflush(stdout);
 
   } else if (ev == MG_EV_HTTP_MSG) {
     agent_list *agent_data = (agent_list *) c->fn_data;
@@ -340,7 +403,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if(n < 0){
       end = true;
       verify_val = n;
-      ra_free(&rpl, &agent_data);
+      ra_free(&rpl, agent_data);
       return;
     } 
 
@@ -348,10 +411,10 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = ra_explicit_challenge_verify(&rpl, &agent_data);
+    verify_val = ra_explicit_challenge_verify(&rpl, agent_data, verifier_config.db);
 
     end = true;
-    ra_free(&rpl, &agent_data);
+    ra_free(&rpl, agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -387,7 +450,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     }
 
     //Create nonce
-    if(ra_explicit_challenge_create(&chl, &agent_data)!= 0){
+    if(ra_explicit_challenge_create(&chl, agent_data)!= 0){
       Continue = false;
       return;
     }
@@ -417,7 +480,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     if(n < 0){
       end = true;
       verify_val = n;
-      ra_free(&rpl, &agent_data);
+      ra_free(&rpl, agent_data);
       return;
     } 
 
@@ -425,10 +488,10 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = ra_explicit_challenge_verify_TLS(&rpl, &agent_data);
+    verify_val = ra_explicit_challenge_verify_TLS(&rpl, agent_data, verifier_config.db);
 
     end = true;
-    ra_free(&rpl, &agent_data);
+    ra_free(&rpl, agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -490,18 +553,27 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     memcpy(&rpl->wholeLog, byte_buff + i, sizeof(uint8_t));
     i += sizeof(uint8_t);
   }
-
+  print_data(rpl) ;
   return 0;
 
 }
 
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
-  *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff, *buff_length);
+  size_t sz = B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge));
+
+  printf("CHALLANGE %d %d\n", chl->send_wholeLog, chl->send_from_byte);
+  fflush(stdout);
+
+  *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff, sz);
   if(buff_length == 0){
     printf("mg_base64_encode error\n");
     return -1;
   }
 
+
+  printf("buff_length %d\n", *buff_length);
+  printf("buff_length %d\n", strlen(buff));
+  fflush(stdout);
   return 0;
 }
 
@@ -571,18 +643,10 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+/*  if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
       
-      //#ifdef DEBUG
-      //printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
-      /* Read post  */
-        /*
-          {
-            "uuid": "aaaaaaaaa",
-            "ip_port": "aaaaaaaaa",
-            "ak_pub_b64": "aaaaaaaa"
-          }
-      */
+
+      
 
       char* uuid = mg_json_get_str(hm->body, "$.uuid");
       char* ak_pub = mg_json_get_str(hm->body, "$.ak_pem");
@@ -594,16 +658,19 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
       
       last_ptr = agent_list_new();
       
-      /* Get attester data */
+      // Get attester data 
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
       strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
 
       printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
 
-      /*add attester dato to verifier db*/
+      //add attester dato to verifier db
       add_agent_data(last_ptr);
+
+      creat_attestation_thread(last_ptr);
 
       
     
@@ -618,12 +685,67 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
 
       free(uuid);
       free(ak_pub);
-      free(ip_addr);
+      free(ip_addr); 
     }
     else {
       mg_http_reply(c, 500, NULL, "\n");
-    }
+    }*/
   }
+}
+
+void *attest_agent(void *arg) {
+  agent_list * agent = (agent_list *) arg;
+  struct mg_mgr mgr;
+  struct mg_connection *c;
+  //char s_conn[280];
+  bool continue_polling = true;
+  
+  mg_mgr_init(&mgr);
+
+  //snprintf(s_conn, 280, "http://%s", agent->ip_addr);
+  //printf("%s\n", agent->ip_addr);
+  //fflush(stdout);
+  agent->byte_rcv = 0;
+  agent->pcr10_sha256 = NULL;
+  while (agent->running) {
+    c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
+    if (c == NULL) {
+      MG_ERROR(("CLIENT cant' open a connection"));
+      continue;
+    }
+    while (continue_polling) mg_mgr_poll(&mgr, 100); //10ms
+        
+    printf("QUIII NO...\n");
+    fflush(stdout);
+
+
+    sleep(2); // 1 secondo di sleep
+    
+  }
+
+  fprintf(stdout, "INFO: attestation thread stopped for agent uuid:%s\n", agent->uuid);
+  fflush(stdout);
+  pthread_exit(NULL);
+}
+
+
+
+void creat_attestation_thread(agent_list * agent){
+  pthread_t thread;
+  pthread_attr_t attr;
+
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+  int result = pthread_create(&thread, &attr, attest_agent, (void *) agent);
+  if (result != 0) {
+    fprintf(stderr, "ERROR: pthread_create\n");
+    exit(EXIT_FAILURE);
+  }
+
+  pthread_attr_destroy(&attr);
+  fprintf(stdout, "INFO: attestation thread created for agent uuid:%s\n", agent->uuid);
+
 }
 
 static int init_database(void){
@@ -755,8 +877,8 @@ int main(int argc, char *argv[]) {
   Continue = true;
 
   while (Continue) {
-    mg_mgr_poll(&mgr, 1);     
-    mg_mgr_poll(&mgr_mqtt, 1000);
+    mg_mgr_poll(&mgr, 100);     
+    mg_mgr_poll(&mgr_mqtt, 100);
   }
 
   mg_mgr_free(&mgr);        
@@ -786,7 +908,7 @@ void print_data(tpm_challenge_reply *rpl){
 
   printf("IMA log size recived:%d\n", rpl->ima_log_size);
   printf("IMA whole log %d\n", rpl->wholeLog);
-  
+  fflush(stdin);
 }
 
 
