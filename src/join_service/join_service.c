@@ -1365,7 +1365,7 @@ int main(int argc, char *argv[]) {
     stop_event = 0;
 
     mg_mgr_init(&mgr_mqtt);
-    c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler);
+    c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "join_service");
 
     int ret = pthread_create(&thread_id, NULL, queue_manager, NULL);
     if(ret != 0){
