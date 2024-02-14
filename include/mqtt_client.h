@@ -12,7 +12,7 @@ const char *s_pub_topic = "mg/clnt/test"; */
 
 void mqtt_publish(struct mg_connection *c, char *topic, char *message);
 void mqtt_subscribe(struct mg_connection *c, char *topic);
-struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn);
+struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name);
 void timer_fn(void *arg);
 
 #endif

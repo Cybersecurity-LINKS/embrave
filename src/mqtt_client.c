@@ -42,11 +42,11 @@ static void fn_connect(struct mg_connection *c, int ev, void *ev_data) {
 }
 
 // Timer function - recreate client connection if it is closed
-struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn) {
+struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name) {
   //struct mg_mgr *mgr = (struct mg_mgr *) arg;
   struct mg_connection *conn;
 
-  struct mg_mqtt_opts opts = {.client_id = mg_str("join_service")};
+  struct mg_mqtt_opts opts = {.client_id = mg_str(client_name)};
   conn = mg_mqtt_connect(mgr, s_url, &opts, fn, NULL);
 
   return conn;
