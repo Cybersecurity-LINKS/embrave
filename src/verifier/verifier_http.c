@@ -69,7 +69,6 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
     MG_INFO(("%lu CONNECTED", c->id));
     
-    
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
@@ -678,6 +677,9 @@ int main(int argc, char *argv[]) {
   struct mg_connection *c;
   char s_conn[250];
   struct stat st = {0};
+
+  mg_mgr_init(&mgr_mqtt);
+  c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "verifier");
   
   if (stat("/var/lemon", &st) == -1) {
     if(!mkdir("/var/lemon", 0711)) {
@@ -697,8 +699,6 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "ERROR: cannot create /var/lemon/verifier directory\n");
     }
   }
-
-  c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler);
 
   /* read configuration from cong file */
   if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
