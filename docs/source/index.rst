@@ -7,12 +7,13 @@ Welcome to lemon's documentation!
 =================================
 
 .. toctree::
-   overview
-   protocols
-   quick_start
    :maxdepth: 2
    :caption: Contents:
 
+   overview
+   quick_start
+   protocols
+   documentation
 
 
 .. Indices and tables

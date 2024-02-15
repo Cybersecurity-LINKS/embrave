@@ -19,11 +19,10 @@ TPM->attester_agent: (EK_handle, EK_pub)
 attester_agent->TPM: Load AK
 TPM->attester_agent: (AK_handle, AK_pub)
 attester_agent->TPM: tpm_quote (PCRs, nonce)
-TPM->attester_agent: sign(AK_priv, Quote)
+TPM->attester_agent: Quote
 attester_agent<-attester_agent: Collect IMA log
-attester_agent->verifier: sign(AK_priv, Quote), IMA log
-verifier->verifier: Verfiy quote signature
-verifier->verifier: Verify IMA log integrity
+attester_agent->verifier: Quote, IMA log
+verifier->verifier: Verfiy quote
 verifier->verifier: Veryfy IMA log against the whitelist
 group if Verification fails
   verifier -> join_service: Notify the failure

@@ -12,27 +12,27 @@ participant "Join\nService" as join_service
 
 == LAK creation ==
 TPM<-attester_agent: tpm_createak
-TPM<-TPM:  Generate LAK
+TPM<-TPM:  Generate AK
 
 == Start Join protocol ==
 TPM<-attester_agent: request EK_cert
 TPM->attester_agent: EK_cert
-attester_agent->join_service: request to join, LAK csr, EK cert
+attester_agent->join_service: request to join, AK pub, AK name, EK cert
 note right
 The attester notifies its presence.
 The join server responds with a challenge,
 or OK if already in its group
 end note
 
-alt alredy joined
-  join_service->attester_agent: OK
-else join
+' alt alredy joined
+'  join_service->attester_agent: OK
+' else join
   join_service->join_service: validate EK_cert
   note right
     TPM is authentic
     (validation of the EK certificate OK)
   end note
-  join_service->join_service: tpm_makecredential\nchallenge = enc(EK_pub, nonce, LAK_pub)
+  join_service->join_service: challenge = tpm_makecredential(EK_pub, nonce, AK_name)
   attester_agent<-join_service: challenge
   TPM<-attester_agent: tpm_activatecredential
   note left
@@ -41,11 +41,11 @@ else join
     and verifies that they are in the
     same TPM
   end note
-  TPM<-TPM: dec(EK_priv, challenge)
+  TPM<-TPM: activate_credential(EK_priv, challenge)
   TPM->attester_agent: nonce
   attester_agent->join_service: nonce
-  join_service->join_service: Add LAK to DB
+  join_service->join_service: Add AK to DB
   join_service->Verifiers: notify verifiers of new agent in the group
-end
+' end
 
 @enduml

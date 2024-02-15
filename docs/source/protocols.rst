@@ -12,9 +12,3 @@ Remote Attestation
 
 .. image:: ../protocols/remote_attestation.svg
     :align: center
-
-Revocation
-----------
-
-.. image:: ../protocols/revocation.svg
-    :align: center
