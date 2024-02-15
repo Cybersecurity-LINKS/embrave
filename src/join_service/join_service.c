@@ -262,7 +262,7 @@ void *queue_manager(void *vargp){
         sprintf(topic, "attest/%d", id);
         char object[4096];
 
-        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+        //fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
 
         snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
@@ -314,7 +314,7 @@ int create_secret(unsigned char * secret)
     return 0;
 }
 
-static int set_agent_data(unsigned char *ak, char *uuid){
+static int set_agent_data(char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
     
@@ -325,17 +325,12 @@ static int set_agent_data(unsigned char *ak, char *uuid){
         sqlite3_close(db);
         return 1;
     }
-    fprintf(stderr, "ERROR: ak: %s\n", ak);
-    char *sql = "UPDATE attesters_credentials SET confirmed = 1, validity = 1, ak_pub = ? WHERE uuid = ?;";
+
+    char *sql = "UPDATE attesters_credentials SET confirmed = 1, validity = 1 WHERE uuid = ?;";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, (char *) ak, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 2, uuid, -1, SQLITE_TRANSIENT);
+        rc = sqlite3_bind_text(res, 1, uuid, -1, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK ) {
             sqlite3_close(db);
             return -1;
@@ -347,10 +342,10 @@ static int set_agent_data(unsigned char *ak, char *uuid){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: AK succesfully updated\n");
+        fprintf(stdout, "INFO: AK confirmed and validity, succesfully updated\n");
     }
     else {
-        fprintf(stderr, "ERROR: could not update AK\n");
+        fprintf(stderr, "ERROR: could not update confirmed and validity of AK\n");
     }
 
     sqlite3_finalize(res);
@@ -358,146 +353,6 @@ static int set_agent_data(unsigned char *ak, char *uuid){
     
     return 0;
 }
-
-/* static int set_ak_confirmed(unsigned char *ak, char *uuid){
-    sqlite3 *db;
-    char *err_msg = 0;
-    sqlite3_stmt *res;
-    
-    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-    
-    if (rc != SQLITE_OK) {        
-        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return 1;
-    }
-
-    char *sql = "UPDATE attesters_credentials SET confirmed = 1 WHERE ak_pub = ? AND uuid = ?;";
-
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, ak, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 2, uuid, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            return -1;
-        }
-    } else {
-        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
-    }
-        
-    int step = sqlite3_step(res);
-    
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: AK succesfully updated\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not update AK\n");
-    }
-
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    
-    return 0;
-}
-
-static int set_ak_valid(unsigned char *ak, char *uuid){
-    sqlite3 *db;
-    char *err_msg = 0;
-    sqlite3_stmt *res;
-    
-    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-    
-    if (rc != SQLITE_OK) {        
-        fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return 1;
-    }
-
-    char *sql = "UPDATE attesters_credentials SET validity = 1 WHERE ak_pub = ? AND uuid = ?;";
-
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, ak, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 2, uuid, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            return -1;
-        }
-    } else {
-        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
-    }
-        
-    int step = sqlite3_step(res);
-    
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: AK succesfully updated (validity = 1)\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not update AK\n");
-    }
-
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    
-    return 0;
-} */
-
-/* responsibility of the caller to free the ek_db_entry */
-/* static struct ek_db_entry *retrieve_ek(char *uuid){
-    sqlite3 *db;
-    sqlite3_stmt *res;
-    struct ek_db_entry *ek_entry = NULL;
-    
-    int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
-    
-    if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return NULL;
-    }
-
-    char *sql = "SELECT * FROM attesters_ek_certs WHERE uuid = ?;";
-
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, uuid, -1, NULL);
-        if (rc != SQLITE_OK ) {
-            return NULL;
-        }
-    } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-    }
-        
-    int step = sqlite3_step(res);
-    
-    if (step == SQLITE_ROW) {
-        ek_entry = (struct ek_db_entry *) malloc(sizeof(struct ek_db_entry));
-        if(ek_entry == NULL) {
-            fprintf(stderr, "ERROR: could not allocate ek_db_struct\n");
-            return NULL;
-        }
-        strcpy(ek_entry->uuid, (char *) sqlite3_column_text(res, 0));
-        strcpy((char *) ek_entry->ek_cert, (char *) sqlite3_column_text(res, 1));
-    #ifdef DEBUG
-        printf("%s: ", sqlite3_column_text(res, 0));
-        printf("%s\n", sqlite3_column_text(res, 1));
-    #endif
-        fprintf(stdout, "INFO: EK already present in the db\n");
-    }
-    else {
-        fprintf(stdout, "INFO: no entry in the db with the specified UUID\n");
-    }
-
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    
-    return ek_entry;
-} */
 
 int check_verifier_presence(char *ip){
     sqlite3 *db;
@@ -655,10 +510,12 @@ int get_verifier_ip(int id, char * ip){
     return val;
 }
 
-static int insert_ak(struct ak_db_entry *ak_entry){
+static int save_ak(struct ak_db_entry *ak_entry){
     sqlite3 *db;
     sqlite3_stmt *res;
-    
+    char *sql = "SELECT * FROM attesters_credentials WHERE uuid=?;";
+    char *sql1 = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?);";
+    char *sql2 = "UPDATE attesters_credentials SET ak_pub=? WHERE uuid=?;";
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
@@ -667,46 +524,86 @@ static int insert_ak(struct ak_db_entry *ak_entry){
         return -1;
     }
 
-    char *sql = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?);";
-
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, ak_entry->uuid, -1, SQLITE_TRANSIENT);
+        rc = sqlite3_bind_text(res, 1, ak_entry->uuid, -1, NULL);
         if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 2, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 3, (char *) ak_entry->ip, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_int(res, 4, ak_entry->validity);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_int(res, 5, ak_entry->confirmed);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
             return -1;
         }
     } else {
-        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
-
+        
     int step = sqlite3_step(res);
+    sqlite3_finalize(res);
+    if (step != SQLITE_ROW){
+        //agent not present, add it
+        fprintf(stdout, "INFO: agent not present in the db, adding it\n");
+        rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
+        if (rc == SQLITE_OK) {
+            rc = sqlite3_bind_text(res, 1, ak_entry->uuid, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_text(res, 2, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_text(res, 3, (char *) ak_entry->ip, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_int(res, 4, ak_entry->validity);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_int(res, 5, ak_entry->confirmed);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+        } else {
+            fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        }
+
+        step = sqlite3_step(res);
+        
+        if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+            fprintf(stdout, "INFO: AK succesfully inserted into the db\n");
+        }
+        else {
+            fprintf(stderr, "ERROR: could not insert AK into the db\n");
+        }
+    } else {
+        //agent alredy present, update the ak value in db
+        rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
+        if (rc == SQLITE_OK) {
+            rc = sqlite3_bind_text(res, 1, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_text(res, 2, ak_entry->uuid, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+        } else {
+            fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        }
+        
+        step = sqlite3_step(res);
     
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: AK succesfully inserted into the db\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not insert AK into the db\n");
+        if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+            fprintf(stdout, "INFO: AK succesfully updated\n");
+        }
+        else {
+            fprintf(stderr, "ERROR: could not update AK\n");
+        }
     }
 
     sqlite3_finalize(res);
@@ -943,7 +840,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             }
             printf("\n"); */
 
-            //insert_ak(ak_pub_b64);
             char *mkcred_out_b64;
             size_t mkcred_out_b64_len = B64ENCODE_OUT_SAFESIZE(out_buf_size);
 
@@ -981,7 +877,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             ak.confirmed = 0;
             ak.validity = 0;
 
-            insert_ak(&ak);
+            save_ak(&ak);
 
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
@@ -1037,7 +933,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             }
 
             /* Set the AK in the database as confirmed (=1) and valid (=1)*/
-            if(set_agent_data(ak_pub, (char *) uuid) != 0){
+            if(set_agent_data((char *) uuid) != 0){
                 //TODO database error ??
                 free(secret_buff);
                 free(secret_b64);
