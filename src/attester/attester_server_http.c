@@ -33,11 +33,11 @@ void print_sent_data(tpm_challenge_reply *rpl);
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
-///#ifdef DEBUG
+#ifdef DEBUG
   printf("load challenge request\n");
   printf("%s\n", hm->body.ptr);
   printf("%d\n", hm->body.len);
-//#endif
+#endif
   size_t dec = B64DECODE_OUT_SAFESIZE(hm->body.len);
 
   size_t sz = mg_base64_decode(hm->body.ptr, hm->body.len,(char *) chl, dec);
@@ -46,14 +46,14 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
     return -1;
   }
 
-//#ifdef DEBUG
+#ifdef DEBUG
   printf("NONCE Received:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
     printf("%02X", chl->nonce[i]);
   printf("\n");
-  printf("Send all IMA LOG? %d\n", chl->send_wholeLog);
-  printf("frombyte %d\n", chl->send_from_byte);
-//#endif
+  printf("send all IMA LOG? %d\n", chl->send_wholeLog);
+  printf("from byte %d\n", chl->send_from_byte);
+#endif
 
   return 0;
 } 
@@ -132,9 +132,9 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
   free(byte_buff);
   free(b64_buff);
 
-//#ifdef DEBUG
+#ifdef DEBUG
   print_sent_data(rpl);
-//#endif     
+#endif     
 
   return 0;
 }
@@ -175,8 +175,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         return;
       }
 
-      printf("tpa_explicit_challenge\n");
-
       //Compute the challenge
       if ((tpm_challenge_create(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
@@ -185,8 +183,6 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         tpm_challenge_free(&rpl);
         return;
       }
-
-      printf("send_challenge_reply\n");
 
       //Send the challenge reply
       if (send_challenge_reply(c, &rpl) != 0){
@@ -204,8 +200,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
 }
 
 int create_request_body(size_t *object_length, char *object){
-
-  long size; //= ftell(fd_ek_cert); // get current file pointer
+  long size;
   struct stat st;
   size_t ret, tot_sz = 0;
   int fd, n;
@@ -227,7 +222,6 @@ int create_request_body(size_t *object_length, char *object){
   fd = fileno(fd_ek_cert);
   fstat(fd, &st);
   size = st.st_size;
-  /* fseek(fd_ek_cert, 0, SEEK_SET); // seek back to beginning of file */
 
   ek_cert = (unsigned char *) malloc(size);
   if(ek_cert == NULL){
@@ -271,7 +265,6 @@ int create_request_body(size_t *object_length, char *object){
   free(ek_cert);
 
   /* Read AK pub key */
-  /* fprintf(stdout, "%s\n", attester_config.ak_pub); */
   FILE *fd_ak_pub = fopen(attester_config.ak_pub, "r");
   if(fd_ak_pub == NULL){
     fprintf(stderr, "ERROR: AK pub key pem not present\n");
@@ -304,7 +297,7 @@ int create_request_body(size_t *object_length, char *object){
   }
 
   fclose(fd_ak_pub);
-  printf("AK pem : %s\n", ak_pub);
+ // printf("AK pem : %s\n", ak_pub);
 
   tot_sz += size;
   //Encode in b64
@@ -357,8 +350,6 @@ int create_request_body(size_t *object_length, char *object){
   free(ak_name);
   tot_sz += size_b64;
 
-  printf("AK name : %s\n", ak_name_b64);
-
   if(object == NULL) {
     fprintf(stderr, "ERROR: object buff is NULL\n");
     free(b64_buff_ek);
@@ -397,7 +388,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
     char object[4096];
 
     if (create_request_body(&object_length, object) != 0){
-      fprintf(stderr, "ERROR: cannot create the http body conatcting the join_service\n");
+      fprintf(stderr, "ERROR: cannot create the http body contacting the join_service\n");
       exit(-1);
     }
 
@@ -440,7 +431,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
 
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
-      printf("MKCRED_OUT leN:%d\n", mkcred_out_len);
+      //printf("MKCRED_OUT leN:%d\n", mkcred_out_len);
 
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
@@ -467,29 +458,11 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
 
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
       free(mkcred_out_b64);
-      //int ip_len = 0;
-      //char **ca_ip_addr = (char **) fn_data;
-      //*ca_ip_addr = (char *) malloc(ip_len + 1);
-
-      //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
-      //printf("ip_len = %d\n", ip_len);
-      //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
-      //(*ca_ip_addr)[ip_len] = '\0';
-      //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-      //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
-
-      //free(ca_ip_addr);
-      
-      /* response_body[hm->body.len] = '\0';
-      fprintf(stdout, "%s\n", response_body); */
 
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
 
     }
-
-    
-   
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }
@@ -512,14 +485,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     unsigned int secret_len, secret_b64_len;
     struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
     printf("MKCRED_OUT ptr after having it passed: %p\n", mkcred_out);
-
-    /* printf("MKCRED_OUT: ");
-    for(int i=0; i<mkcred_out->len; i++){
-      printf("%02x", mkcred_out->value[i]);
-    }
-    printf("\n"); */
-
-    //int rc = attester_activatecredential();
 
 #ifdef DEBUG
     printf("%s\n", object);
@@ -581,8 +546,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
 
     fclose(fd_ak_pub);
 
-    
-
     snprintf(object, 4096, "{\"secret_b64\":\"%s\",\"uuid\":\"%s\",\"ak_pub_b64\":\"%s\"}", secret_b64, attester_config.uuid, ak_pub);
 
     free(secret_b64);
@@ -607,21 +570,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
 //#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 //#endif
-    //int ip_len = 0;
-    //char **ca_ip_addr = (char **) fn_data;
-    //*ca_ip_addr = (char *) malloc(ip_len + 1);
-
-    //mg_json_get(hm->body, "$.ca_ip_addr", &ip_len);
-    //printf("ip_len = %d\n", ip_len);
-    //memcpy((void *) *ca_ip_addr, (void *) (hm->body, "$.ca_ip_addr"), ip_len);
-    //(*ca_ip_addr)[ip_len] = '\0';
-    //*ca_ip_addr = mg_json_get_str(hm->body, "$.ca_ip_addr");
-    //printf("ip_addr = %s\n", (char *) *ca_ip_addr);
-
-    //free(ca_ip_addr);
-    
-    /* response_body[hm->body.len] = '\0';
-    fprintf(stdout, "%s\n", response_body); */
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
@@ -672,9 +620,7 @@ static int join_procedure(){
     if(mkcred_out.value != NULL){
       free(mkcred_out.value);
     }
-    
   }
-
 
   return 0;
 }
@@ -715,10 +661,9 @@ int main(int argc, char *argv[]) {
   printf("attester_config->port: %d\n", attester_config.port);
   #endif
 
-  /* Check TPM keys and extend PCR9 */
+  /* Create TPM keys*/
   if((attester_init(&attester_config)) != 0) return -1;
  
-
   /* Perform the join procedure */
   if (join_procedure() != 0){
     fprintf(stderr, "ERROR: could not reach the join service\n");

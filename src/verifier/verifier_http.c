@@ -350,8 +350,6 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
       buff_length,
       buff
     );
-    //printf("CHALLANGE %s\n", buff);
-    //fflush(stdout);
 
   } else if (ev == MG_EV_HTTP_MSG) {
     agent_list *agent_data = (agent_list *) c->fn_data;
@@ -367,10 +365,6 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
       return;
     } 
 
-    //End timer 1
-    //get_finish_timer();
-    //print_timer(1);
-    
     agent_data->trust_value = ra_challenge_verify(&rpl, agent_data, verifier_config.db);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
@@ -397,8 +391,7 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     return -1;
   }
 
-  //Read the buffer
-  
+  /*Read the buffer*/
   //Signature
   memcpy(&rpl->sig_size, byte_buff,  sizeof(UINT16));
   i += sizeof(UINT16);
@@ -612,11 +605,6 @@ static int init_database(void){
                     byte_rcv INT,\
                     PRIMARY KEY (uuid, ak_pub)\
   );";
-
-  /*
-    tls_pem_path text NOT NULL,
-      ca_pem_path text NOT NULL,
-  */
 
   int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {

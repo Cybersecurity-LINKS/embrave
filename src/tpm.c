@@ -42,12 +42,12 @@ int nonce_create(uint8_t *nonce)
         fprintf(stderr, "ERROR: random generation error\n");
         return -1;
     }
-//#ifdef VERBOSE
+#ifdef DEBUG
     printf("NONCE created:");
     for(int i= 0; i < NONCE_SIZE; i++)
         printf("%02X", nonce[i]);
     printf("\n"); 
-//#endif
+#endif
     fflush(stdout);
     return 0;
 }
@@ -112,7 +112,6 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     //Set pcr to quote (all sha256) 
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
         fprintf(stderr, "ERROR: pcr_parse_selections failed\n");
-        /* printf("ERRORE QUI?\n"); */
         return -1;
     }
 
@@ -175,7 +174,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         return -1;
     }
 
-    //Copy he nonce
+    //Copy the nonce
     memcpy(&rply->nonce, &chl->nonce, NONCE_SIZE * sizeof(uint8_t));
 
     return 0;
@@ -205,7 +204,6 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
 }
 
 int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
-
     // Sanity check -- they should at least be same size!
     if (quoteDigest->size != pcr_digest->size) {
         fprintf(stderr, "ERROR: PCR values failed to match quote's digest!\n");
@@ -236,7 +234,6 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
     TPML_PCR_SELECTION pcr_select;
     if( rply == NULL || ak_pub == NULL) return -1;
 
-   // bio = BIO_new(, "rb");
     bio = BIO_new_mem_buf((void *) ak_pub, strlen(ak_pub));
     if (!bio) {
         fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", ak_pub, ERR_error_string(ERR_get_error(), NULL));
@@ -517,7 +514,6 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     char *sql = "SELECT * FROM golden_values WHERE name = @name and hash = @hash ";
     char *sql2 = "SELECT * FROM whitelist WHERE name = substr(@name, 1, length(name)) ";
     int idx, idx2;
-    //char *err_msg = 0;
     int step;
 
     //convert the sql statament 
@@ -602,7 +598,6 @@ int refresh_verifier_database_entry(agent_list *agent){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE agent SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
-    //int idx;
     int step;
     
     int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
@@ -615,32 +610,26 @@ int refresh_verifier_database_entry(agent_list *agent){
 
     //convert the sql statament
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        //Set the parametrized input
-        //idx = sqlite3_bind_parameter_index(res, "@id");
-        //sqlite3_bind_int(res, idx, agent->id);
-    } else if (rc != SQLITE_OK) {
+    if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
-        
     } 
 
     //Execute the sql query
     step = sqlite3_step(res);
-    if (step == SQLITE_ROW) {
-        //Golden value found, IMA row OK
-        fprintf(stderr, "ERROR: error sql update\n");
-        //printf("%s\n", sqlite3_column_text(res, 1));
+    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+        fprintf(stdout, "INFO: refresh_verifier_database_entry successfull\n");
+    }
+    else {
+        fprintf(stderr, "ERROR: could not update refresh_verifier_database_entry\n");
         sqlite3_finalize(res);
         sqlite3_close(db);
         return -1;
-        
-    } 
+    }
     
     sqlite3_finalize(res);
     sqlite3_close(db);
-    //printf("%d %s %s\n", agent->id, agent->pcr10_old_sha1, agent->pcr10_old_sha256);
     return 0;
 
 }
