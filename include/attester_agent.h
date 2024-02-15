@@ -22,7 +22,7 @@
 extern struct attester_conf attester_config;
 
 int attester_init(/* struct attester_conf* conf */);
-int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl);
-void tpa_free(tpm_challenge_reply *rpl);
+int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl);
+void tpm_challenge_free(tpm_challenge_reply *rpl);
 int attester_activatecredential(unsigned char *mkcred_out, unsigned int mkcred_out_len, unsigned char **secret, unsigned int *secret_len);
 #endif

@@ -1,6 +1,9 @@
 1
 scrivere la documentazione (README)
 notifica mqtt trusted o untrusted
+se untrusted togliere dai db
+gestire il caso di agent non raggiungibile (rifare attestazione x volte e poi untrusted)
+gestire il riavvio di verifier e del join service
 ima log incrementale
 integrity report
 rivedere tpm.c

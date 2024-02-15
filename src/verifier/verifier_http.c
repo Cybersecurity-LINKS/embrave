@@ -18,7 +18,7 @@
 
 static bool Continue = true;
 //static bool end = false;
-static int verify_val;
+//static int verify_val;
 static bool send_all_log = false;
 
 static tpm_challenge_reply rpl;
@@ -346,7 +346,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
    // }
 
     //Create nonce
-    if(ra_explicit_challenge_create(&chl, agent_data)!= 0){
+    if(ra_challenge_create(&chl, agent_data)!= 0){
       agent_data->continue_polling = false;
       return;
     }
@@ -367,8 +367,8 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
       buff_length,
       buff
     );
-    printf("CHALLANGE %s\n", buff);
-    fflush(stdout);
+    //printf("CHALLANGE %s\n", buff);
+    //fflush(stdout);
 
   } else if (ev == MG_EV_HTTP_MSG) {
     agent_list *agent_data = (agent_list *) c->fn_data;
@@ -377,7 +377,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
       //end = true;
-      verify_val = n;
+      agent_data->trust_value = n;
       
       c->is_draining = 1;        // Tell mongoose to close this connection
       agent_data->continue_polling = false;  // Tell event loop to stop
@@ -388,7 +388,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     //get_finish_timer();
     //print_timer(1);
     
-    verify_val = ra_explicit_challenge_verify(&rpl, agent_data, verifier_config.db);
+    agent_data->trust_value = ra_challenge_verify(&rpl, agent_data, verifier_config.db);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     agent_data->continue_polling = false;  // Tell event loop to stop
@@ -397,83 +397,6 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     agent_data->continue_polling = false;  // Error, tell event loop to stop
   }
 }
-
-/* 
-static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
-  if (ev == MG_EV_OPEN) {
-    // Connection created. Store connect expiration time in c->data
-    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
-  } else if (ev == MG_EV_POLL) {
-    if (mg_millis() > *(uint64_t *) c->data &&
-        (c->is_connecting || c->is_resolving)) {
-      mg_error(c, "Connect timeout");
-    }
-  } else if (ev == MG_EV_CONNECT) {
-    agent_list *agent_data = (agent_list *) c->fn_data;
-    tpm_challenge chl;
-    size_t buff_length = 0;
-    char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
-
-    //struct mg_tls_opts opts = {.ca = mg_str(agent_data.ca)};
-   // mg_tls_init(c, &opts);
-
-    //If PCRs10 from agent db are null, ask all ima log
-    if(send_all_log){
-      chl.send_wholeLog = 1;
-    } else {
-      chl.send_wholeLog = 0;
-    }
-
-    //Create nonce
-    if(ra_explicit_challenge_create(&chl, agent_data)!= 0){
-      Continue = false;
-      return;
-    }
-
-    //Encode it in json form
-    if(encode_challenge(&chl, buff, &buff_length)!= 0){
-      Continue = false;
-      return;
-    }
-
-    // Send request
-    mg_printf(c,
-      "POST /api/quote HTTP/1.1\r\n"
-      "Content-Type: application/json\r\n"
-      "Content-Length: %ld\r\n"
-      "\r\n"
-      "%s\n",
-      buff_length,
-      buff
-    );
-
-  } else if (ev == MG_EV_HTTP_MSG) {
-    agent_list *agent_data = (agent_list *) c->fn_data;
-    // Response is received. Print it
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    int n = load_challenge_reply(hm, &rpl);
-    if(n < 0){
-      //end = true;
-      verify_val = n;
-      ra_free(&rpl, agent_data);
-      return;
-    } 
-
-    //End timer 1
-    //get_finish_timer();
-    //print_timer(1);
-    
-    verify_val = ra_explicit_challenge_verify_TLS(&rpl, agent_data, verifier_config.db);
-
-   // end = true;
-    ra_free(&rpl, agent_data);
-
-    c->is_draining = 1;        // Tell mongoose to close this connection
-    Continue = false;  // Tell event loop to stop
-  } else if (ev == MG_EV_ERROR) {
-    Continue = false;  // Error, tell event loop to stop
-  }
-} */
 
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
   size_t b64_sz = hm->body.len;
@@ -668,14 +591,23 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   }
 }
 
+/*TODO*/
+void create_integrity_report(agent_list  *agent_data, char *buff){
+
+  snprintf(buff, 4096, "{\"integrity_report_for_uuid\":\"%s\",\"status\":\"%d\"}", agent_data->uuid, agent_data->trust_value);
+
+}
+
 void *attest_agent(void *arg) {
   agent_list * agent = (agent_list *) arg;
   struct mg_mgr mgr;
   struct mg_connection *c;
-  //char s_conn[280];
+  char topic[25];
+  char buff[4096];
  // bool 
   
-  mg_mgr_init(&mgr);
+  mg_mgr_init(&mgr);  
+  sprintf(topic, "status/%d", id);
 
   //snprintf(s_conn, 280, "http://%s", agent->ip_addr);
   //printf("%s\n", agent->ip_addr);
@@ -683,26 +615,28 @@ void *attest_agent(void *arg) {
   agent->byte_rcv = 0;
   agent->pcr10_sha256 = NULL;
   agent->continue_polling = true;
+  agent->sleep_value = 2; /*TODO config*/
+
   while (agent->running) {
     printf("%s\n", agent->ip_addr);
     fflush(stdout);
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
-      printf("QUIII noooooo\n");
       fflush(stdout);
       continue;
     }
     while (agent->continue_polling) mg_mgr_poll(&mgr, 100); //10ms
     agent->continue_polling = true;
         
-    printf("QUIII\n");
-    fflush(stdout);
-
+    create_integrity_report(agent, buff);
+    mqtt_publish(c_mqtt, topic, buff);
+    //agent_data->trust_value
 
     sleep(2); // 1 secondo di sleep
-    printf("svegliaaa\n");
-    fflush(stdout);
+    
+    //printf("svegliaaa\n");
+    //fflush(stdout);
     
   }
 

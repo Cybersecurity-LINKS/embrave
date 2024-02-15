@@ -30,7 +30,6 @@ int attester_init(/* struct attester_conf* conf */) {
   tool_rc rc_tool;
   uint16_t ek_handle[HANDLE_SIZE];
 
-  int ret;
   fprintf(stdout, "INFO: agent init\n");
 
   tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
@@ -129,16 +128,6 @@ int attester_init(/* struct attester_conf* conf */) {
     goto error;
   }
 
-  ret = check_pcr9(esys_context);
-  //Check if PCR9 is zero
-  if(ret == 0){
-    //PCR9 is zero => softbinding
-    ret = PCR9softbindig(attester_config.tls_cert, esys_context);
-    if(ret != 0) goto error;
-  } else if(ret == -1){
-    goto error;
-  }
-
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
   return 0;
@@ -207,7 +196,7 @@ error:
   return -1;
 }
 
-int tpa_explicit_challenge(tpm_challenge *chl, tpm_challenge_reply *rpl)
+int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
 {
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
@@ -249,7 +238,7 @@ end:
   return 0;
 }
 
-void tpa_free(tpm_challenge_reply *rpl)
+void tpm_challenge_free(tpm_challenge_reply *rpl)
 {
   free_data (rpl);
 }

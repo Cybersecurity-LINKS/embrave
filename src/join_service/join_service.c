@@ -264,7 +264,7 @@ void *queue_manager(void *vargp){
 
         fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
 
-        size_t object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+        snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
         mqtt_publish(c_mqtt, topic, object);
 
@@ -1329,7 +1329,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     /* struct mg_str subt = mg_str(s_sub_topic);
     struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
     MG_INFO(("%lu CONNECTED", c->id));
-    
+    mqtt_subscribe(c_mqtt, "status/+");
     
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it

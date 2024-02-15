@@ -25,6 +25,7 @@ struct mkcred_out {
 };
 
 static bool Continue = true;
+static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl);
 int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl);
@@ -177,11 +178,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       printf("tpa_explicit_challenge\n");
 
       //Compute the challenge
-      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
+      if ((tpm_challenge_create(&chl, &rpl)) != 0){
         printf("Explicit challenge error\n");
         c->is_closing = 1;
         Continue = false;
-        tpa_free(&rpl);
+        tpm_challenge_free(&rpl);
         return;
       }
 
@@ -194,61 +195,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         Continue = false;
       }
 
-      tpa_free(&rpl);
+      tpm_challenge_free(&rpl);
 
       } else {
         mg_http_reply(c, 500, NULL, "\n");
       }
     }
 }
-
-static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
-  if(ev == MG_EV_ACCEPT){
-        struct mg_tls_opts opts = {
-        .cert = mg_str(attester_config.tls_cert),
-        .key = mg_str(attester_config.tls_key)
-    };
-    mg_tls_init(c, &opts);
-  }
-  else if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_http_match_uri(hm, API_QUOTE)) {
-      tpm_challenge chl;
-      tpm_challenge_reply rpl;
-    
-      //load challenge data from http body
-      if(load_challenge_request(hm, &chl) != 0){
-        printf("Load challenge error\n");
-        c->is_closing = 1;
-        Continue = false;
-        return;
-      }
-
-      //Compute the challenge
-      if ((tpa_explicit_challenge(&chl, &rpl)) != 0){
-        printf("Explicit challenge error\n");
-        c->is_closing = 1;
-        Continue = false;
-        tpa_free(&rpl);
-        return;
-      }
-
-      //Send the challenge reply
-      if (send_challenge_reply(c, &rpl) != 0){
-        printf("Send challenge reply error\n");
-        c->is_closing = 1;
-        Continue = false;
-      }
-
-      tpa_free(&rpl);
-
-      } else {
-        mg_http_reply(c, 500, NULL, "\n");
-      }
-    }
-}
-
-static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 int create_request_body(size_t *object_length, char *object){
 
@@ -729,12 +682,9 @@ static int join_procedure(){
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  /* Event manager */
   struct mg_connection *c;
-  //struct mg_connection *c_tls;
   char s_conn[500];
-  //char s_conn_tls[500];
-  int a;
-
   struct stat st = {0};
+
   if (stat("/var/lemon", &st) == -1) {
     if(!mkdir("/var/lemon", 0711)) {
         fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
@@ -743,6 +693,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
       }
   }
+
   if (stat("/var/lemon/attester", &st) == -1) {
       if(!mkdir("/var/lemon/attester", 0711)) {
         fprintf(stdout, "INFO: /var/lemon/attester directory successfully created\n");
@@ -762,13 +713,10 @@ int main(int argc, char *argv[]) {
   #ifdef DEBUG
   printf("attester_config->ip: %s\n", attester_config.ip);
   printf("attester_config->port: %d\n", attester_config.port);
-  printf("attester_config->tls_port: %d\n", attester_config.tls_port);
-  printf("attester_config->tls_cert: %s\n", attester_config.tls_cert);
-  printf("attester_config->tls_key: %s\n", attester_config.tls_key);
   #endif
 
   /* Check TPM keys and extend PCR9 */
-  if((a = attester_init(&attester_config)) != 0) return -1;
+  if((attester_init(&attester_config)) != 0) return -1;
  
 
   /* Perform the join procedure */
@@ -777,13 +725,10 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
 
-  //printf("HERE\n");
-
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
   snprintf(s_conn, 500, "http://%s:%d", attester_config.ip, attester_config.port);
-  //snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
 
   c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */
 
@@ -791,14 +736,6 @@ int main(int argc, char *argv[]) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
   }
-
-  /* Or TLS server */ /* Create server connection */
-
-/*   c_tls = mg_http_listen(&mgr, s_conn_tls, fn_tls, NULL); 
-  if (c_tls == NULL) {
-    MG_INFO(("SERVER cant' open a connection"));
-    return 0;
-  }  */
 
   fprintf(stdout, "Server listen to %s \n", s_conn);
 

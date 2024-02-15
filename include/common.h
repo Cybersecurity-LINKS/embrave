@@ -80,9 +80,11 @@ struct  _agent_list{
     char uuid[MAX_BUF];
     char gv_path[MAX_BUF];
     bool running;
-    char *tls_path;//tOGLIERE??
+    //char *tls_path;//tOGLIERE??
     char* pcr10_sha1;
     char* pcr10_sha256;
+    int trust_value;
+    int sleep_value;
     //char *timestamp;
     char ca[MAX_BUF]; //tOGLIERE??
     uint32_t resetCount;
