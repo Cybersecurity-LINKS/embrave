@@ -1,6 +1,5 @@
 1
 scrivere la documentazione (README)
-notifica mqtt trusted o untrusted
 se untrusted togliere dai db
 gestire il caso di agent non raggiungibile (rifare attestazione x volte e poi untrusted)
 gestire il riavvio di verifier e del join service
@@ -8,16 +7,15 @@ ima log incrementale
 integrity report
 rivedere tpm.c
 pulizia codice e script
+
 2
 rivedere creazione delle goldevalues
 exclude list fatta bene regex
+
 3
 server del produttore per le golden value in ci il verifier scarica 
 dashboard
 parametro a linea di comando per config file path
-
-
-
 debug print level
 file log
 wrappare funzioni db per supporto multi db
