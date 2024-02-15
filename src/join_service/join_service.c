@@ -126,7 +126,7 @@ out:
 }
 
 /* responsibility of the caller to free the ak_db_entry */
-static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
+static struct ak_db_entry *retrieve_ak(char *uuid){
     sqlite3 *db;
     sqlite3_stmt *res;
     struct ak_db_entry *ak_entry = NULL;
@@ -139,19 +139,13 @@ static struct ak_db_entry *retrieve_ak(char *uuid, unsigned char *ak){
         return NULL;
     }
 
-    char *sql = ak == NULL ? "SELECT * FROM attesters_credentials WHERE uuid = ?" : "SELECT * FROM attesters_credentials WHERE uuid = ? AND ak_pub = ?";
+    char *sql = "SELECT * FROM attesters_credentials WHERE uuid = ?";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
         rc = sqlite3_bind_text(res, 1, uuid, -1, NULL);
         if (rc != SQLITE_OK ) {
             return NULL;
-        }
-        if(ak != NULL){
-            rc = sqlite3_bind_text(res, 2, (char *) ak, -1, NULL);
-            if (rc != SQLITE_OK ) {
-                return NULL;
-            }
         }
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
@@ -228,8 +222,8 @@ void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
 
 void *queue_manager(void *vargp){
     struct mg_mgr mgr;
-    struct mg_connection *c;
-    char s_conn[280];
+    //struct mg_connection *c;
+    //char s_conn[280];
 
     mg_mgr_init(&mgr);
 
@@ -256,7 +250,7 @@ void *queue_manager(void *vargp){
         fflush(stdout);
 
         /*Uuid and AK pem and ip address*/
-        struct ak_db_entry *ak_entry = retrieve_ak(uuid, NULL);
+        struct ak_db_entry *ak_entry = retrieve_ak(uuid);
         int id = get_verifier_id();
         /* if(id == -1){
             fprintf(stderr, "ERROR: could not get verifier id\n");
@@ -331,8 +325,8 @@ static int set_agent_data(unsigned char *ak, char *uuid){
         sqlite3_close(db);
         return 1;
     }
-
-    char *sql = "UPDATE attesters_credentials SET confirmed = 1, validity = 1 WHERE ak_pub = ? AND uuid = ?;";
+    fprintf(stderr, "ERROR: ak: %s\n", ak);
+    char *sql = "UPDATE attesters_credentials SET confirmed = 1, validity = 1, ak_pub = ? WHERE uuid = ?;";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
     if (rc == SQLITE_OK) {
@@ -755,7 +749,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
         fprintf(stdout, "INFO: EK succesfully inserted into the db\n");
     }
     else {
-        fprintf(stderr, "ERROR: could not insert AK into the db\n");
+        fprintf(stderr, "ERROR: could not insert EK into the db\n");
     }
 
     sqlite3_finalize(res);
@@ -907,12 +901,12 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-            struct ak_db_entry *ak_entry = retrieve_ak((char *) uuid, ak_pub_b64);
+/*             struct ak_db_entry *ak_entry = retrieve_ak((char *) uuid);
             if (ak_entry == NULL) {
-                fprintf(stdout, "INFO: AK not present in the db\n");
+                fprintf(stdout, "INFO: uuid not present in the db\n");
             }
             else {
-                fprintf(stdout, "INFO: AK already present in the db\n");
+                fprintf(stdout, "INFO: uuid already present in the db\n");
 
                 if(ak_entry->validity == VALID) {
                     printf("INFO: AK is valid\n");
@@ -928,7 +922,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     MG_INFO(("%s %s %d", POST, API_JOIN, FORBIDDEN));
                     return;
                 }
-            }
+            } */
 
             /* create secret */
             if (create_secret(secret) != 0){
@@ -996,7 +990,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ak_name_buff);
             free(ek_cert_buff);
             free(uuid);
-            free(ak_entry);
+           // free(ak_entry);
             free(ek_cert_b64);
             free(ak_pub_b64);
             free(ip_addr);
@@ -1237,7 +1231,7 @@ static int init_database(void){
         ip text NOT NULL,\
         validity INT NOT NULL,\
         confirmed INT NOT NULL,\
-        PRIMARY KEY (uuid, ak_pub)\
+        PRIMARY KEY (uuid)\
         FOREIGN KEY (uuid) REFERENCES attesters_ek_certs\
     );";
 

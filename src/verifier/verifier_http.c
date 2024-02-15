@@ -17,7 +17,7 @@
 #include "mqtt_client.h"
 
 static bool Continue = true;
-static bool end = false;
+//static bool end = false;
 static int verify_val;
 static bool send_all_log = false;
 
@@ -71,13 +71,11 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("%lu CONNECTED", c->id));
     
   } else if (ev == MG_EV_MQTT_MSG) {
-
     // When we get echo response, print it
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
     MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
               mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
-
-            /*
+    /*
           {
             "uuid": "aaaaaaaaa",
             "ip_port": "aaaaaaaaa",
@@ -86,54 +84,31 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       */
 
     char* uuid = mg_json_get_str(mm->data, "$.uuid");
-      char* ak_pub = mg_json_get_str(mm->data, "$.ak_pem");
-      char* ip_addr = mg_json_get_str(mm->data, "$.ip_addr");
+    char* ak_pub = mg_json_get_str(mm->data, "$.ak_pem");
+    char* ip_addr = mg_json_get_str(mm->data, "$.ip_addr");
 
-      agent_list *last_ptr = agents;
+    agent_list *last_ptr = agents;
 
-      last_ptr = agent_list_last(last_ptr);
+    last_ptr = agent_list_last(last_ptr);
+    last_ptr = agent_list_new();
       
-      last_ptr = agent_list_new();
-      
-      /* Get attester data */
-      strcpy(last_ptr->ip_addr, ip_addr);
-      strcpy(last_ptr->ak_pub, ak_pub);
-      strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
-      last_ptr->running = true;
+    /* Get attester data */
+    strcpy(last_ptr->ip_addr, ip_addr);
+    strcpy(last_ptr->ak_pub, ak_pub);
+    strcpy(last_ptr->uuid, uuid);
+    strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+    last_ptr->running = true;
 
-      printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
+    printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
 
-      /*add attester dato to verifier db*/
-      add_agent_data(last_ptr);
+    /*add attester dato to verifier db*/
+    add_agent_data(last_ptr);
 
-      creat_attestation_thread(last_ptr);
+    creat_attestation_thread(last_ptr);
 
-      
-    
-
-      mg_http_reply(c, 200, NULL, "\n");
-
-      //#endif
-
-     
-
-     
-
-      free(uuid);
-      free(ak_pub);
-      free(ip_addr);
-
-
-
-
-
-
-
-
-
-
-
+    free(uuid);
+    free(ak_pub);
+    free(ip_addr);
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
@@ -156,69 +131,69 @@ int add_agent_data(agent_list * ptr){
 
   char *sql = "INSERT INTO attesters values (?, ?, ?, ?, ?, ?, ?, ?);";
 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_bind_text(res, 1, ptr->uuid, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 2, ptr->ak_pub, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 3, ptr->ip_addr, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        rc = sqlite3_bind_text(res, 4, ptr->gv_path, -1, SQLITE_TRANSIENT);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        /*SHA256*/
-        rc = sqlite3_bind_null(res, 5);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        /*SHA1*/
-        rc = sqlite3_bind_null(res, 6);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        /*resetCount*/
-        rc = sqlite3_bind_null(res, 7);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-        /*byte_rcv*/
-        rc = sqlite3_bind_int(res, 7, 0);
-        if (rc != SQLITE_OK ) {
-            sqlite3_close(db);
-            return -1;
-        }
-    } else {
-        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_bind_text(res, 1, ptr->uuid, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
     }
+    rc = sqlite3_bind_text(res, 2, ptr->ak_pub, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 3, ptr->ip_addr, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 4, ptr->gv_path, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    /*SHA256*/
+    rc = sqlite3_bind_null(res, 5);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    /*SHA1*/
+    rc = sqlite3_bind_null(res, 6);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    /*resetCount*/
+    rc = sqlite3_bind_null(res, 7);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    /*byte_rcv*/
+    rc = sqlite3_bind_int(res, 7, 0);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+  } else {
+    fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+  }
 
-    int step = sqlite3_step(res);
+  int step = sqlite3_step(res);
     
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: attester succesfully inserted into the db\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not insert attester into the db\n");
-    }
+  if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+    fprintf(stdout, "INFO: attester succesfully inserted into the db\n");
+  }
+  else {
+    fprintf(stderr, "ERROR: could not insert attester into the db\n");
+  }
 
-    sqlite3_finalize(res);
-    sqlite3_close(db);
+  sqlite3_finalize(res);
+  sqlite3_close(db);
     
-    return 0;
+  return 0;
 }
 
 
@@ -372,13 +347,13 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
 
     //Create nonce
     if(ra_explicit_challenge_create(&chl, agent_data)!= 0){
-      Continue = false;
+      agent_data->continue_polling = false;
       return;
     }
 
     //Encode it in json form
     if(encode_challenge(&chl, buff, &buff_length)!= 0){
-      Continue = false;
+      agent_data->continue_polling = false;
       return;
     }
 
@@ -401,9 +376,11 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
-      end = true;
+      //end = true;
       verify_val = n;
-      ra_free(&rpl, agent_data);
+      
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      agent_data->continue_polling = false;  // Tell event loop to stop
       return;
     } 
 
@@ -413,17 +390,15 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     
     verify_val = ra_explicit_challenge_verify(&rpl, agent_data, verifier_config.db);
 
-    end = true;
-    ra_free(&rpl, agent_data);
-
     c->is_draining = 1;        // Tell mongoose to close this connection
-    Continue = false;  // Tell event loop to stop
+    agent_data->continue_polling = false;  // Tell event loop to stop
   } else if (ev == MG_EV_ERROR) {
-    Continue = false;  // Error, tell event loop to stop
+    agent_list *agent_data = (agent_list *) c->fn_data;
+    agent_data->continue_polling = false;  // Error, tell event loop to stop
   }
 }
 
-// Print HTTP response and signal that we're done
+/* 
 static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
@@ -478,7 +453,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
-      end = true;
+      //end = true;
       verify_val = n;
       ra_free(&rpl, agent_data);
       return;
@@ -490,7 +465,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
     
     verify_val = ra_explicit_challenge_verify_TLS(&rpl, agent_data, verifier_config.db);
 
-    end = true;
+   // end = true;
     ra_free(&rpl, agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
@@ -498,7 +473,7 @@ static void fn_tls(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
   }
-}
+} */
 
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
   size_t b64_sz = hm->body.len;
@@ -561,8 +536,8 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
   size_t sz = B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge));
 
-  printf("CHALLANGE %d %d\n", chl->send_wholeLog, chl->send_from_byte);
-  fflush(stdout);
+  //printf("CHALLENGE %d %d\n", chl->send_wholeLog, chl->send_from_byte);
+  //fflush(stdout);
 
   *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff, sz);
   if(buff_length == 0){
@@ -571,9 +546,9 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
   }
 
 
-  printf("buff_length %d\n", *buff_length);
-  printf("buff_length %d\n", strlen(buff));
-  fflush(stdout);
+  //printf("buff_length %d\n", *buff_length);
+  //printf("buff_length %d\n", strlen(buff));
+  //fflush(stdout);
   return 0;
 }
 
@@ -642,7 +617,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 
 static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    //struct mg_http_message *hm = (struct mg_http_message *) ev_data;
 /*  if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
       
 
@@ -698,7 +673,7 @@ void *attest_agent(void *arg) {
   struct mg_mgr mgr;
   struct mg_connection *c;
   //char s_conn[280];
-  bool continue_polling = true;
+ // bool 
   
   mg_mgr_init(&mgr);
 
@@ -707,19 +682,27 @@ void *attest_agent(void *arg) {
   //fflush(stdout);
   agent->byte_rcv = 0;
   agent->pcr10_sha256 = NULL;
+  agent->continue_polling = true;
   while (agent->running) {
+    printf("%s\n", agent->ip_addr);
+    fflush(stdout);
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
+      printf("QUIII noooooo\n");
+      fflush(stdout);
       continue;
     }
-    while (continue_polling) mg_mgr_poll(&mgr, 100); //10ms
+    while (agent->continue_polling) mg_mgr_poll(&mgr, 100); //10ms
+    agent->continue_polling = true;
         
-    printf("QUIII NO...\n");
+    printf("QUIII\n");
     fflush(stdout);
 
 
     sleep(2); // 1 secondo di sleep
+    printf("svegliaaa\n");
+    fflush(stdout);
     
   }
 

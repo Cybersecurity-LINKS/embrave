@@ -797,7 +797,7 @@ int save_pcr10(agent_list *agent, char * db_path){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE attesters SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
-    int idx, idx2, idx3, idx4, idx5, idx6;
+    int idx, idx2, idx3, idx4, idx5;
     int step;
 
     printf("Save PCR10 \n");
@@ -821,11 +821,11 @@ int save_pcr10(agent_list *agent, char * db_path){
         idx3 = sqlite3_bind_parameter_index(res, "@uuid");
         sqlite3_bind_text(res, idx3, agent->uuid, -1, NULL);
 
-        idx5 = sqlite3_bind_parameter_index(res, "@resetCount");
-        sqlite3_bind_int(res, idx5, agent->resetCount);
+        idx4 = sqlite3_bind_parameter_index(res, "@resetCount");
+        sqlite3_bind_int(res, idx4, agent->resetCount);
 
-        idx6 = sqlite3_bind_parameter_index(res, "@bytercv");
-        sqlite3_bind_int(res, idx6, agent->byte_rcv);
+        idx5 = sqlite3_bind_parameter_index(res, "@bytercv");
+        sqlite3_bind_int(res, idx5, agent->byte_rcv);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);

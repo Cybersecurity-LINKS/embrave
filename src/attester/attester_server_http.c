@@ -729,9 +729,9 @@ static int join_procedure(){
 int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  /* Event manager */
   struct mg_connection *c;
-  struct mg_connection *c_tls;
+  //struct mg_connection *c_tls;
   char s_conn[500];
-  char s_conn_tls[500];
+  //char s_conn_tls[500];
   int a;
 
   struct stat st = {0};
@@ -783,7 +783,7 @@ int main(int argc, char *argv[]) {
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
   snprintf(s_conn, 500, "http://%s:%d", attester_config.ip, attester_config.port);
-  snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
+  //snprintf(s_conn_tls, 500, "https://%s:%d", attester_config.ip, attester_config.tls_port);
 
   c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */
 
@@ -794,13 +794,13 @@ int main(int argc, char *argv[]) {
 
   /* Or TLS server */ /* Create server connection */
 
-  c_tls = mg_http_listen(&mgr, s_conn_tls, fn_tls, NULL); 
+/*   c_tls = mg_http_listen(&mgr, s_conn_tls, fn_tls, NULL); 
   if (c_tls == NULL) {
     MG_INFO(("SERVER cant' open a connection"));
     return 0;
-  } 
+  }  */
 
-  fprintf(stdout, "Server listen to %s without TLS and to %s with TLS\n", s_conn, s_conn_tls);
+  fprintf(stdout, "Server listen to %s \n", s_conn);
 
   Continue = true;
 

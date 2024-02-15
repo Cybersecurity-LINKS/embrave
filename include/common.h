@@ -72,8 +72,9 @@ enum { NS_PER_SECOND = 1000000000 };
     uint32_t resetCount;
     uint32_t byte_rcv;
 } verifier_database; */
+typedef struct _agent_list agent_list;
 
-typedef struct  {
+struct  _agent_list{
     char ip_addr[MAX_BUF];
     char ak_pub[MAX_BUF];
     char uuid[MAX_BUF];
@@ -87,8 +88,9 @@ typedef struct  {
     uint32_t resetCount;
     uint32_t byte_rcv;
     int attestation_value;
-    struct agent_list * next_ptr;
-} agent_list;
+    bool continue_polling;
+    agent_list * next_ptr;
+};
 
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle);
