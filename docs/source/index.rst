@@ -13,6 +13,7 @@ Welcome to lemon's documentation!
    overview
    quick_start
    protocols
+   config-file
    documentation
 
 

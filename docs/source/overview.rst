@@ -1,4 +1,7 @@
 Overview
 ========
 
-test
+.. figure:: ../img/architecture.png
+    :align: center
+    
+    Architecture of the system

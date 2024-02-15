@@ -4,11 +4,15 @@ Protocols
 Join
 ----
 
-.. image:: ../protocols/join.svg
+.. figure:: ../protocols/join.svg
     :align: center
+
+    Join protocol
 
 Remote Attestation
 ------------------
 
-.. image:: ../protocols/remote_attestation.svg
+.. figure:: ../protocols/remote_attestation.svg
     :align: center
+
+    Remote attestation protocol
