@@ -58,20 +58,6 @@
 
 enum { NS_PER_SECOND = 1000000000 };
 
-/* typedef struct {
-    int id;
-    //char *sha_ak;
-    char *ak_pub;
-    char *gv_path;
-    char *tls_path;
-    char *pcr10_old_sha1;
-    char *pcr10_old_sha256;
-    //char *timestamp;
-    char *ca;
-    char *ip_addr;
-    uint32_t resetCount;
-    uint32_t byte_rcv;
-} verifier_database; */
 typedef struct _agent_list agent_list;
 
 struct  _agent_list{
@@ -80,13 +66,10 @@ struct  _agent_list{
     char uuid[MAX_BUF];
     char gv_path[MAX_BUF];
     bool running;
-    //char *tls_path;//tOGLIERE??
     char* pcr10_sha1;
     char* pcr10_sha256;
     int trust_value;
     int sleep_value;
-    //char *timestamp;
-    char ca[MAX_BUF]; //tOGLIERE??
     uint32_t resetCount;
     uint32_t byte_rcv;
     int attestation_value;

@@ -17,9 +17,6 @@
 #include "mqtt_client.h"
 
 static bool Continue = true;
-//static bool end = false;
-//static int verify_val;
-static bool send_all_log = false;
 
 static tpm_challenge_reply rpl;
 
@@ -36,20 +33,6 @@ void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
 void creat_attestation_thread(agent_list * agent);
 int add_agent_data(agent_list * ptr);
-// Load the AK path, the TLS certificate, the last PCR10 if present, 
-// and the goldenvalue db path for a certain agent
-
-/*   char *sql = "CREATE TABLE IF NOT EXISTS attesters (\
-                    uuid TEXT NOT NULL,\
-                    ak_pub TEXT NOT NULL,\
-                    ip_addr TEXT NOT NULL,\
-                    goldenvalue_database  NOT NULL,\
-                    pcr10_sha256 TEXT,\
-                    pcr10_sha1 TEXT,\
-                    resetCount INT,\
-                    byte_rcv INT,\
-                    PRIMARY KEY (uuid, ak_pub)\
-  );"; */
 
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
@@ -542,48 +525,6 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
     //struct mg_http_message *hm = (struct mg_http_message *) ev_data;
 /*  if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-      
-
-      
-
-      char* uuid = mg_json_get_str(hm->body, "$.uuid");
-      char* ak_pub = mg_json_get_str(hm->body, "$.ak_pem");
-      char* ip_addr = mg_json_get_str(hm->body, "$.ip_addr");
-
-      agent_list *last_ptr = agents;
-
-      last_ptr = agent_list_last(last_ptr);
-      
-      last_ptr = agent_list_new();
-      
-      // Get attester data 
-      strcpy(last_ptr->ip_addr, ip_addr);
-      strcpy(last_ptr->ak_pub, ak_pub);
-      strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
-      last_ptr->running = true;
-
-      printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
-
-      //add attester dato to verifier db
-      add_agent_data(last_ptr);
-
-      creat_attestation_thread(last_ptr);
-
-      
-    
-
-      mg_http_reply(c, 200, NULL, "\n");
-
-      //#endif
-
-     
-
-     
-
-      free(uuid);
-      free(ak_pub);
-      free(ip_addr); 
     }
     else {
       mg_http_reply(c, 500, NULL, "\n");
@@ -603,23 +544,18 @@ void *attest_agent(void *arg) {
   struct mg_mgr mgr;
   struct mg_connection *c;
   char topic[25];
-  char buff[4096];
- // bool 
+  char buff[4096]; 
   
   mg_mgr_init(&mgr);  
   sprintf(topic, "status/%d", id);
 
-  //snprintf(s_conn, 280, "http://%s", agent->ip_addr);
-  //printf("%s\n", agent->ip_addr);
-  //fflush(stdout);
   agent->byte_rcv = 0;
   agent->pcr10_sha256 = NULL;
   agent->continue_polling = true;
-  agent->sleep_value = 2; /*TODO config*/
+  agent->sleep_value = 5; /*TODO config*/
 
   while (agent->running) {
-    printf("%s\n", agent->ip_addr);
-    fflush(stdout);
+
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
@@ -631,13 +567,10 @@ void *attest_agent(void *arg) {
         
     create_integrity_report(agent, buff);
     mqtt_publish(c_mqtt, topic, buff);
-    //agent_data->trust_value
-
-    sleep(2); // 1 secondo di sleep
-    
-    //printf("svegliaaa\n");
-    //fflush(stdout);
-    
+    if(agent->trust_value == -1)
+      agent->running = false;
+    else
+      sleep(agent->sleep_value); 
   }
 
   fprintf(stdout, "INFO: attestation thread stopped for agent uuid:%s\n", agent->uuid);
@@ -739,7 +672,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* read configuration from cong file */
+  /* read configuration from config file */
   if(read_config(/* verifier */ 1, (void * ) &verifier_config)){
     int err = errno;
     fprintf(stderr, "ERROR: could not read configuration file\n");

@@ -3,13 +3,13 @@
 
 static const char *s_url = "mqtt://localhost:1883";
 static int s_qos = 1;                             // MQTT QoS
-static struct mg_connection *s_conn;              // Client connection
+//static struct mg_connection *s_conn;              // Client connection
 
 // Handle interrupts, like Ctrl-C
 /* static int s_signo;
 static void signal_handler(int signo) { s_signo = signo; } */
 
-static void fn_connect(struct mg_connection *c, int ev, void *ev_data) {
+/* static void fn_connect(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     MG_INFO(("%lu CREATED", c->id));
     // c->is_hexdumping = 1;
@@ -24,8 +24,8 @@ static void fn_connect(struct mg_connection *c, int ev, void *ev_data) {
     }
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
-    /* struct mg_str subt = mg_str(s_sub_topic);
-    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
+    // struct mg_str subt = mg_str(s_sub_topic);
+    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); //
     MG_INFO(("%lu CONNECTED to %s", c->id, s_url));
     
     
@@ -40,7 +40,7 @@ static void fn_connect(struct mg_connection *c, int ev, void *ev_data) {
   }
   (void) c->fn_data;
 }
-
+ */
 // Timer function - recreate client connection if it is closed
 struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name) {
   //struct mg_mgr *mgr = (struct mg_mgr *) arg;
@@ -66,7 +66,7 @@ void mqtt_publish(struct mg_connection *c, char *topic, char *message){
 }
 
 void mqtt_subscribe(struct mg_connection *c, char *topic){
-  struct mg_mqtt_opts pub_opts;
+  //struct mg_mqtt_opts pub_opts;
   struct mg_str subt = mg_str(topic);
 
   struct mg_mqtt_opts sub_opts;

@@ -31,15 +31,8 @@ uuid = 12345678-1234-1234-1234-123456789012
 # Port where it runs the http server
 port = 80
 
-# Port where is runs the https (TLS enabled) server
-tls_port = 443
-
 # Ip address on which make the binding
 ip = 127.0.0.1
-
-# Certificate and key for TLS paths
-tls_cert = /var/lemon/attester/tls/cert.crt
-tls_key = /var/lemon/attester/tls/key.pem
 
 # Path where store the EK certificates
 ek_rsa_cert = /var/lemon/attester/ek_rsa_cert.crt

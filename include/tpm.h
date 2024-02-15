@@ -66,8 +66,5 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 
 int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent);
 int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, char * db_path);
-int PCR9softbindig(const char* cert, ESYS_CONTEXT *esys_context);
-int PCR9softbindig_verify(tpm_challenge_reply *rply, agent_list * agent_data);
-int check_pcr9(ESYS_CONTEXT *esys_context);
 int refresh_verifier_database_entry(agent_list *agent);
 #endif
