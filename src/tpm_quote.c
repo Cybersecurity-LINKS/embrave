@@ -11,8 +11,8 @@
 // write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 
-#include "tpm.h"
-
+#include "tpm_quote.h"
+#include <unistd.h>
 
 TPMT_SIG_SCHEME in_scheme;
 TPMI_ALG_SIG_SCHEME sig_scheme;
@@ -24,13 +24,13 @@ tpm2_convert_pcrs_output_fmt pcrs_format;
 TPMT_SIGNATURE *signature;
 
 struct {
-        const char *handle;
-        const char *auth_str;
-        tpm2_loaded_object object;
+    const char *handle;
+    const char *auth_str;
+    tpm2_loaded_object object;
 } key;
 
 tool_rc tpm2_quote_free(void);
-int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select);
+int get_pcr_list(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select);
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * template_hash, uint8_t * template_hash_sha256, char * hash_name, char ** path_name, uint8_t *hash_name_byte);
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
@@ -39,7 +39,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 int nonce_create(uint8_t *nonce)
 {
     if (!RAND_bytes(nonce, NONCE_SIZE)){
-        fprintf(stderr, "ERROR: random generation error\n");
+        fprintf(stderr, "ERROR: nonce random generation error\n");
         return -1;
     }
 #ifdef DEBUG
@@ -52,7 +52,7 @@ int nonce_create(uint8_t *nonce)
     return 0;
 }
 
-int openPEM(const char *path, unsigned char **pem_file) {
+/* int openPEM(const char *path, unsigned char **pem_file) {
   int len_file = 0;
   unsigned char *data;
   FILE *fp = fopen(path, "r");
@@ -78,7 +78,7 @@ int openPEM(const char *path, unsigned char **pem_file) {
   *pem_file = data;
   fclose (fp);
   return 0;
-}
+} */
 
 int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx)
 {
@@ -90,6 +90,11 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
 
     if (ectx == NULL || rply == NULL || chl == NULL) {
+        return -1;
+    }
+
+    if(!access(handle, F_OK)){
+        fprintf(stderr, "ERROR: AK handle not found in /var/lemon/attester/\n");
         return -1;
     }
 
@@ -121,6 +126,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
 
     rc = pcr_get_banks(ectx, &cap_data, &algs);
     if (rc != tool_rc_success) {
+        fprintf(stderr, "ERROR: pcr_get_banks during quote failed\n");
         return -1;
     }
 
@@ -128,6 +134,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     rc = tpm2_alg_util_get_signature_scheme(ectx, key.object.tr_handle,
         &sig_hash_algorithm, sig_scheme, &in_scheme);
     if (rc != tool_rc_success) {
+        fprintf(stderr, "ERROR: tpm2_alg_util_get_signature_scheme failed\n");
         return -1;
     }
     
@@ -141,7 +148,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         }
 
         //Get PCR List
-        if (get_pcrList(ectx, &(rply->pcrs), &pcr_select) != 0 ){
+        if (get_pcr_list(ectx, &(rply->pcrs), &pcr_select) != 0 ){
             return -1;
         }
 
@@ -164,7 +171,10 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     } while (rc != 0);
 
     rply->sig = copy_signature(&(rply->sig_size));
-    if(rply->sig == NULL) return -1;
+    if(rply->sig == NULL) {
+        fprintf(stderr, "ERROR: copy_signature failed\n");
+        return -1;
+    }
     print_signature(&(rply->sig_size), rply->sig);
 
     //Free used data 
@@ -180,7 +190,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     return 0;
 }
 
-int get_pcrList(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select){
+int get_pcr_list(ESYS_CONTEXT *ectx, tpm2_pcrs *pcrs, TPML_PCR_SELECTION *pcr_select){
     if( ectx == NULL || pcrs == NULL) return -1;
 
     // Filter out invalid/unavailable PCR selections
@@ -203,17 +213,17 @@ void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs){
     pcr_print_pcr_struct(pcr_select, pcrs);
 }
 
-int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest) {
+int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
     // Sanity check -- they should at least be same size!
-    if (quoteDigest->size != pcr_digest->size) {
+    if (quote_digest->size != pcr_digest->size) {
         fprintf(stderr, "ERROR: PCR values failed to match quote's digest!\n");
         return -1;
     }
 
     // Compare running digest with quote's digest
     int k;
-    for (k = 0; k < quoteDigest->size; k++) {
-        if (quoteDigest->buffer[k] != pcr_digest->buffer[k]) {
+    for (k = 0; k < quote_digest->size; k++) {
+        if (quote_digest->buffer[k] != pcr_digest->buffer[k]) {
 
             return -2;
         }

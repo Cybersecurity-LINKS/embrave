@@ -17,7 +17,7 @@
 #include <stdint.h> 
 #include <stdio.h>
 #include "config_parse.h"
-#include "tpm.h"
+#include "tpm_quote.h"
 
 extern struct attester_conf attester_config;
 

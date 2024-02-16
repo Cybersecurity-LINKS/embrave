@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "tpm.h"
+#include "tpm_quote.h"
 #include "common.h"
 /* APIs */
 #define API_ATTEST "/request_attestation"
