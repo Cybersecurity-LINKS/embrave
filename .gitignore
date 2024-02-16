@@ -49,6 +49,7 @@
 
 # for development
 lemon.conf
+swtpm-localca-rootca-cert.pem
 
 # Submodules
 lib/tpm2-tools/
