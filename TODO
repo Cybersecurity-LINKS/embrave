@@ -1,10 +1,7 @@
 1
 scrivere la documentazione (README)
-se untrusted togliere dai db
-gestire il caso di agent non raggiungibile (rifare attestazione x volte e poi untrusted)
 gestire il riavvio di verifier e del join service
 ima log incrementale
-integrity report (definire dei valori unici per untrusted)
 rivedere tpm.c
 pulizia codice e script
 
