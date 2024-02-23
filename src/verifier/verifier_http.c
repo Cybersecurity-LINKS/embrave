@@ -171,74 +171,49 @@ int add_agent_data(agent_list * ptr){
   return 0;
 }
 
-// Print HTTP response and signal that we're done
-static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
-  if (ev == MG_EV_OPEN) {
-    // Connection created. Store connect expiration time in c->data
-    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
-  } else if (ev == MG_EV_POLL) {
-    if (mg_millis() > *(uint64_t *) c->data &&
-        (c->is_connecting || c->is_resolving)) {
-      mg_error(c, "Connect timeout");
-    }
-  } else if (ev == MG_EV_CONNECT) {
-    agent_list *agent_data = (agent_list *) c->fn_data;
-    tpm_challenge chl;
-    size_t buff_length = 0;
-    char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
-
-    //If PCRs10 from agent db are null, ask all ima log
-   // if(send_all_log){
-      chl.send_wholeLog = 1;
-    //} else {
-      //chl.send_wholeLog = 0;
-   // }
-
-    //Create nonce
-    if(ra_challenge_create(&chl, agent_data)!= 0){
-      agent_data->continue_polling = false;
-      return;
-    }
-
-    //Encode it in json form
-    if(encode_challenge(&chl, buff, &buff_length)!= 0){
-      agent_data->continue_polling = false;
-      return;
-    }
-
-    // Send request
-    mg_printf(c,
-      "POST /api/quote HTTP/1.1\r\n"
-      "Content-Type: application/json\r\n"
-      "Content-Length: %ld\r\n"
-      "\r\n"
-      "%s\n",
-      buff_length,
-      buff
-    );
-
-  } else if (ev == MG_EV_HTTP_MSG) {
-    agent_list *agent_data = (agent_list *) c->fn_data;
-    // Response is received. Print it
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    int n = load_challenge_reply(hm, &rpl);
-    if(n < 0){
-      //end = true;
-      agent_data->trust_value = n;
-      
-      c->is_draining = 1;        // Tell mongoose to close this connection
-      agent_data->continue_polling = false;  // Tell event loop to stop
-      return;
-    } 
-
-    agent_data->trust_value = ra_challenge_verify(&rpl, agent_data, verifier_config.db);
-
-    c->is_draining = 1;        // Tell mongoose to close this connection
-    agent_data->continue_polling = false;  // Tell event loop to stop
-  } else if (ev == MG_EV_ERROR) {
-    agent_list *agent_data = (agent_list *) c->fn_data;
-    agent_data->continue_polling = false;  // Error, tell event loop to stop
+int remove_agent(agent_list * ptr){
+  sqlite3 *db;
+  sqlite3_stmt *res;
+    
+  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+  if (rc != SQLITE_OK) {        
+    fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
   }
+
+  char *sql = "DELETE FROM attesters where uuid=? and ak_pub=?;";
+
+  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_bind_text(res, 1, ptr->uuid, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 2, ptr->ak_pub, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+  } else {
+    fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+  }
+
+  int step = sqlite3_step(res);
+    
+  if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+    fprintf(stdout, "INFO: attester succesfully removed from the db\n");
+  }
+  else {
+    fprintf(stderr, "ERROR: could not remove attester from the db\n");
+  }
+
+  sqlite3_finalize(res);
+  sqlite3_close(db);
+    
+  return 0;
 }
 
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
@@ -346,7 +321,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 #endif
     int status = mg_http_status(hm);
-    printf("%d\n", status);
+    //printf("%d\n", status);
     if(status == 403){ /* forbidden */
       /*TODO ERRORI*/
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
@@ -391,6 +366,80 @@ void create_integrity_report(agent_list  *agent_data, char *buff){
 
 }
 
+// Print HTTP response and signal that we're done
+static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
+  if (ev == MG_EV_OPEN) {
+    // Connection created. Store connect expiration time in c->data
+    *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+  } else if (ev == MG_EV_POLL) {
+    if (mg_millis() > *(uint64_t *) c->data &&
+        (c->is_connecting || c->is_resolving)) {
+      mg_error(c, "Connect timeout");
+    }
+  } else if (ev == MG_EV_CONNECT) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
+    tpm_challenge chl;
+    size_t buff_length = 0;
+    char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
+
+    //If PCRs10 from agent db are null, ask all ima log
+   // if(send_all_log){
+      chl.send_wholeLog = 1;
+    //} else {
+      //chl.send_wholeLog = 0;
+   // }
+
+    //Create nonce
+    if(ra_challenge_create(&chl, agent_data)!= 0){
+      agent_data->continue_polling = false;
+      return;
+    }
+
+    //Encode it in json form
+    if(encode_challenge(&chl, buff, &buff_length)!= 0){
+      agent_data->continue_polling = false;
+      return;
+    }
+
+    // Send request
+    mg_printf(c,
+      "POST /api/quote HTTP/1.1\r\n"
+      "Content-Type: application/json\r\n"
+      "Content-Length: %ld\r\n"
+      "\r\n"
+      "%s\n",
+      buff_length,
+      buff
+    );
+
+  } else if (ev == MG_EV_HTTP_MSG) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
+    // Response is received. Print it
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    int n = load_challenge_reply(hm, &rpl);
+    if(n < 0){
+      //end = true;
+      agent_data->trust_value = n;
+      c->is_draining = 1;        // Tell mongoose to close this connection
+      agent_data->continue_polling = false;  // Tell event loop to stop
+      return;
+    } 
+
+    agent_data->trust_value = ra_challenge_verify(&rpl, agent_data, verifier_config.db);
+
+    c->is_draining = 1;        // Tell mongoose to close this connection
+    agent_data->continue_polling = false;  // Tell event loop to stop
+  } else if (ev == MG_EV_ERROR) {
+    agent_list *agent_data = (agent_list *) c->fn_data;
+    agent_data->continue_polling = false;  // Error, tell event loop to stop
+    fprintf(stdout, "INFO: unreachable agent uuid %s, retry number %d\n", agent_data->uuid, agent_data->connection_retry_number);
+    fflush(stdin);
+
+    agent_data->connection_retry_number++;
+    agent_data->trust_value = UNREACHABLE;
+  }
+}
+
 void *attest_agent(void *arg) {
   agent_list * agent = (agent_list *) arg;
   struct mg_mgr mgr;
@@ -405,9 +454,9 @@ void *attest_agent(void *arg) {
   agent->pcr10_sha256 = NULL;
   agent->continue_polling = true;
   agent->sleep_value = 5; /*TODO config*/
-
+  agent->connection_retry_number = 0;
+  agent->max_connection_retry_number = 3; /*TODO config and/or js*/
   while (agent->running) {
-
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
@@ -416,11 +465,19 @@ void *attest_agent(void *arg) {
     }
     while (agent->continue_polling) mg_mgr_poll(&mgr, 100); //10ms
     agent->continue_polling = true;
+    if(agent->connection_retry_number == agent->max_connection_retry_number){
+      /*Unreachable agent =>  untrusted*/
+      agent->trust_value = UNTRUSTED;
+    }
         
     create_integrity_report(agent, buff);
     mqtt_publish(c_mqtt, topic, buff);
-    if(agent->trust_value == -1)
+    if(agent->trust_value == UNTRUSTED){
+      /*Remove from DB*/
+      remove_agent(agent);
+      /*stop the attestation process*/
       agent->running = false;
+    }
     else
       sleep(agent->sleep_value); 
   }

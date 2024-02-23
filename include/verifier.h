@@ -24,6 +24,11 @@
 /* APIs */
 #define API_ATTEST "/request_attestation"
 
+/* Trust status value */
+#define TRUSTED 0
+#define UNTRUSTED -1
+#define UNREACHABLE -2
+
 int ra_challenge_create(tpm_challenge *chl, agent_list *agent_data);
 int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path);
 void ra_free(tpm_challenge_reply *rpl, agent_list *tpa_data);

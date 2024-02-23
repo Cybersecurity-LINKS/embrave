@@ -67,6 +67,8 @@ struct  _agent_list{
     int sleep_value;
     uint32_t resetCount;
     uint32_t byte_rcv;
+    uint32_t connection_retry_number;
+    uint32_t max_connection_retry_number;
     int attestation_value;
     bool continue_polling;
     agent_list * next_ptr;
