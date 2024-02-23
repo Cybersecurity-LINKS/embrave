@@ -255,7 +255,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   size_t read_bytes, buff_sz;
   uint32_t ima_byte_sent;
 
-  fprintf(stderr, "%d %d\n", all_log, from_bytes);
+  fprintf(stdout, "INFO; request all ima log%d or from byte %d\n", all_log, from_bytes);
   fp = fopen(path, "rb");
 	if (!fp) {
 	  fprintf(stderr, "ERROR: Unable to open IMA file\n");

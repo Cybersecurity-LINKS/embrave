@@ -31,7 +31,7 @@ int id;
 int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl);
 void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
-void creat_attestation_thread(agent_list * agent);
+void create_attestation_thread(agent_list * agent);
 int add_agent_data(agent_list * ptr);
 
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
@@ -79,7 +79,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     /*add attester dato to verifier db*/
     add_agent_data(last_ptr);
 
-    creat_attestation_thread(last_ptr);
+    create_attestation_thread(last_ptr);
 
     free(uuid);
     free(ak_pub);
@@ -383,11 +383,11 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
     //If PCRs10 from agent db are null, ask all ima log
-   // if(send_all_log){
+    if(agent_data->pcr10_sha256 == NULL){
       chl.send_wholeLog = 1;
-    //} else {
-      //chl.send_wholeLog = 0;
-   // }
+    } else {
+      chl.send_wholeLog = 0;
+   }
 
     //Create nonce
     if(ra_challenge_create(&chl, agent_data)!= 0){
@@ -456,6 +456,7 @@ void *attest_agent(void *arg) {
   agent->sleep_value = 5; /*TODO config*/
   agent->connection_retry_number = 0;
   agent->max_connection_retry_number = 3; /*TODO config and/or js*/
+
   while (agent->running) {
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
@@ -489,7 +490,7 @@ void *attest_agent(void *arg) {
 
 
 
-void creat_attestation_thread(agent_list * agent){
+void create_attestation_thread(agent_list * agent){
   pthread_t thread;
   pthread_attr_t attr;
 

@@ -195,8 +195,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
     int k;
     for (k = 0; k < quote_digest->size; k++) {
         if (quote_digest->buffer[k] != pcr_digest->buffer[k]) {
-
-            return -2;
+            return -1;
         }
     }
 
@@ -315,13 +314,6 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
     if (rc == -1) {
         goto err;
-    } else if (rc == -2) {
-        //TODO fixed??
-        fprintf(stdin, "INFO: PCR values failed to match quote's digest!, possible desynch\n");
-        OPENSSL_free(bio);
-        EVP_PKEY_free(pkey);
-        EVP_PKEY_CTX_free(pkey_ctx);
-        return -2;
     } 
 
     OPENSSL_free(bio);
@@ -574,7 +566,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int refresh_verifier_database_entry(agent_list *agent){
+/* int refresh_verifier_database_entry(agent_list *agent){
     sqlite3_stmt *res;
     sqlite3 *db;
     char *sql = "UPDATE agent SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
@@ -611,7 +603,7 @@ int refresh_verifier_database_entry(agent_list *agent){
     sqlite3_close(db);
     return 0;
 
-}
+} */
 
 int save_pcr10(agent_list *agent, char * db_path){
     sqlite3_stmt *res;
@@ -691,12 +683,14 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
         return -1;
     }
 
-    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL && !rply->wholeLog){
+    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL ){
         //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha1, &sz1, pcr10_sha1);
-        //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        //printf("\n");
+/*         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
+        tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("\n"); */
     } else {
         if(agent->pcr10_sha256 == NULL){
             agent->pcr10_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
@@ -791,9 +785,7 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
         
-        //refresh_verifier_database_entry
-        refresh_verifier_database_entry(agent);
-        goto unknown;
+        goto error;
     }
 
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
@@ -804,7 +796,7 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
 
     //Update the number of recievd bytes
     agent->byte_rcv += rply->ima_log_size;
-    //Store the PCRs10 for future incremental IMA log
+    //Store the PCRs10
     ret = save_pcr10(agent, db_path);
     if(ret == -1)
         goto error;
@@ -822,13 +814,6 @@ error:
     free(sha256_concatenated);
     free(event_name);
     return -1;
-unknown:
-    free(pcr10_sha1);
-    free(pcr10_sha256);
-    free(sha1_concatenated);
-    free(sha256_concatenated);
-    free(event_name);
-    return -2;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {

@@ -37,10 +37,6 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char *
   if (ret == -1){
     printf("Untrusted agent\n");
     return -1;
-  } else if(ret == -2){
-    printf("Unknown agent\n");
-    refresh_verifier_database_entry(agent_data);
-    return -2;
   } else {
     printf("Quote signature verification OK\n");
   }

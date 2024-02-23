@@ -1,9 +1,9 @@
 1
 scrivere la documentazione (README)
 gestire il riavvio di verifier e del join service
-ima log incrementale
 rivedere tpm.c
 pulizia codice e script
+join service gestire output degli integrity report 
 
 2
 rivedere creazione delle goldevalues
