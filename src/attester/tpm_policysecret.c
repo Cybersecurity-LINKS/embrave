@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -26,7 +26,6 @@ static tool_rc policysecret(ESYS_CONTEXT *ectx) {
 
 static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
-    //UNUSED(ectx);
     /*
      * 1. Outputs that do not require TPM2_CC_<command> dispatch
      */
@@ -87,7 +86,6 @@ static tool_rc process_output(ESYS_CONTEXT *ectx) {
 
 static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
 
-    //UNUSED(ectx);
     /*
      * 1. Object and auth initializations
      */
@@ -153,20 +151,11 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
 
 tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
 
-    //UNUSED(flags);
     ctx.extended_session_path = "/var/lemon/attester/session.ctx";
     ctx.auth_entity.ctx_path = "e";
 
     /*
-     * 1. Process options
-     */
-    /* tool_rc rc = check_options(ectx);
-    if (rc != tool_rc_success) {
-        return rc;
-    } */
-
-    /*
-     * 2. Process inputs
+     * Process inputs
      */
     tool_rc rc = process_inputs(ectx);
     if (rc != tool_rc_success) {
@@ -174,7 +163,7 @@ tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
     }
 
     /*
-     * 3. TPM2_CC_<command> call
+     * TPM2_CC_<command> call
      */
     rc = policysecret(ectx);
     if (rc != tool_rc_success) {
@@ -182,7 +171,7 @@ tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
     }
 
     /*
-     * 4. Process outputs
+     * Process outputs
      */
     rc = process_output(ectx);
     if (rc != tool_rc_success) {
@@ -190,13 +179,13 @@ tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
     }
 
     /*
-     * 1. Free objects
+     * Free objects
      */
     free(ctx.policy_ticket);
     free(ctx.timeout);
 
     /*
-     * 2. Close authorization sessions
+     * Close authorization sessions
      */
     rc = tool_rc_success;
     tool_rc tmp_rc = tpm2_session_close(&ctx.auth_entity.object.session);
@@ -208,10 +197,6 @@ tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
     if (tmp_rc != tool_rc_success) {
         rc = tmp_rc;
     }
-
-    /*
-     * 3. Close auxiliary sessions
-     */
 
     return rc;
 }

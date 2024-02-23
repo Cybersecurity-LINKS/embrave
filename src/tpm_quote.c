@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -36,8 +36,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
 int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 
-int nonce_create(uint8_t *nonce)
-{
+int nonce_create(uint8_t *nonce){
     if (!RAND_bytes(nonce, NONCE_SIZE)){
         fprintf(stderr, "ERROR: nonce random generation error\n");
         return -1;
@@ -52,36 +51,7 @@ int nonce_create(uint8_t *nonce)
     return 0;
 }
 
-/* int openPEM(const char *path, unsigned char **pem_file) {
-  int len_file = 0;
-  unsigned char *data;
-  FILE *fp = fopen(path, "r");
-  if(fp == NULL){
-    fprintf(stderr, "ERROR: Could not open the PEM file %s \n", path);
-    return -1;
-  }
-
-  //get len of file
-  fseek(fp, 0L, SEEK_END);
-  len_file = ftell(fp);
-  fseek(fp, 0L, SEEK_SET);
-
-  // read the data from the file 
-  data = (unsigned char*) malloc((len_file + 1)*sizeof(char));
-  if(data == NULL){
-    fprintf(stderr, "ERROR: malloc error for reading file %s\n", path);
-    return -1;
-  }
-  fread(data, 1, len_file, fp);
-  data[len_file] = '\0';
-
-  *pem_file = data;
-  fclose (fp);
-  return 0;
-} */
-
-int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx)
-{
+int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx){
     char handle[27]= "/var/lemon/attester/ak.ctx";
     TPML_PCR_SELECTION pcr_select;
     int ret;
@@ -233,8 +203,7 @@ int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
 }
 
 
-int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
-{
+int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
     BIO *bio = NULL;
@@ -611,7 +580,6 @@ int refresh_verifier_database_entry(agent_list *agent){
     int step;
     
     int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-   //int rc = sqlite3_open_v2(verifier_config->, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
         fprintf(stderr, "ERROR: Cannot open the verifier database, error %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);

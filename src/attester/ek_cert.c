@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -124,34 +124,6 @@ tool_rc save_cert(struct attester_conf *conf) {
 
     return tool_rc_success;
 }
-
-/* bool retrieve_ek_cert(ESYS_CONTEXT *ectx, char * ek_cert_path){
-    tool_rc rc ;
-
-    if(!ek_cert_path){
-        printf("Error no path\n");
-        return -1;
-    }
-    //intel??
-
-    process_input(ectx);
-
-    ctx.ec_cert_file_handle_1 = fopen(ek_cert_path, "wb");
-    if (!ctx.ec_cert_file_handle_1) {
-        printf("Could not open file for writing: \"%s\"", ek_cert_path);
-        return -1;
-    }
-
-    rc = get_ek_certificates(ectx);
-    if (rc != tool_rc_success) {
-        return rc;
-    }
-
-    free_ctx();
-
-    return true;
-
-} */
 
 char *get_ek_server_address(void) {
     if (ctx.ek_server_addr) // set by CLI

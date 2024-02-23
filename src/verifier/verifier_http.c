@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -42,17 +42,9 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     // On error, log error message
     MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
   } else if (ev == MG_EV_CONNECT) {
-    // If target URL is SSL/TLS, command client connection to use TLS
-    /* if (mg_url_is_ssl(s_url)) {
-      struct mg_tls_opts opts = {.ca = mg_str("ca.pem")};
-      mg_tls_init(c, &opts);
-    } */
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
-    /* struct mg_str subt = mg_str(s_sub_topic);
-    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
     MG_INFO(("%lu CONNECTED", c->id));
-    
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
@@ -178,132 +170,6 @@ int add_agent_data(agent_list * ptr){
     
   return 0;
 }
-
-
-
-/* int get_agent_data(char *uuid, agent_list * ptr){
-  sqlite3_stmt *res= NULL;
-  sqlite3 *db = NULL;
-  int byte;
-  char *sql = "SELECT * FROM attesters WHERE uuid = @uuid";
-  int step, idx;
-
-  ptr->pcr10_old_sha256 = NULL;
-  agent_data.pcr10_old_sha1 = NULL;
-  agent_data.ak_pub = NULL;
-  agent_data.gv_path = NULL;
-  agent_data.tls_path = NULL;
-  //agent_data.timestamp = NULL;
-  agent_data.ca = NULL;
-  agent_data.resetCount = 0;
-  agent_data.ip_addr = NULL;
-
-  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
-  if ( rc != SQLITE_OK) {
-    printf("Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
-    sqlite3_close(db);
-    return -1;
-  }
-
-  //convert the sql statament
-  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-  if (rc == SQLITE_OK) {
-    //Set the parametrized input
-    idx = sqlite3_bind_parameter_index(res, "@uuid");
-    sqlite3_bind_text(res, idx, uuid, -1, NULL);
-
-  } else {
-    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-  }
-
-  //Execute the sql query
-  step = sqlite3_step(res);
-  if (step == SQLITE_ROW) {
-    //N byte entry -> malloc -> memcpy
-
-    //ID
-    agent_data.id = sqlite3_column_int(res, 0);
-    
-    //SHA256 of AK
-    //byte = sqlite3_column_bytes(res, 1);
-    //agent_data.sha_ak = malloc(byte);
-    //memcpy(agent_data.sha_ak, (char *) sqlite3_column_text(res, 1), byte);
-
-    //Ak file path
-    byte = sqlite3_column_bytes(res, 2);
-    agent_data.ak_pub = malloc((byte + 1) * sizeof(char));
-    memcpy(agent_data.ak_pub, (char *) sqlite3_column_text(res, 2), byte);
-    agent_data.ak_pub[byte] = '\0';
-
-    //Goldenvalue db path
-    byte = sqlite3_column_bytes(res, 5);
-    agent_data.gv_path = malloc((byte + 1) * sizeof(char));
-    memcpy(agent_data.gv_path, (char *) sqlite3_column_text(res, 5), byte);
-    agent_data.gv_path[byte] = '\0';
-    //printf("%s\n", agent_data.gv_path);
-
-    //TLS cert path
-    byte = sqlite3_column_bytes(res, 6);
-    agent_data.tls_path = malloc((byte + 1) *sizeof(char));
-    memcpy(agent_data.tls_path, (char *) sqlite3_column_text(res, 6), byte);
-    agent_data.tls_path[byte] = '\0';
-
-    //CA cert path
-    byte = sqlite3_column_bytes(res, 7);
-    agent_data.ca = malloc((byte + 1) *sizeof(char));
-    memcpy(agent_data.ca, (char *) sqlite3_column_text(res, 7), byte);
-    agent_data.ca[byte] = '\0';
-    //printf("%s\n", agent_data.ca);
-
-    //Agent ip address
-    byte = sqlite3_column_bytes(res, 11);
-    printf("%d\n", byte);
-    if(byte == 0){
-      printf("ERROR: missing ip address in the agent db");
-      sqlite3_finalize(res);
-      sqlite3_close(db);
-    return -1;
-    }
-    agent_data.ip_addr = malloc((byte + 1) * sizeof(char));
-    memcpy(agent_data.ip_addr, (char *) sqlite3_column_text(res, 11), byte);  
-    agent_data.ip_addr[byte] = '\0';
-
-    //PCR10s sha256, could be null
-    byte = sqlite3_column_bytes(res, 3);
-    if(byte != 0){
-      //SHA256
-      agent_data.pcr10_old_sha256 = malloc((byte + 1) * sizeof(char));
-      memcpy(agent_data.pcr10_old_sha256, (char *) sqlite3_column_text(res, 3), byte);  
-      agent_data.pcr10_old_sha256[byte] = '\0';
-      
-      //SHA1
-      byte = sqlite3_column_bytes(res, 4);
-      agent_data.pcr10_old_sha1 = malloc((byte + 1) * sizeof(char));
-      memcpy(agent_data.pcr10_old_sha1, (char *) sqlite3_column_text(res, 4), byte);
-      agent_data.pcr10_old_sha1[byte] = '\0';
-    } else {
-      //Possibile to have valid timestamp and no pcr10?
-      send_all_log = true;
-    }
-
-    //Reset count
-    agent_data.resetCount = sqlite3_column_int(res, 9);
-        
-    //Received bytes
-    agent_data.byte_rcv = sqlite3_column_int(res, 10);
-
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    return 0;
-        
-  } 
-  
-  printf("No id found in the agent databse for uuid: %s\n", uuid);
-  sqlite3_finalize(res);
-  sqlite3_close(db);
-  return -1;
-}
- */
 
 // Print HTTP response and signal that we're done
 static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
@@ -435,19 +301,12 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
   size_t sz = B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge));
 
-  //printf("CHALLENGE %d %d\n", chl->send_wholeLog, chl->send_from_byte);
-  //fflush(stdout);
-
   *buff_length = mg_base64_encode((const unsigned char *)chl, sizeof(tpm_challenge), buff, sz);
   if(buff_length == 0){
     printf("mg_base64_encode error\n");
     return -1;
   }
 
-
-  //printf("buff_length %d\n", *buff_length);
-  //printf("buff_length %d\n", strlen(buff));
-  //fflush(stdout);
   return 0;
 }
 

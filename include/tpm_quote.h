@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -53,7 +53,6 @@ typedef struct {
     unsigned char * ima_log;
     uint32_t ima_log_size;
     uint8_t wholeLog;
-    //int dsc;
 } tpm_challenge_reply;
 
 int nonce_create(uint8_t *nonce);

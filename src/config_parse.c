@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -153,18 +153,6 @@ uint16_t read_config(char user, void* config_struct){
                         case ATTESTER_PORT:
                             attester_config->port = (uint32_t) atoi(value);
                             break;
-
-                       /*  case ATTESTER_TLS_PORT:
-                            attester_config->tls_port = (uint32_t) atoi(value);
-                            break;
-
-                        case ATTESTER_TLS_CERT:
-                            strcpy(attester_config->tls_cert, value);
-                            break;
-
-                        case ATTESTER_TLS_KEY:
-                            strcpy(attester_config->tls_key, value);
-                            break; */
 
                         case ATTESTER_EK_RSA_CERT:
                             strcpy(attester_config->ek_rsa_cert, value);

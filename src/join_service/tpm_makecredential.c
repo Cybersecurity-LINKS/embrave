@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -33,7 +33,6 @@ static tpm_makecred_ctx ctx = {
     .object_name = TPM2B_EMPTY_INIT,
     .public = TPM2B_EMPTY_INIT,
     .credential = TPM2B_EMPTY_INIT,
-    //.key_type = "rsa",
 };
 
 static const struct {
@@ -359,15 +358,8 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
             return 1;
         }
 
-        /* read the key dimension */
-        // const BIGNUM *n;
-        // RSA_get0_key(rsa, &n, NULL, NULL);
-        //ctx.key_type = "rsa";
-        /* set TPM2B_PUBLIC struct */
         ctx.public.publicArea.type = TPM2_ALG_RSA;
-        // ctx.public.publicArea.unique.rsa.size = BN_num_bytes(n);
-        // BN_bn2bin(n, ctx.public.publicArea.unique.rsa.buffer);
-        // RSA_free(rsa);
+
         if(!load_public_RSA_from_key(pkey, &ctx.public)){
             fprintf(stderr, "Failed to load RSA key\n");
             EVP_PKEY_free(pkey);

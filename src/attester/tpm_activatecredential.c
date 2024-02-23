@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -23,9 +23,6 @@ bool files_save_bytes_to_buffer(unsigned char **secret, unsigned int *secret_len
         return false;
     }
 
-    /* if (!path && !output_enabled) {
-        return true;
-    } */
     *secret_len = size+1;
     *secret = malloc(*secret_len+1);
     if (!*secret) {
@@ -110,7 +107,7 @@ static tool_rc process_output(ESYS_CONTEXT *ectx, unsigned char **secret, unsign
 static bool read_cert_secret(unsigned char *mkcred_out, unsigned int mkcred_out_len) {
 
     bool result = false;
-    //FILE *fp = fopen(ctx.credential_blob_path, "rb");
+
     FILE *fp = fmemopen(mkcred_out, mkcred_out_len, "rb");
     if (!fp) {
         LOG_ERR("Could not open file \"%s\" error: \"%s\"",
@@ -246,29 +243,15 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx, unsigned char *mkcred_out, uns
 /* It responsability of the caller to free secret */
 tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *attester_config, unsigned char *mkcred_out, unsigned int mkcred_out_len, unsigned char **secret, unsigned int *secret_len) {
 
-    /* opts is unused, avoid compiler warning */
-    //UNUSED(flags);
     ctx.credentialed_key.ctx_path = attester_config->ak_ctx;
     ctx.credential_key.ctx_path = "0x81000003"; /* EK handle */
     ctx.credential_key.auth_str = "session:/var/lemon/attester/session.ctx";
 
     /* Where to read the mkcred_out */
-    //ctx.credential_blob_path = value; //mkcred_out buffer
     ctx.is_credential_blob_specified = 1;
 
-    /* Wehre to store the secret retrieved */
-    //ctx.output_file = value; //secret buffer (must be allocated)
-
     /*
-     * 1. Process options
-     */
-    /* tool_rc rc = check_options();
-    if (rc != tool_rc_success) {
-        return rc;
-    } */
-
-    /*
-     * 2. Process inputs
+     * Process inputs
      */
     tool_rc rc = process_inputs(ectx, mkcred_out, mkcred_out_len);
     if (rc != tool_rc_success) {
@@ -277,7 +260,7 @@ tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *atteste
     }
 
     /*
-     * 3. TPM2_CC_<command> call
+     * TPM2_CC_<command> call
      */
     rc = activate_credential_and_output(ectx);
     if (rc != tool_rc_success) {
@@ -286,7 +269,7 @@ tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *atteste
     }
 
     /*
-     * 4. Process outputs
+     * Process outputs
      */
     rc = process_output(ectx, secret, secret_len);
     if (rc != tool_rc_success) {
@@ -294,12 +277,8 @@ tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *atteste
         return rc;
     }
 
-     /*
-     * 1. Free objects
-     */
-
     /*
-     * 2. Close authorization sessions
+     * Close authorization sessions
      */
     rc = tool_rc_success;
     tool_rc tmp_rc = tpm2_session_close(&ctx.credentialed_key.object.session);
@@ -313,7 +292,7 @@ tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *atteste
     }
 
     /*
-     * 3. Close auxiliary sessions
+     * Close auxiliary sessions
      */
     size_t i = 0;
     for(i = 0; i < ctx.aux_session_cnt; i++) {
