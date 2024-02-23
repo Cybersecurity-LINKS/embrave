@@ -63,7 +63,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         return -1;
     }
 
-    if(!access(handle, F_OK)){
+    if(access(handle, F_OK)){
         fprintf(stderr, "ERROR: AK handle not found in /var/lemon/attester/\n");
         return -1;
     }
@@ -145,8 +145,9 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         fprintf(stderr, "ERROR: copy_signature failed\n");
         return -1;
     }
+#ifdef DEBUG
     print_signature(&(rply->sig_size), rply->sig);
-
+#endif
     //Free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
