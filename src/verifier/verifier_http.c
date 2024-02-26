@@ -73,6 +73,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     strcpy(last_ptr->uuid, uuid);
     strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
     last_ptr->running = true;
+    last_ptr->max_connection_retry_number = 0;
 
     printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
 
@@ -104,7 +105,7 @@ int add_agent_data(agent_list * ptr){
     return -1;
   }
 
-  char *sql = "INSERT INTO attesters values (?, ?, ?, ?, ?, ?, ?, ?);";
+  char *sql = "INSERT INTO attesters values (?, ?, ?, ?);";
 
   rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
   if (rc == SQLITE_OK) {
@@ -124,30 +125,6 @@ int add_agent_data(agent_list * ptr){
       return -1;
     }
     rc = sqlite3_bind_text(res, 4, ptr->gv_path, -1, SQLITE_TRANSIENT);
-    if (rc != SQLITE_OK ) {
-      sqlite3_close(db);
-      return -1;
-    }
-    /*SHA256*/
-    rc = sqlite3_bind_null(res, 5);
-    if (rc != SQLITE_OK ) {
-      sqlite3_close(db);
-      return -1;
-    }
-    /*SHA1*/
-    rc = sqlite3_bind_null(res, 6);
-    if (rc != SQLITE_OK ) {
-      sqlite3_close(db);
-      return -1;
-    }
-    /*resetCount*/
-    rc = sqlite3_bind_null(res, 7);
-    if (rc != SQLITE_OK ) {
-      sqlite3_close(db);
-      return -1;
-    }
-    /*byte_rcv*/
-    rc = sqlite3_bind_int(res, 7, 0);
     if (rc != SQLITE_OK ) {
       sqlite3_close(db);
       return -1;
@@ -425,7 +402,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
       return;
     } 
 
-    agent_data->trust_value = ra_challenge_verify(&rpl, agent_data, verifier_config.db);
+    agent_data->trust_value = ra_challenge_verify(&rpl, agent_data);
 
     c->is_draining = 1;        // Tell mongoose to close this connection
     agent_data->continue_polling = false;  // Tell event loop to stop
@@ -455,7 +432,8 @@ void *attest_agent(void *arg) {
   agent->continue_polling = true;
   agent->sleep_value = 5; /*TODO config*/
   agent->connection_retry_number = 0;
-  agent->max_connection_retry_number = 3; /*TODO config and/or js*/
+  if(agent->max_connection_retry_number == 0)
+    agent->max_connection_retry_number = 3; /*TODO config and/or js*/
 
   while (agent->running) {
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
@@ -517,11 +495,7 @@ static int init_database(void){
                     ak_pub TEXT NOT NULL,\
                     ip_addr TEXT NOT NULL,\
                     goldenvalue_database  NOT NULL,\
-                    pcr10_sha256 TEXT,\
-                    pcr10_sha1 TEXT,\
-                    resetCount INT,\
-                    byte_rcv INT,\
-                    PRIMARY KEY (uuid, ak_pub)\
+                    PRIMARY KEY (uuid)\
   );";
   char *sql_select = "SELECT * FROM attesters";
 
@@ -540,8 +514,6 @@ static int init_database(void){
       char *uuid = ( char *)sqlite3_column_text(res, 0);
       char *ak = ( char *)sqlite3_column_text(res, 1);
       char *ip = ( char *)sqlite3_column_text(res, 2);
-      char *pcr_256 = ( char *)sqlite3_column_text(res, 4);
-      char *pcr_1 = ( char *)sqlite3_column_text(res, 5);
 
       agent_list *last_ptr = agents;
       last_ptr = agent_list_last(last_ptr);
@@ -553,6 +525,7 @@ static int init_database(void){
       strcpy(last_ptr->uuid, uuid);
       strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
       last_ptr->running = true;
+      last_ptr->max_connection_retry_number = 1;
 
       create_attestation_thread(last_ptr);
     }
@@ -618,12 +591,6 @@ int main(int argc, char *argv[]) {
     exit(err);
   }
 
-  /* init database */
-  if(init_database()){
-    fprintf(stderr, "ERROR: could not init the db\n");
-    exit(-1);
-  }
-
 #ifdef DEBUG
   printf("verifier_config->ip: %s\n", verifier_config.ip);
   printf("verifier_config->port: %d\n", verifier_config.port);
@@ -648,13 +615,19 @@ int main(int argc, char *argv[]) {
 
   while (Continue) mg_mgr_poll(&mgr, 1); //1ms
 
+  /* init database */
+  if(init_database()){
+    fprintf(stderr, "ERROR: could not init the db\n");
+    exit(-1);
+  }
+
   Continue = true;
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
-  snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
-  c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
+  //snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
+  //c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
 
   if (c == NULL) {
     MG_ERROR(("Cannot listen on http://%s:%d", verifier_config.ip, verifier_config.port));
@@ -666,11 +639,11 @@ int main(int argc, char *argv[]) {
   Continue = true;
 
   while (Continue) {
-    mg_mgr_poll(&mgr, 100);     
+    //mg_mgr_poll(&mgr, 100);     
     mg_mgr_poll(&mgr_mqtt, 100);
   }
 
-  mg_mgr_free(&mgr);        
+  //mg_mgr_free(&mgr);        
   mg_mgr_free(&mgr_mqtt); 
 
   return 0;

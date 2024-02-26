@@ -30,9 +30,10 @@
 #define UNREACHABLE -2
 
 int ra_challenge_create(tpm_challenge *chl, agent_list *agent_data);
-int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path);
+int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data);
 void ra_free(tpm_challenge_reply *rpl, agent_list *tpa_data);
 agent_list * agent_list_new(void);
 agent_list * agent_list_last(agent_list * ptr);
+bool agent_list_find_uuid(char * uuid);
 void agent_list_free(agent_list * ptr);
 #endif

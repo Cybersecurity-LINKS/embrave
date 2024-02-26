@@ -565,62 +565,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int save_pcr10(agent_list *agent, char * db_path){
-    sqlite3_stmt *res;
-    sqlite3 *db;
-    char *sql = "UPDATE attesters SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
-    int idx, idx2, idx3, idx4, idx5;
-    int step;
-
-    printf("Save PCR10 \n");
-    int rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //convert the sql statament 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        //Set the parametrized input
-        idx = sqlite3_bind_parameter_index(res, "@sha256");
-        sqlite3_bind_text(res, idx, agent->pcr10_sha256, strlen(agent->pcr10_sha256), NULL);
-
-        idx2 = sqlite3_bind_parameter_index(res, "@sha1");
-        sqlite3_bind_text(res, idx2, agent->pcr10_sha1, strlen(agent->pcr10_sha1), NULL);
-
-        idx3 = sqlite3_bind_parameter_index(res, "@uuid");
-        sqlite3_bind_text(res, idx3, agent->uuid, -1, NULL);
-
-        idx4 = sqlite3_bind_parameter_index(res, "@resetCount");
-        sqlite3_bind_int(res, idx4, agent->resetCount);
-
-        idx5 = sqlite3_bind_parameter_index(res, "@bytercv");
-        sqlite3_bind_int(res, idx5, agent->byte_rcv);
-    } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-    
-    //Execute the sql query
-    step = sqlite3_step(res);
-    if (step == SQLITE_ROW) {
-        fprintf(stderr, "ERROR: error sql insert pcr10\n");
-        //printf("%s\n", sqlite3_column_text(res, 1));
-        sqlite3_finalize(res);
-        sqlite3_close(db);
-        return -1;
-        
-    } 
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    return 0;
-
-}
-
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, char * db_path){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -703,10 +648,11 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
+        
         free(path_name);
 
         //Compute PCR10
@@ -717,7 +663,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
         }
 
     }
-
+    printf("WARNING check_goldenvalue output todo!\n");
     fprintf(stdout, "INFO: IMA log verification OK\n");
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
@@ -754,12 +700,8 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
-    //Update the number of recievd bytes
+    //Update the number of received bytes
     agent->byte_rcv += rply->ima_log_size;
-    //Store the PCRs10
-    ret = save_pcr10(agent, db_path);
-    if(ret == -1)
-        goto error;
 
     free(pcr10_sha1);
     free(pcr10_sha256);
