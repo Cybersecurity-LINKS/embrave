@@ -26,12 +26,9 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char *
 {
   int ret;
   sqlite3 *db;
- // char * pem_file_name, db_file_name[250];
+
   if(rpl == NULL) return -1;
   
-  //Start timer 2
-  //get_start_timer();
-
   //verify quote
   ret = verify_quote(rpl, agent_data->ak_pub,  agent_data);
   if (ret == -1){
@@ -40,13 +37,6 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char *
   } else {
     printf("Quote signature verification OK\n");
   }
-
-  //End timer 2
-  //get_finish_timer();
-  ///print_timer(2);
-
-  //Start timer 3
-  //get_start_timer();
 
   //Open the goldenvalues DB
   int rc = sqlite3_open_v2((const char *) agent_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
@@ -66,14 +56,10 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char *
     printf("Unknown agent\n");
   } else {
     printf("Trusted agent\n");
-    //End timer 3
-    //get_finish_timer();
-    //print_timer(3);
-    //save_timer();
+
   }
 
 end:
-  //free(pem_file_name);
   sqlite3_close(db);
   return ret;
 }
@@ -81,9 +67,7 @@ end:
 void ra_free(tpm_challenge_reply *rpl, agent_list *agent_data){
   free(rpl->sig);
   free(rpl->quoted);
-  //free(agent_data->ak_pub);
-  //free(agent_data->gv_path);
-  //free(agent_data->tls_path);
+
   if(agent_data->pcr10_sha1 != NULL){
     free(agent_data->pcr10_sha1);
   }

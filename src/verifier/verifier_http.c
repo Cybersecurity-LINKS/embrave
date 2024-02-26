@@ -464,6 +464,7 @@ void *attest_agent(void *arg) {
       fflush(stdout);
       continue;
     }
+
     while (agent->continue_polling) mg_mgr_poll(&mgr, 100); //10ms
     agent->continue_polling = true;
     if(agent->connection_retry_number == agent->max_connection_retry_number){
@@ -522,12 +523,43 @@ static int init_database(void){
                     byte_rcv INT,\
                     PRIMARY KEY (uuid, ak_pub)\
   );";
+  char *sql_select = "SELECT * FROM attesters";
 
   int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
     printf("Cannot open or create the verifier database, error %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return -1;
+  }
+
+  rc = sqlite3_prepare_v2(db, sql_select, -1, &res, NULL);
+  if (rc == SQLITE_OK) {
+    /*db alredy present, try to recontatct old agents*/
+
+    while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
+      char *uuid = ( char *)sqlite3_column_text(res, 0);
+      char *ak = ( char *)sqlite3_column_text(res, 1);
+      char *ip = ( char *)sqlite3_column_text(res, 2);
+      char *pcr_256 = ( char *)sqlite3_column_text(res, 4);
+      char *pcr_1 = ( char *)sqlite3_column_text(res, 5);
+
+      agent_list *last_ptr = agents;
+      last_ptr = agent_list_last(last_ptr);
+      last_ptr = agent_list_new();
+      
+      /* Get attester data */
+      strcpy(last_ptr->ip_addr, ip);
+      strcpy(last_ptr->ak_pub, ak);
+      strcpy(last_ptr->uuid, uuid);
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
+
+      create_attestation_thread(last_ptr);
+    }
+
+    sqlite3_close(db);
+    return 0;
+
   }
 
   //attesters table
@@ -539,11 +571,13 @@ static int init_database(void){
   }
 
   rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
+
   if (rc != SQLITE_OK) {
     fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return -1;
   }
+  
   
   sqlite3_close(db);
   return 0;

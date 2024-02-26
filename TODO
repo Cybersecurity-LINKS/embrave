@@ -1,6 +1,6 @@
 1
 scrivere la documentazione (README)
-gestire il riavvio di verifier e del join service
+gestire il riavvio del join service
 rivedere tpm.c
 pulizia codice e script
 join service gestire output degli integrity report 

@@ -202,7 +202,6 @@ int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
     return 0;
 }
 
-
 int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
@@ -566,45 +565,6 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-/* int refresh_verifier_database_entry(agent_list *agent){
-    sqlite3_stmt *res;
-    sqlite3 *db;
-    char *sql = "UPDATE agent SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
-    int step;
-    
-    int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the verifier database, error %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //convert the sql statament
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    } 
-
-    //Execute the sql query
-    step = sqlite3_step(res);
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: refresh_verifier_database_entry successfull\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not update refresh_verifier_database_entry\n");
-        sqlite3_finalize(res);
-        sqlite3_close(db);
-        return -1;
-    }
-    
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    return 0;
-
-} */
-
 int save_pcr10(agent_list *agent, char * db_path){
     sqlite3_stmt *res;
     sqlite3 *db;
@@ -824,13 +784,8 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName) {
 }
 
 tool_rc tpm2_quote_free(void) {
-
     free(signature);
-
-    //Close authorization sessions
-    tool_rc rc = tpm2_session_close(&key.object.session);
-
-    return rc;
+    return tpm2_session_close(&key.object.session);;
 }
 
 void free_data (tpm_challenge_reply *rply){
