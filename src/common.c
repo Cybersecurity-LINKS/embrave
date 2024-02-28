@@ -40,7 +40,6 @@ void get_finish_timer(){
 
 void print_timer(int n){
 
-
   switch(n){
     case 1:
       sub_timespec(start, finish, &delta_1);

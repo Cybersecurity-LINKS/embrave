@@ -464,10 +464,11 @@ void *attest_agent(void *arg) {
 
   fprintf(stdout, "INFO: attestation thread stopped for agent uuid:%s\n", agent->uuid);
   fflush(stdout);
+
+  
+
   pthread_exit(NULL);
 }
-
-
 
 void create_attestation_thread(agent_list * agent){
   pthread_t thread;
