@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -798,29 +798,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-/*             struct ak_db_entry *ak_entry = retrieve_ak((char *) uuid);
-            if (ak_entry == NULL) {
-                fprintf(stdout, "INFO: uuid not present in the db\n");
-            }
-            else {
-                fprintf(stdout, "INFO: uuid already present in the db\n");
-
-                if(ak_entry->validity == VALID) {
-                    printf("INFO: AK is valid\n");
-                    mg_http_reply(c, ALREDY_JOINED, APPLICATION_JSON,
-                        "{\"message\":\"ak already registered and valid\"}\n");
-                    MG_INFO(("%s %s %d", POST, API_JOIN, ALREDY_JOINED));
-                    return;
-                }
-                else {
-                    printf("INFO: AK is NOT valid (revoked)\n");
-                    mg_http_reply(c, FORBIDDEN, APPLICATION_JSON,
-                        "{\"message\":\"ak is revoked\"}\n");
-                    MG_INFO(("%s %s %d", POST, API_JOIN, FORBIDDEN));
-                    return;
-                }
-            } */
-
             /* create secret */
             if (create_secret(secret) != 0){
                 fprintf(stderr, "ERROR: create_secret failed\n");
@@ -834,11 +811,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
             }
 
-/*             printf("OUT_BUF: ");
+            #ifdef DEBUG
+            printf("OUT_BUF: ");
             for(int i=0; i<out_buf_size; i++){
                 printf("%02x", out_buf[i]);
             }
-            printf("\n"); */
+            printf("\n"); 
+            #endif
 
             char *mkcred_out_b64;
             size_t mkcred_out_b64_len = B64ENCODE_OUT_SAFESIZE(out_buf_size);
@@ -886,14 +865,11 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ak_name_buff);
             free(ek_cert_buff);
             free(uuid);
-           // free(ak_entry);
             free(ek_cert_b64);
             free(ak_pub_b64);
             free(ip_addr);
-
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-           // struct ak_db_entry ak_entry;
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -953,16 +929,11 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             pthread_mutex_unlock(&mutex);
             pthread_cond_signal(&cond);
 
-            /* notify all verifiers?? */
             free(secret_buff);
             free(secret_b64);
             free(uuid);
             free(ak_pub);
-            
-
         }else if (mg_http_match_uri(hm, API_JOIN_VERIFIER) && !strncmp(hm->method.ptr, POST, hm->method.len)){
-
-            int ret;
             /* Read post */
             /*
                 {
@@ -977,7 +948,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
             fprintf(stdout, "INFO: verifier ip: %s wants to join\n", verifier_ip);
 
-            ret = check_verifier_presence(verifier_ip);
+            int ret = check_verifier_presence(verifier_ip);
             if(ret == 0){
                 ret = insert_verifier(verifier_ip);
                 mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
@@ -988,7 +959,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
                 MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
            }
-
         } 
         else {
             mg_http_reply(c, 500, NULL, "\n");
@@ -1025,23 +995,15 @@ static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
         "%s\n",
         object_length,
         object);
-
     } else if (ev == MG_EV_HTTP_MSG) {
         // Response is received. Print it
     } else if (ev == MG_EV_ERROR) {
         struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
         ak_entry->Continue = false;  // Error, tell event loop to stop
     }
-
-
-
-
-
-    /////
 }
 
 int notify_verifier(int id, struct ak_db_entry  * ak_entry){
-    //char *buff = malloc(100);
     char url[MAX_BUF];
     struct mg_mgr mgr;  // Event manager
     struct mg_connection *c;
@@ -1071,8 +1033,6 @@ int notify_verifier(int id, struct ak_db_entry  * ak_entry){
     }
 
     while (ak_entry->Continue) mg_mgr_poll(&mgr, 1); //1ms
-
-
     return 0;
 }
 
@@ -1215,15 +1175,9 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     // On error, log error message
     MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
   } else if (ev == MG_EV_CONNECT) {
-    // If target URL is SSL/TLS, command client connection to use TLS
-    /* if (mg_url_is_ssl(s_url)) {
-      struct mg_tls_opts opts = {.ca = mg_str("ca.pem")};
-      mg_tls_init(c, &opts);
-    } */
+
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
-    /* struct mg_str subt = mg_str(s_sub_topic);
-    struct mg_str pubt = mg_str(s_pub_topic), data = mg_str("hello"); */
     MG_INFO(("%lu CONNECTED", c->id));
     mqtt_subscribe(c_mqtt, "status/+");
     
@@ -1301,7 +1255,7 @@ int main(int argc, char *argv[]) {
     #endif
 
     snprintf(url, 1024, "http://%s:%d", js_config.ip, js_config.port);
-                                          // Init manager
+
     if((c = mg_http_listen(&mgr, url, join_service_manager, &mgr)) == NULL){  // Setup listener
         MG_ERROR(("Cannot listen on http://%s:%d", js_config.ip, js_config.port));
         exit(EXIT_FAILURE);
@@ -1314,6 +1268,6 @@ int main(int argc, char *argv[]) {
         mg_mgr_poll(&mgr_mqtt, 1000);   //mqtt
     }
 
-    mg_mgr_free(&mgr);                                        // Cleanup
+    mg_mgr_free(&mgr);                                      
     return 0;
 }

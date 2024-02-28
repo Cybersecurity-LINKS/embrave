@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -173,11 +173,6 @@ static tool_rc process_input_data(ESYS_CONTEXT *ectx) {
 
 tool_rc tpm_startauthsession(ESYS_CONTEXT *ectx) {
     tool_rc rc;
-    //Check input options
-    //tool_rc rc = is_input_options_valid();
-    //if (rc != tool_rc_success) {
-    //    return rc;
-    //}
 
     //Process inputs
     rc = process_input_data(ectx);

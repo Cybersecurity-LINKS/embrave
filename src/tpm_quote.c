@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -36,8 +36,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, uint8_t * sha256_concatenated, uint8_t *template_hash, uint8_t *template_hash_sha256);
 int verify_pcrsdigests(TPM2B_DIGEST *quoteDigest, TPM2B_DIGEST *pcr_digest);
 
-int nonce_create(uint8_t *nonce)
-{
+int nonce_create(uint8_t *nonce){
     if (!RAND_bytes(nonce, NONCE_SIZE)){
         fprintf(stderr, "ERROR: nonce random generation error\n");
         return -1;
@@ -52,36 +51,7 @@ int nonce_create(uint8_t *nonce)
     return 0;
 }
 
-/* int openPEM(const char *path, unsigned char **pem_file) {
-  int len_file = 0;
-  unsigned char *data;
-  FILE *fp = fopen(path, "r");
-  if(fp == NULL){
-    fprintf(stderr, "ERROR: Could not open the PEM file %s \n", path);
-    return -1;
-  }
-
-  //get len of file
-  fseek(fp, 0L, SEEK_END);
-  len_file = ftell(fp);
-  fseek(fp, 0L, SEEK_SET);
-
-  // read the data from the file 
-  data = (unsigned char*) malloc((len_file + 1)*sizeof(char));
-  if(data == NULL){
-    fprintf(stderr, "ERROR: malloc error for reading file %s\n", path);
-    return -1;
-  }
-  fread(data, 1, len_file, fp);
-  data[len_file] = '\0';
-
-  *pem_file = data;
-  fclose (fp);
-  return 0;
-} */
-
-int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx)
-{
+int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx){
     char handle[27]= "/var/lemon/attester/ak.ctx";
     TPML_PCR_SELECTION pcr_select;
     int ret;
@@ -93,7 +63,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         return -1;
     }
 
-    if(!access(handle, F_OK)){
+    if(access(handle, F_OK)){
         fprintf(stderr, "ERROR: AK handle not found in /var/lemon/attester/\n");
         return -1;
     }
@@ -175,8 +145,9 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
         fprintf(stderr, "ERROR: copy_signature failed\n");
         return -1;
     }
+#ifdef DEBUG
     print_signature(&(rply->sig_size), rply->sig);
-
+#endif
     //Free used data 
     ret = tpm2_quote_free();
     if(ret != 0){
@@ -224,17 +195,14 @@ int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
     int k;
     for (k = 0; k < quote_digest->size; k++) {
         if (quote_digest->buffer[k] != pcr_digest->buffer[k]) {
-
-            return -2;
+            return -1;
         }
     }
 
     return 0;
 }
 
-
-int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
-{
+int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     EVP_PKEY_CTX *pkey_ctx = NULL;
     EVP_PKEY *pkey = NULL;
     BIO *bio = NULL;
@@ -345,13 +313,6 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent)
     rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
     if (rc == -1) {
         goto err;
-    } else if (rc == -2) {
-        //TODO fixed??
-        fprintf(stdin, "INFO: PCR values failed to match quote's digest!, possible desynch\n");
-        OPENSSL_free(bio);
-        EVP_PKEY_free(pkey);
-        EVP_PKEY_CTX_free(pkey_ctx);
-        return -2;
     } 
 
     OPENSSL_free(bio);
@@ -604,102 +565,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int refresh_verifier_database_entry(agent_list *agent){
-    sqlite3_stmt *res;
-    sqlite3 *db;
-    char *sql = "UPDATE agent SET pcr10_sha256 = NULL, pcr10_sha1 = NULL, timestamp = NULL, resetCount = NULL, byte_rcv = NULL WHERE id = @id ";
-    int step;
-    
-    int rc = sqlite3_open_v2(agent->gv_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-   //int rc = sqlite3_open_v2(verifier_config->, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the verifier database, error %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //convert the sql statament
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    } 
-
-    //Execute the sql query
-    step = sqlite3_step(res);
-    if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: refresh_verifier_database_entry successfull\n");
-    }
-    else {
-        fprintf(stderr, "ERROR: could not update refresh_verifier_database_entry\n");
-        sqlite3_finalize(res);
-        sqlite3_close(db);
-        return -1;
-    }
-    
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    return 0;
-
-}
-
-int save_pcr10(agent_list *agent, char * db_path){
-    sqlite3_stmt *res;
-    sqlite3 *db;
-    char *sql = "UPDATE attesters SET pcr10_sha256 = @sha256, pcr10_sha1 = @sha1, resetCount =@resetCount, byte_rcv =@bytercv WHERE uuid = @uuid ";
-    int idx, idx2, idx3, idx4, idx5;
-    int step;
-
-    printf("Save PCR10 \n");
-    int rc = sqlite3_open_v2(db_path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI, NULL);
-    if ( rc != SQLITE_OK) {
-        fprintf(stderr, "ERROR: Cannot open the agent  database, error %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-
-    //convert the sql statament 
-    rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-    if (rc == SQLITE_OK) {
-        //Set the parametrized input
-        idx = sqlite3_bind_parameter_index(res, "@sha256");
-        sqlite3_bind_text(res, idx, agent->pcr10_sha256, strlen(agent->pcr10_sha256), NULL);
-
-        idx2 = sqlite3_bind_parameter_index(res, "@sha1");
-        sqlite3_bind_text(res, idx2, agent->pcr10_sha1, strlen(agent->pcr10_sha1), NULL);
-
-        idx3 = sqlite3_bind_parameter_index(res, "@uuid");
-        sqlite3_bind_text(res, idx3, agent->uuid, -1, NULL);
-
-        idx4 = sqlite3_bind_parameter_index(res, "@resetCount");
-        sqlite3_bind_int(res, idx4, agent->resetCount);
-
-        idx5 = sqlite3_bind_parameter_index(res, "@bytercv");
-        sqlite3_bind_int(res, idx5, agent->byte_rcv);
-    } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return -1;
-    }
-    
-    //Execute the sql query
-    step = sqlite3_step(res);
-    if (step == SQLITE_ROW) {
-        fprintf(stderr, "ERROR: error sql insert pcr10\n");
-        //printf("%s\n", sqlite3_column_text(res, 1));
-        sqlite3_finalize(res);
-        sqlite3_close(db);
-        return -1;
-        
-    } 
-    sqlite3_finalize(res);
-    sqlite3_close(db);
-    return 0;
-
-}
-
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, char * db_path){
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
@@ -722,12 +588,14 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
         return -1;
     }
 
-    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL && !rply->wholeLog){
+    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL ){
         //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha1, &sz1, pcr10_sha1);
-        //tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        //printf("\n");
+/*         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
+        tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("\n"); */
     } else {
         if(agent->pcr10_sha256 == NULL){
             agent->pcr10_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
@@ -780,10 +648,11 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
 
         //verify that (name,hash) present in in golden values db
         if(check_goldenvalue(db, file_hash, path_name) != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
             //goto error;
         }
+        
         free(path_name);
 
         //Compute PCR10
@@ -794,7 +663,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, ch
         }
 
     }
-
+    printf("WARNING check_goldenvalue output todo!\n");
     fprintf(stdout, "INFO: IMA log verification OK\n");
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
@@ -822,9 +691,7 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
         
-        //refresh_verifier_database_entry
-        refresh_verifier_database_entry(agent);
-        goto unknown;
+        goto error;
     }
 
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
@@ -833,12 +700,8 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
-    //Update the number of recievd bytes
+    //Update the number of received bytes
     agent->byte_rcv += rply->ima_log_size;
-    //Store the PCRs10 for future incremental IMA log
-    ret = save_pcr10(agent, db_path);
-    if(ret == -1)
-        goto error;
 
     free(pcr10_sha1);
     free(pcr10_sha256);
@@ -853,13 +716,6 @@ error:
     free(sha256_concatenated);
     free(event_name);
     return -1;
-unknown:
-    free(pcr10_sha1);
-    free(pcr10_sha256);
-    free(sha1_concatenated);
-    free(sha256_concatenated);
-    free(event_name);
-    return -2;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {
@@ -870,13 +726,8 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName) {
 }
 
 tool_rc tpm2_quote_free(void) {
-
     free(signature);
-
-    //Close authorization sessions
-    tool_rc rc = tpm2_session_close(&key.object.session);
-
-    return rc;
+    return tpm2_session_close(&key.object.session);;
 }
 
 void free_data (tpm_challenge_reply *rply){

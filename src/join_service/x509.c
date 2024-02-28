@@ -1,3 +1,15 @@
+// Copyright (C) 2024 Fondazione LINKS 
+
+// This program is free software; you can redistribute it and/or modify 
+// it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
+
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// See the GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License along with this program; if not, 
+// write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
@@ -8,18 +20,11 @@
 #include "x509.h"
 
 int verify_x509_cert(unsigned char *cert_buff, int cert_len, char* ca_x509_path) {
-    // Load from memory the certificate to be verified
-    // BIO_new_file("/home/enrico/Documents/PoliTo/PhD/LINKS/test_cert_verify/RSA_EK_cert.bin", "rb");
     BIO *bio = BIO_new_mem_buf((void *) cert_buff, cert_len);
     if (!bio) {
         fprintf(stderr, "ERROR: reading certificate buffer.\n");
         return 1;
     }
-
-    /* for(int i=0; i<cert_len; i++){
-        printf("%02x", cert_buff[i]);
-    }
-    printf("\n"); */
 
     X509 *cert = d2i_X509_bio(bio, NULL);
     if (!cert) {

@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -53,7 +53,6 @@ typedef struct {
     unsigned char * ima_log;
     uint32_t ima_log_size;
     uint8_t wholeLog;
-    //int dsc;
 } tpm_challenge_reply;
 
 int nonce_create(uint8_t *nonce);
@@ -64,7 +63,7 @@ BYTE * copy_signature(UINT16* size);
 void print_signature(UINT16* size, BYTE *sig);
 void pcr_print_(TPML_PCR_SELECTION *pcr_select, tpm2_pcrs *pcrs);
 int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent);
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent, char * db_path);
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent);
 int refresh_verifier_database_entry(agent_list *agent);
 
 #endif

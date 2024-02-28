@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -138,17 +138,18 @@ error:
 }
 
 int attester_activatecredential(unsigned char *mkcred_out, unsigned int mkcred_out_len, unsigned char **secret, unsigned int *secret_len){
-  // TPM
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   tool_rc rc_tool;
 
-  /* printf("MKCRED_OUT: ");
+#ifdef DEBUG
+  printf("MKCRED_OUT: ");
     for(int i=0; i<mkcred_out_len; i++){
       printf("%02x", mkcred_out[i]);
     }
-    printf("\n"); */
+  printf("\n"); 
+#endif
 
   tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
@@ -201,9 +202,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
   TSS2_RC tss_r;
   ESYS_CONTEXT *esys_context = NULL;
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
-  //uint16_t ak_handle[HANDLE_SIZE];
   int ret;
-  //snprintf((char *)ak_handle, HANDLE_SIZE, "%s", "0x81000004");
 
   //Set NULL pointers for safety
   rpl->ima_log = NULL;
@@ -256,7 +255,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   size_t read_bytes, buff_sz;
   uint32_t ima_byte_sent;
 
-  fprintf(stderr, "%d %d\n", all_log, from_bytes);
+  fprintf(stdout, "INFO; request all ima log%d or from byte %d\n", all_log, from_bytes);
   fp = fopen(path, "rb");
 	if (!fp) {
 	  fprintf(stderr, "ERROR: Unable to open IMA file\n");

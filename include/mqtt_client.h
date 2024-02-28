@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -15,16 +15,10 @@
 
 #include "mongoose.h"
 
-/* const char *attester_topic_prefix = "attest/";
-const char *verifiers_topic = "verfier/+";
-const char *s_pub_topic = "mg/clnt/test"; */
-
 #define ATTESTER_TOPIC_PREFIX = "attest/"
 #define VERIFIERS_TOPIC = "verfier/+"
 
 void mqtt_publish(struct mg_connection *c, char *topic, char *message);
 void mqtt_subscribe(struct mg_connection *c, char *topic);
 struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name);
-//void timer_fn(void *arg);
-
 #endif

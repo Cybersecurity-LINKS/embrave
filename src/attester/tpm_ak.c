@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -65,16 +65,6 @@ tool_rc attester_create_ak(ESYS_CONTEXT *ectx, struct attester_conf *conf){
         },
         .flags = { 0 },
     };
-
-    /* if (ctx.flags.f && !ctx.ak.out.pub_file) {
-        LOG_ERR("Please specify an output file name when specifying a format");
-        return tool_rc_option_error;
-    } */
-
-    /* if (!ctx.ak.out.ctx_file) {
-        LOG_ERR("Expected option -c");
-        return tool_rc_option_error;
-    } */
 
     tool_rc rc = tpm2_util_object_load(ectx, ctx.ek.ctx_arg, &ctx.ek.ek_ctx,
             TPM2_HANDLE_ALL_W_NV);
@@ -368,15 +358,15 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
     ctx.is_persistent_handle_specified = true;
 
     /*
-     * 1. Object and auth initializations
+     * Object and auth initializations
      */
 
     /*
-     * 1.a Add the new-auth values to be set for the object.
+     * Add the new-auth values to be set for the object.
      */
 
     /*
-     * 1.b Add object names and their auth sessions
+     * Add object names and their auth sessions
      */
 
     /* Object #1 */
@@ -395,11 +385,7 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
     }
 
     /*
-     * 2. Restore auxiliary sessions
-     */
-
-    /*
-     * 3. Command specific initializations
+     * Command specific initializations
      */
     if (ctx.to_persist_key.object.handle >> TPM2_HR_SHIFT
             == TPM2_HT_PERSISTENT) {
@@ -424,17 +410,8 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
         ctx.is_persistent_handle_specified = true;
     }
 
-    /* if (ctx.output_arg && !ctx.is_persistent_handle_specified) {
-        LOG_ERR("Cannot specify -o without using a persistent handle");
-        return tool_rc_option_error;
-    } */
-
     /*
-     * 4. Configuration for calculating the pHash
-     */
-
-    /*
-     * 4.a Determine pHash length and alg
+     * Determine pHash length and alg
      */
     tpm2_session *all_sessions[MAX_SESSIONS] = {
         ctx.auth_hierarchy.object.session,
@@ -448,7 +425,7 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
         cphash_path, &ctx.cp_hash, 0, 0, all_sessions);
 
     /*
-     * 4.b Determine if TPM2_CC_<command> is to be dispatched
+     * Determine if TPM2_CC_<command> is to be dispatched
      */
     ctx.is_command_dispatch = ctx.cp_hash_path ? false : true;
 
@@ -457,7 +434,7 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
         &ctx.cp_hash, ctx.parameter_hash_algorithm);
 
     /*
-     * 1. Outputs that do not require TPM2_CC_<command> dispatch
+     * Outputs that do not require TPM2_CC_<command> dispatch
      */
     bool is_file_op_success = true;
     if (ctx.cp_hash_path) {
@@ -474,7 +451,7 @@ tool_rc attester_evictcontrol(ESYS_CONTEXT *ectx, struct attester_conf *conf){
     }
 
     /*
-     * 2. Outputs generated after TPM2_CC_<command> dispatch
+     * Outputs generated after TPM2_CC_<command> dispatch
      */
 
     /*

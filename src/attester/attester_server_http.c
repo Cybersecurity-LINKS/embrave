@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -259,9 +259,9 @@ int create_request_body(size_t *object_length, char *object){
     free(b64_buff_ek);
     return -1;
   }
-
-  printf("EK cert base64: %s\n", b64_buff_ek);
-
+#ifdef DEBUG
+  fprintf(stdout, "INFO: EK cert base64: %s\n", b64_buff_ek);
+#endif
   free(ek_cert);
 
   /* Read AK pub key */
@@ -283,9 +283,9 @@ int create_request_body(size_t *object_length, char *object){
     fclose(fd_ak_pub);
     return -1;
   }
-
-  printf("AK pem size: %ld\n", size);
-
+#ifdef DEBUG
+  fprintf(stdout, "INFO: AK pem size: %ld\n", size);
+#endif
   ret = fread(ak_pub, 1, (size_t) size, fd_ak_pub);
   ak_pub[size] = '\0';
   if(ret != size){
@@ -297,8 +297,9 @@ int create_request_body(size_t *object_length, char *object){
   }
 
   fclose(fd_ak_pub);
- // printf("AK pem : %s\n", ak_pub);
-
+#ifdef DEBUG
+  fprintf(stdout, "INFO: AK pem \n%s\n", ak_pub);
+#endif
   tot_sz += size;
   //Encode in b64
   //Allocate buffer for encoded b64 buffer
@@ -353,7 +354,6 @@ int create_request_body(size_t *object_length, char *object){
   if(object == NULL) {
     fprintf(stderr, "ERROR: object buff is NULL\n");
     free(b64_buff_ek);
-    //free(b64_buff_ak);
     return -1;
   }
 
@@ -365,14 +365,11 @@ int create_request_body(size_t *object_length, char *object){
 #ifdef DEBUG
   printf("Final object : %s\n", object);
 #endif
-
   free(b64_buff_ek);
   free(ak_pub);
   free(ak_name_b64);
   return 0;
-
 }
-
 
 static void request_join(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
@@ -428,11 +425,11 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
     } else if (status == CREATED){
 
       unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
-      printf("MKCRED_OUT b64: %s\n", mkcred_out_b64);
-
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
-      //printf("MKCRED_OUT leN:%d\n", mkcred_out_len);
-
+      #ifdef DEBUG
+      fprintf(stdout, "INFO: MKCRED_OUT b64: %s\n", mkcred_out_b64);
+      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out_len);
+      #endif
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
           fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
@@ -448,14 +445,16 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
           //mg_http_reply(c, 500, NULL, "\n");
           return;
       }
-      //mkcred_out->len = mkcred_out_len;
-      printf("MKCRED_OUT: ");
+
+
+      #ifdef DEBUG
+      fprintf(stdout, "INFO: MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
       }
-      printf("\n"); 
-      printf("MKCRED_OUT leN:%d\n", mkcred_out->len);
-
+      printf("\n");
+      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out->len); 
+      #endif
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
       free(mkcred_out_b64);
 
@@ -478,18 +477,12 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
       mg_error(c, "Connect timeout");
     }
   } else if (ev == MG_EV_CONNECT) {
-    //size_t object_length = 0;
     char object[4096];
     unsigned char *secret;
     unsigned char *secret_b64;
     unsigned int secret_len, secret_b64_len;
     struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
-    printf("MKCRED_OUT ptr after having it passed: %p\n", mkcred_out);
-
-#ifdef DEBUG
-    printf("%s\n", object);
-#endif
-
+    
     int rc = attester_activatecredential(mkcred_out->value, mkcred_out->len, &secret, &secret_len);
     if (rc != 0) {
       fprintf(stderr, "ERROR: cannot activate credential\n");
@@ -551,7 +544,6 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     free(secret_b64);
 
     /* Send request */
-
     mg_printf(c,
     "POST /confirm_credential HTTP/1.1\r\n"
     "Content-Type: application/json\r\n"
@@ -563,14 +555,10 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
+#ifdef DEBUG
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-
-    /* char response_body[1024];
-    memcpy((void *) response_body, (void *) hm->body.ptr, hm->body.len); */
-//#ifdef DEBUG
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
-//#endif
-
+#endif
     c->is_draining = 1;        // Tell mongoose to close this connection
     Continue = false;  // Tell event loop to stop
   } else if (ev == MG_EV_ERROR) {
@@ -596,31 +584,18 @@ static int join_procedure(){
     return -1;
   }
 
-  /* printf("MKCRED_OUT: ");
-  for(int i=0; i<mkcred_out.len; i++){
-    printf("%02x", mkcred_out.value[i]);
-  }
-  printf("\n"); */
-
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
   
-  /* mkcred_out.len == 0 means ak alredy present in the js db so no challenge to reply*/
-  if(mkcred_out.len != 0){
-    /* send back the value calculated with tpm_activatecredential */
-    Continue = true;
-    c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
+  /* send back the value calculated with tpm_activatecredential */
+  Continue = true;
+  c = mg_http_connect(&mgr, s_conn, confirm_credential, (void *) &mkcred_out);
 
-    if (c == NULL) {
+  if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
       return -1;
-    }
-
-    while (Continue) mg_mgr_poll(&mgr, 10); //10ms
-
-    if(mkcred_out.value != NULL){
-      free(mkcred_out.value);
-    }
   }
+
+  while (Continue) mg_mgr_poll(&mgr, 10); //10ms
 
   return 0;
 }
@@ -682,7 +657,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stdout, "Server listen to %s \n", s_conn);
+  fprintf(stdout, "INFO: Server listen to %s \n", s_conn);
 
   Continue = true;
 

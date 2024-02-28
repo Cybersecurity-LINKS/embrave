@@ -1,4 +1,4 @@
-// Copyright (C) 2023 Fondazione LINKS 
+// Copyright (C) 2024 Fondazione LINKS 
 
 // This program is free software; you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2.
@@ -24,10 +24,16 @@
 /* APIs */
 #define API_ATTEST "/request_attestation"
 
+/* Trust status value */
+#define TRUSTED 0
+#define UNTRUSTED -1
+#define UNREACHABLE -2
+
 int ra_challenge_create(tpm_challenge *chl, agent_list *agent_data);
-int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data, char * db_path);
+int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data);
 void ra_free(tpm_challenge_reply *rpl, agent_list *tpa_data);
 agent_list * agent_list_new(void);
 agent_list * agent_list_last(agent_list * ptr);
+bool agent_list_find_uuid(char * uuid);
 void agent_list_free(agent_list * ptr);
 #endif
