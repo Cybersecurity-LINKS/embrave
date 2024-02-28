@@ -14,9 +14,9 @@ set(join_service_wrkdir ${CMAKE_BINARY_DIR}/join_service.build)
 set(scripts_wrkdir ${CMAKE_SOURCE_DIR}/scripts)
 set(ca_hash_dir ${CMAKE_SOURCE_DIR}/tpm_ca_certs_hash_dir)
 
-###############################################################################
+#######################################################################
 ## MACROS
-###############################################################################
+#######################################################################
 
 # add patch macro
 macro(add_patch level submodule patch working_directory patch_list)
@@ -38,9 +38,9 @@ endmacro()
 #  set(${name}_exists ${dir}/.exists)
 #endmacro()
 
-###############################################################################
+#######################################################################
 ## tpm2-tools patch
-###############################################################################
+#######################################################################
 
 #add_patch(1 "tpm2-tools" "tool_as_lib.patch" ${tpm2-tools_srcdir} tpm2-tools_patches)
 #set(patch "tool_as_lib.patch")
@@ -62,9 +62,9 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied PRE_BUILD
 
 add_custom_target(patch_tpm2-tools ALL DEPENDS ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied)  #${patch}.applied
 
-###############################################################################
+#######################################################################
 ## generate hash of root CA certificates
-###############################################################################
+#######################################################################
 
 # create hash of root CA certificates
 #execute_process (COMMAND ${scripts_wrkdir}/create_hash_dir.sh ${CMAKE_SOURCE_DIR}
@@ -74,9 +74,9 @@ add_custom_command(OUTPUT ${ca_hash_dir} PRE_BUILD COMMAND ${scripts_wrkdir}/cre
 
 add_custom_target(tpm_ca_certs_hash_dir ALL DEPENDS ${ca_hash_dir})
 
-###############################################################################
+#######################################################################
 ## attester agent
-###############################################################################
+#######################################################################
 
 add_custom_command(OUTPUT ${agent_wrkdir} PRE_BUILD COMMAND mkdir -p ${agent_wrkdir})
 
@@ -95,9 +95,9 @@ target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss
 #    COMMENT "Building attester agent"
 #)
 
-###############################################################################
+#######################################################################
 ## verifier
-###############################################################################
+#######################################################################
 
 add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifier_wrkdir})
 
@@ -117,9 +117,9 @@ target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-
 #)
 
 
-###############################################################################
+#######################################################################
 ## join service
-###############################################################################
+#######################################################################
 
 add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${join_service_wrkdir})
 

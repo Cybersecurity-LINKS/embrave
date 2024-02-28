@@ -236,7 +236,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ek_cert);
     free(ek_cert);
-    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %d/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole EK certificate. %ld/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -292,7 +292,7 @@ int create_request_body(size_t *object_length, char *object){
     free(b64_buff_ek);
     fclose(fd_ak_pub);
     free(ak_pub);
-    fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -326,7 +326,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ak_name);
     free(ak_name);
-    fprintf(stderr, "ERROR: cannot read the whole AK name. %d/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK name. %ld/%ld bytes read\n", ret, size);
     return -1;
   }
 
@@ -533,7 +533,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     if(ret != size){
       fclose(fd_ak_pub);
       free(ak_pub);
-      fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%d bytes read\n", ret, size);
+      fprintf(stderr, "ERROR: cannot read the whole AK pem. %d/%ld bytes read\n", ret, size);
       return;
     }
 

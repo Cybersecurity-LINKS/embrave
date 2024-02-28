@@ -1,8 +1,8 @@
 Protocols
 =========
 
-Join
-----
+Attester Join
+-------------
 
 .. figure:: ../protocols/join.svg
     :align: center

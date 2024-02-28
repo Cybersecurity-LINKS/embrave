@@ -43,9 +43,9 @@ struct ak_db_entry {
     bool Continue;
 };
 
-int notify_verifier(int id, struct ak_db_entry * ak_entry);
+int notify_verifier(int id, struct ak_db_entry *ak_entry);
 int get_verifier_id(void);
-int get_verifier_ip(int id, char * ip);
+int get_verifier_ip(int id, char *ip);
 
 pthread_mutex_t mutex;
 pthread_cond_t cond;

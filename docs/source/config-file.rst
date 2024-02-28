@@ -4,7 +4,7 @@ Configuration File
 The system supports configuration through a a file, located in ``/etc/lemon.conf``. The file is in the format of a standard INI file, with sections and key-value pairs. The following sections are supported:
 
 Sections
-========
+--------
 
 The ``lemon.conf`` file is divided into several sections, each used by a specific component.
 
