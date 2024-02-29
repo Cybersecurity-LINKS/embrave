@@ -25,119 +25,124 @@ paths:
     post:
       tags:
         - Join Service
-      summary: New device join the framework
+      summary: New agent joins the framework
       requestBody:
-        description: Send device hello
+        description: Send agent hello
         content:
           application/json:
             schema:
               type: object
               required:
                 - uuid
-                - ip
-                - port
+                - ek_cert_b64
+                - ak_pub_b64
+                - ak_name_b64
+                - ip_addr
               properties:
                 uuid:
                   type: string
                   description: Attester agent uuid
-                address:
+                ek_cert_b64:
+                  type: string
+                  description: Ek certificate encoded in base64 format
+                ak_pub_b64:
+                  type: string
+                  description: AK public key encoded in pem format
+                ak_name_b64:
+                  type: string
+                  description: AK public key name encoded in base64 format
+                ip_addr:
                   type: string
                   description: <ip>:<port> of the attester that is joining
               example:
                 uuid: 91815714-b145-4a7d-8e4f-cfff1a76ff39
+                ek_cert_b64: MIIDHjCCAqS ... U+eiMeVcSED24T6KnqTG9D/xYtyqXPjSsfo
+                ak_pub_b64: -----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIz ... lTjPJkVB6c+GsvU+1Q==\n-----END PUBLIC KEY-----
+                ak_name_b64: AAt3V7QNZNWcohCcTxfZdc2DWAfkNK5jgDwLiJmOIIciiA==
                 address: 192.168.1.34:5090
       responses:
         '200':
-          description: Send CA information
+          description: Send tpm makecredential challenge
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  address:
+                  mkcred_out:
                     type: string
+                    description: tpm makecredential on the ek_cert, ak_pub and ak_name encoded in base64 format
               example:
-                address: 10.12.1.56:4056
-
+                mkcred_out: utzA3gAAAAEAMAAg3A ... FUGWhQAgn+1vaY70ZDebBZyrvrLpV9DgRHAnnUjeb8fkjMFj+jg=
+        '500':
+          description: error
   /api/request_join_verifier:
     post:
       tags:
         - Join Service
-      summary: New device join the framework
+      summary: New verifier joins the framework
       requestBody:
-        description: Send device hello
+        description: Send verifier hello
         content:
           application/json:
             schema:
               type: object
               required:
-                - uuid
                 - ip
-                - port
               properties:
-                uuid:
-                  type: string
-                  description: Attester agent uuid
-                address:
+                ip:
                   type: string
                   description: <ip>:<port> of the attester that is joining
               example:
-                uuid: 91815714-b145-4a7d-8e4f-cfff1a76ff39
-                address: 192.168.1.34:5090
+                ip: 192.168.1.34:5090
       responses:
         '200':
-          description: Send CA information
+          description: OK, send topic id for MQTT subscribe
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  address:
-                    type: string
+                  topic_id:
+                    type: integer
               example:
-                address: 10.12.1.56:4056
+                topic_id: 1
 
   /api/confirm_credential:
     post:
       tags:
         - Join Service
-      summary: New device join the framework
+      summary: Agent send the reply to the tpm makecredential challenge, encoded in base64 format
       requestBody:
-        description: Send device hello
         content:
           application/json:
             schema:
               type: object
               required:
+                - secret_b64
                 - uuid
-                - ip
-                - port
+                - ak_pub
               properties:
+                secret_b64:
+                  type: string
+                  description: the secret extracted from the tpm makecredential challenge
                 uuid:
                   type: string
                   description: Attester agent uuid
-                address:
+                ak_pub:
                   type: string
-                  description: <ip>:<port> of the attester that is joining
+                  description: AK public key encoded in pem format
               example:
+                secret_b64: OgECtSsAFe4=
                 uuid: 91815714-b145-4a7d-8e4f-cfff1a76ff39
-                address: 192.168.1.34:5090
+                ak_pub: -----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIz ... lTjPJkVB6c+GsvU+1Q==\n-----END PUBLIC KEY-----
       responses:
         '200':
-          description: Send CA information
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  address:
-                    type: string
-              example:
-                address: 10.12.1.56:4056
-
+          description: OK joined
+        '401':
+          description: Secret doesn't match, unauthorized to join
 ####### Attester Agent ########
   /api/quote:
-    get:
+    post:
       tags:
         - Attester Agent
       summary: Integrity proof request from a Verifier
@@ -174,43 +179,13 @@ paths:
                 tpm_quote: bGlas...yrreay4=
                 pcrs: bGtls...ttAA5=
                 ima_log: bFlla...ccDrB=
-
   ####### Verifier ########
   /api/still_alive:
     get:
       tags:
         - Verifier
-      summary: Integrity proof request from a Verifier
-      parameters:
-        - in: query
-          name: nonce
-          schema:
-            type: string
-          required: true
-          description: Nonce for the attestation request
-        - in: query
-          name: bytes
-          schema:
-            type: integer
-          description: Bytes of the IMA log already validated
+      summary: checks if a Verifier is still runnig
       responses:
         '200':
           description: Attester Agent send the tpm_quote and IMA log
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  tpm_quote:
-                    type: string
-                    description: TPM quote
-                  pcrs:
-                    type: string
-                    description: PCRs value
-                  ima_log:
-                    type: string
-                    description: IMA log (Base64 encoded)
-              example:
-                tpm_quote: bGlas...yrreay4=
-                pcrs: bGtls...ttAA5=
-                ima_log: bFlla...ccDrB=
+
