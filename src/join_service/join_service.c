@@ -868,6 +868,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
+           
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -911,7 +912,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 fprintf(stdout, "INFO: secret does not match\n");
                 free(secret_buff);
                 free(secret_b64);
-                mg_http_reply(c, OK, NULL, "\n");
+                mg_http_reply(c, ANAUTHORIZED, NULL, "\n");
                 return;
             }
 
