@@ -75,10 +75,11 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
       strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
+      last_ptr->max_connection_retry_number = 0;
 
-
-      
       update_agent_data(last_ptr);
+      create_attestation_thread(last_ptr);
     } else {
       last_ptr = agent_list_new();
       strcpy(last_ptr->ip_addr, ip_addr);
