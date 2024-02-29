@@ -14,6 +14,7 @@ Welcome to lemon's documentation!
    quick_start
    protocols
    config-file
+   apis
    documentation
 
 
