@@ -72,6 +72,7 @@ struct  _agent_list{
     int attestation_value;
     bool continue_polling;
     agent_list * next_ptr;
+    agent_list * previous_ptr;
 };
 
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context);

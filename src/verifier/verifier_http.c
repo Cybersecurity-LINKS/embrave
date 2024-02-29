@@ -21,7 +21,7 @@ static bool Continue = true;
 static tpm_challenge_reply rpl;
 
 static struct verifier_conf verifier_config;
-static agent_list *agents = NULL;
+extern agent_list *agents;
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 struct mg_mgr mgr_mqtt;
@@ -33,6 +33,7 @@ void print_data(tpm_challenge_reply *rpl);
 int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length);
 void create_attestation_thread(agent_list * agent);
 int add_agent_data(agent_list * ptr);
+int update_agent_data(agent_list * ptr);
 
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
@@ -62,25 +63,38 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     char* ak_pub = mg_json_get_str(mm->data, "$.ak_pem");
     char* ip_addr = mg_json_get_str(mm->data, "$.ip_addr");
 
-    agent_list *last_ptr = agents;
+    agent_list *last_ptr = agent_list_find_uuid(uuid);
 
-    last_ptr = agent_list_last(last_ptr);
-    last_ptr = agent_list_new();
+    if(last_ptr != NULL){
       
-    /* Get attester data */
-    strcpy(last_ptr->ip_addr, ip_addr);
-    strcpy(last_ptr->ak_pub, ak_pub);
-    strcpy(last_ptr->uuid, uuid);
-    strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
-    last_ptr->running = true;
-    last_ptr->max_connection_retry_number = 0;
+      last_ptr->running = false;
+      last_ptr->continue_polling = false;
 
-    printf("%s \n%s \n%s\n", last_ptr->uuid, last_ptr->ak_pub, last_ptr->ip_addr);
+      last_ptr = agent_list_new();
+      strcpy(last_ptr->ip_addr, ip_addr);
+      strcpy(last_ptr->ak_pub, ak_pub);
+      strcpy(last_ptr->uuid, uuid);
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
+      last_ptr->max_connection_retry_number = 0;
 
-    /*add attester dato to verifier db*/
-    add_agent_data(last_ptr);
+      update_agent_data(last_ptr);
+      create_attestation_thread(last_ptr);
+    } else {
+      last_ptr = agent_list_new();
+      strcpy(last_ptr->ip_addr, ip_addr);
+      strcpy(last_ptr->ak_pub, ak_pub);
+      strcpy(last_ptr->uuid, uuid);
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      last_ptr->running = true;
+      last_ptr->max_connection_retry_number = 0;
 
-    create_attestation_thread(last_ptr);
+      /*add attester dato to verifier db*/
+      add_agent_data(last_ptr);
+      create_attestation_thread(last_ptr);
+      
+      
+    }
 
     free(uuid);
     free(ak_pub);
@@ -92,6 +106,62 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   }
   (void) c->fn_data;
 }
+
+int update_agent_data(agent_list * ptr){
+  sqlite3 *db;
+  sqlite3_stmt *res;
+    
+  int rc = sqlite3_open_v2(verifier_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
+    
+  if (rc != SQLITE_OK) {        
+    fprintf(stderr, "ERROR: Cannot open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return -1;
+  }
+
+  char *sql = "UPDATE attesters SET ak_pub=?, ip_addr=?, goldenvalue_database=? WHERE uuid=?";
+
+  rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_bind_text(res, 1, ptr->ak_pub, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 2, ptr->ip_addr, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 3, ptr->gv_path, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+    rc = sqlite3_bind_text(res, 4, ptr->uuid, -1, SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK ) {
+      sqlite3_close(db);
+      return -1;
+    }
+  } else {
+    fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
+  }
+
+  int step = sqlite3_step(res);
+    
+  if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+    fprintf(stdout, "INFO: attester succesfully updated into the db\n");
+  }
+  else {
+    fprintf(stderr, "ERROR: could not update the attester into the db\n");
+  }
+
+  sqlite3_finalize(res);
+  sqlite3_close(db);
+    
+  return 0;
+}
+
 
 int add_agent_data(agent_list * ptr){
   sqlite3 *db;
@@ -426,7 +496,7 @@ void *attest_agent(void *arg) {
   
   mg_mgr_init(&mgr);  
   sprintf(topic, "status/%d", id);
-
+    
   agent->byte_rcv = 0;
   agent->pcr10_sha256 = NULL;
   agent->continue_polling = true;
@@ -465,10 +535,10 @@ void *attest_agent(void *arg) {
   fprintf(stdout, "INFO: attestation thread stopped for agent uuid:%s\n", agent->uuid);
   fflush(stdout);
 
-  
-
+  agent_list_remove(agent);
   pthread_exit(NULL);
 }
+
 
 void create_attestation_thread(agent_list * agent){
   pthread_t thread;
@@ -476,7 +546,7 @@ void create_attestation_thread(agent_list * agent){
 
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
+  
   int result = pthread_create(&thread, &attr, attest_agent, (void *) agent);
   if (result != 0) {
     fprintf(stderr, "ERROR: pthread_create\n");
@@ -516,11 +586,10 @@ static int init_database(void){
       char *ak = ( char *)sqlite3_column_text(res, 1);
       char *ip = ( char *)sqlite3_column_text(res, 2);
 
-      agent_list *last_ptr = agents;
-      last_ptr = agent_list_last(last_ptr);
+      agent_list *last_ptr;
       last_ptr = agent_list_new();
-      
-      /* Get attester data */
+
+      // Get attester data /
       strcpy(last_ptr->ip_addr, ip);
       strcpy(last_ptr->ak_pub, ak);
       strcpy(last_ptr->uuid, uuid);
@@ -528,7 +597,8 @@ static int init_database(void){
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 1;
 
-      create_attestation_thread(last_ptr);
+      create_attestation_thread(last_ptr); 
+
     }
 
     sqlite3_close(db);

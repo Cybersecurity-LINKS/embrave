@@ -12,6 +12,8 @@
 
 #include "verifier.h"
 
+agent_list *agents = NULL;
+
 int ra_challenge_create(tpm_challenge *chl, agent_list *agent_data)
 {
   if(agent_data->pcr10_sha256 != NULL)
@@ -78,28 +80,59 @@ void ra_free(tpm_challenge_reply *rpl, agent_list *agent_data){
     free(agent_data->ip_addr);
 }
 
-agent_list * agent_list_new(void){
-  agent_list * ptr = malloc(sizeof(agent_list));
-  if(!ptr)
-    ptr->next_ptr = NULL;
-  return ptr;
-}
+agent_list *agent_list_new(){
+  agent_list *ptr, *previous_ptr;
+  ptr = agents;
+  previous_ptr = NULL;
 
-agent_list * agent_list_last(agent_list * ptr){
-  while (ptr != NULL){
+  while(ptr != NULL){
+    previous_ptr = ptr;
     ptr = ptr->next_ptr;
   }
+  ptr = malloc(sizeof(agent_list));
+  ptr->next_ptr = NULL;
+  ptr->previous_ptr = previous_ptr;
+
+  if(agents == NULL)
+    agents = ptr;
+
   return ptr;
 }
 
-void agent_list_free(agent_list * ptr){
-  agent_list * nxt_ptr = NULL;
+void agent_list_remove(agent_list * ptr){
+
+  agent_list * next_ptr = NULL;
+  agent_list * previous_ptr = NULL;
+
   if(ptr == NULL)
-    return; 
-  do {
-    nxt_ptr = ptr->next_ptr;
-    free(ptr);
-    ptr = nxt_ptr;
-  } while (ptr != NULL);
+    return;
+
+  next_ptr = ptr->next_ptr;
+  previous_ptr = ptr->previous_ptr;
   
+  if(previous_ptr != NULL)
+    previous_ptr->next_ptr = next_ptr;
+  else
+    agents = next_ptr;
+
+  if(next_ptr != NULL)
+    next_ptr->previous_ptr = previous_ptr;
+  
+  if(ptr->pcr10_sha1 != NULL)
+    free(ptr->pcr10_sha1);
+  if(ptr->pcr10_sha256 != NULL)
+    free(ptr->pcr10_sha256);
+  free(ptr);
+}
+
+agent_list * agent_list_find_uuid(char * uuid){
+  agent_list *ptr = agents;
+
+  while (ptr != NULL){
+    if(strcmp(ptr->uuid, uuid) == 0)
+      return ptr;
+    ptr=ptr->next_ptr;
+  } 
+
+  return NULL;
 }
