@@ -397,12 +397,14 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 
 static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   if (ev == MG_EV_HTTP_MSG) {
-    //struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-/*  if (mg_http_match_uri(hm, API_ATTEST) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+    if (mg_http_match_uri(hm, API_ALIVE) && !strncmp(hm->method.ptr, GET, hm->method.len)) {
+      mg_http_reply(c, 200, NULL, "\n");
+      MG_INFO(("%s %d", API_ALIVE, 200));
     }
     else {
       mg_http_reply(c, 500, NULL, "\n");
-    }*/
+    }
   }
 }
 
@@ -673,7 +675,7 @@ int main(int argc, char *argv[]) {
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
-  //printf("%s\n", s_conn);
+
   mg_mgr_init(&mgr);
 
   /* request to join (receive tpm_makecredential output) */
@@ -697,8 +699,8 @@ int main(int argc, char *argv[]) {
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
-  //snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
-  //c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
+  snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
+  c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
 
   if (c == NULL) {
     MG_ERROR(("Cannot listen on http://%s:%d", verifier_config.ip, verifier_config.port));
@@ -710,11 +712,11 @@ int main(int argc, char *argv[]) {
   Continue = true;
 
   while (Continue) {
-    //mg_mgr_poll(&mgr, 100);     
+    mg_mgr_poll(&mgr, 100);     
     mg_mgr_poll(&mgr_mqtt, 100);
   }
 
-  //mg_mgr_free(&mgr);        
+  mg_mgr_free(&mgr);        
   mg_mgr_free(&mgr_mqtt); 
 
   return 0;

@@ -23,6 +23,7 @@
 #include "common.h"
 /* APIs */
 #define API_ATTEST "/request_attestation"
+#define API_ALIVE "/still_alive"
 
 /* Trust status value */
 #define TRUSTED 0

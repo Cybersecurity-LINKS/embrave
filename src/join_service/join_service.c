@@ -29,6 +29,8 @@ struct mg_mgr mgr_mqtt;
 
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
+static int verifiers_id[20];
+
 struct ek_db_entry {
     char uuid[1024];
     unsigned char ek_cert[4096];
@@ -40,6 +42,11 @@ struct ak_db_entry {
     unsigned char ak_pem[1024];
     int confirmed;
     int validity;
+    bool Continue;
+};
+
+struct js_reboot {
+    int value;
     bool Continue;
 };
 
@@ -456,7 +463,7 @@ static int insert_verifier(char *ip){
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
         fprintf(stdout, "INFO: verifier succesfully inserted into the db\n");
         ret = sqlite3_last_insert_rowid(db);
-        verifier_num ++;
+        verifiers_id[verifier_num++] = (int) ret;
     }
     else {
         fprintf(stderr, "ERROR: could not insert verifier ip into the db\n");
@@ -1046,8 +1053,77 @@ int get_verifier_id(void){
     if (last_requested_verifier == verifier_num){
         last_requested_verifier = 0;
     }
-    return ++last_requested_verifier;
+    return verifiers_id[last_requested_verifier++];
 }
+
+static void is_alive(struct mg_connection *c, int ev, void *ev_data){
+    if (ev == MG_EV_OPEN) {
+        // Connection created. Store connect expiration time in c->data
+        *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
+    } else if (ev == MG_EV_POLL) {
+        if (mg_millis() > *(uint64_t *) c->data && (c->is_connecting || c->is_resolving)) {
+            mg_error(c, "Connect timeout");
+        }
+    } else if (ev == MG_EV_CONNECT){
+        //struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
+        //size_t object_length = 0;
+        //char object[4096];
+
+        //fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+
+        //object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+
+        mg_printf(c, "GET /still_alive HTTP/1.1\r\n"
+        "\r\n"
+        );
+    } else if (ev == MG_EV_HTTP_MSG) {
+        // Response is received. Print it
+        struct mg_http_message *hm = (struct mg_http_message *) ev_data;
+        struct js_reboot *js = (struct js_reboot *) c->fn_data;
+
+        int status = mg_http_status(hm);
+        
+        if(status == 200){
+            printf("%d\n", status);
+            js->value = 0;
+            
+        }
+        else{
+            js->value = -1;
+        }
+        js->Continue = false;
+    } else if (ev == MG_EV_ERROR) {
+        struct js_reboot *js = (struct js_reboot *) c->fn_data;
+
+        js->Continue = false;  // Error, tell event loop to stop
+    }
+}
+
+int verifier_is_alive(char * ip){
+    struct mg_mgr mgr;  // Event manager
+    struct mg_connection *c;
+    struct js_reboot js;
+
+    js.Continue = true;
+    js.value = -1;
+
+    /* Contact the verifier */
+    //snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
+    mg_mgr_init(&mgr);
+
+    /* request to join (receive tpm_makecredential output) */
+    c = mg_http_connect(&mgr, ip, is_alive, (void *) &js);
+
+    if (c == NULL) {
+    MG_ERROR(("CLIENT cant' open a connection"));
+    return -1;
+  }
+
+  while (js.Continue) mg_mgr_poll(&mgr, 10); //10ms
+    return js.value;
+}
+
+
 
 /*Create db connection and, if not presents, create the keys databases
     ret:
@@ -1074,7 +1150,9 @@ int get_verifier_id(void){
 static int init_database(void){
     sqlite3_stmt *res= NULL;
     sqlite3 *db = NULL;
-
+    int ret;
+    int delete_ids[50];
+    int delete_numer = 0;
     char *sql1 = "CREATE TABLE IF NOT EXISTS attesters_ek_certs (\
         uuid text NOT NULL,\
         ek_cert text NOT NULL,\
@@ -1096,7 +1174,9 @@ static int init_database(void){
         ip text NOT NULL\
     );";
 
-    char *sql4 = "SELECT COUNT(id) FROM verifiers;";
+    char *sql4 = "SELECT * FROM verifiers;";
+
+    char *sql5 = "DELETE FROM verifiers where id=?;";
     
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     if ( rc != SQLITE_OK) {
@@ -1108,15 +1188,49 @@ static int init_database(void){
     /*Checking if already joined verifiers are present*/
     rc = sqlite3_prepare_v2(db, sql4, -1, &res, 0);
     if (rc == SQLITE_OK) {
-        if (sqlite3_step(res) == SQLITE_ROW){
-            /*Db present with verifiers*/
-            verifier_num = sqlite3_column_int(res, 0);
-            fprintf(stdout, "INFO: Old database present with %d verifiers joined\n", verifier_num);
-            sqlite3_finalize(res);
-            sqlite3_close(db);
-            return 0;
+        //Db present with verifiers
+        while (sqlite3_step(res) == SQLITE_ROW){
+            int id = sqlite3_column_int(res, 0);
+            char *ip = ( char *)sqlite3_column_text(res, 1);
+            printf("quiiiiii\n");
+            ret = verifier_is_alive(ip);
+            if(ret == 0){
+                //verifier still present, adjust the count number
+                verifiers_id[verifier_num++] = id;
+            } else {
+                delete_ids[delete_numer++] = id;
+            }
         }
+
+        sqlite3_reset(res);
+
+        fprintf(stdout, "INFO: Old database present with %d verifiers joined still connected\n", verifier_num);
+        fprintf(stdout, "INFO: delete number = %d\n", delete_numer);
+        for(int i = 0 ; i <  delete_numer; i++){
+            rc = sqlite3_prepare_v2(db, sql5, -1, &res, 0);
+            if (rc == SQLITE_OK) {
+
+                rc = sqlite3_bind_int(res, 1, delete_ids[i]);
+                if (rc != SQLITE_OK ) {
+                    sqlite3_close(db);
+                    return -1;
+                }
+            }
+
+            int step = sqlite3_step(res);
+            if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+                fprintf(stdout, "INFO: verifier succesfully removed from the db\n");
+            }
+            else {
+                fprintf(stderr, "ERROR: could not remove verifier from the db\n");
+            }
+        } 
+
+        sqlite3_finalize(res);
+        sqlite3_close(db);
+        return 0;
     }
+    
 
     //verifiers table
     rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
