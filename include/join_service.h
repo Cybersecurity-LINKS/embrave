@@ -36,8 +36,8 @@
 #define APPLICATION_JSON "Content-Type: application/json\r\n"
 
 /* APIs */
-#define API_JOIN "/request_join"
-#define API_JOIN_VERIFIER "/request_join_verifier"
-#define API_CONFIRM_CREDENTIAL "/confirm_credential"
-#define API_REQUEST_ATTESTATION "/request_attestation"
+#define API_JOIN "/api/request_join"
+#define API_JOIN_VERIFIER "/api/request_join_verifier"
+#define API_CONFIRM_CREDENTIAL "/api/confirm_credential"
+//#define API_REQUEST_ATTESTATION "/api/request_attestation"
 #endif

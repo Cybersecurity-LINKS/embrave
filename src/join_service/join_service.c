@@ -183,7 +183,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
     return ak_entry;
 }
 
-void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
+/* void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_OPEN) {
         // Connection created. Store connect expiration time in c->data
         *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -201,7 +201,7 @@ void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
 
         object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
-        /* Send request */
+        // Send request
         mg_printf(c,
         "POST /request_attestation HTTP/1.1\r\n"
         "Content-Type: application/json\r\n"
@@ -225,7 +225,7 @@ void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
         MG_INFO(("Connection closed"));
         stop_polling = 0;
     }
-}
+} */
 
 void *queue_manager(void *vargp){
     struct mg_mgr mgr;
@@ -976,7 +976,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
   }
 }
 
-static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
+/* static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
     if (ev == MG_EV_OPEN) {
         // Connection created. Store connect expiration time in c->data
         *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -993,7 +993,7 @@ static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
 
         object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
-        /* Send request */
+        // Send request
         mg_printf(c,
         "POST /request_attestation HTTP/1.1\r\n"
         "Content-Type: application/json\r\n"
@@ -1008,9 +1008,9 @@ static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
         struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
         ak_entry->Continue = false;  // Error, tell event loop to stop
     }
-}
+} */
 
-int notify_verifier(int id, struct ak_db_entry  * ak_entry){
+/* int notify_verifier(int id, struct ak_db_entry  * ak_entry){
     char url[MAX_BUF];
     struct mg_mgr mgr;  // Event manager
     struct mg_connection *c;
@@ -1024,12 +1024,12 @@ int notify_verifier(int id, struct ak_db_entry  * ak_entry){
         return -1;
     }
     
-    /* Contact the join service */
+    // Contact the join service
     snprintf(url, 280, "http://%s", ak_entry->ip);
     
     fprintf(stdout, "INFO: ip: %s\n", url);
 
-    /* Connect to the verifier */
+    // Connect to the verifier
 
     mg_mgr_init(&mgr);
 
@@ -1041,7 +1041,7 @@ int notify_verifier(int id, struct ak_db_entry  * ak_entry){
 
     while (ak_entry->Continue) mg_mgr_poll(&mgr, 1); //1ms
     return 0;
-}
+} */
 
 /* return the DB id of a verifier based on a round-robin selection*/
 int get_verifier_id(void){
