@@ -395,7 +395,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
 
     /* Send request */
     mg_printf(c,
-      "POST /request_join HTTP/1.1\r\n"
+      "POST /api/request_join HTTP/1.1\r\n"
       "Content-Type: application/json\r\n"
       "Content-Length: %ld\r\n"
       "\r\n"
@@ -545,7 +545,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
 
     /* Send request */
     mg_printf(c,
-    "POST /confirm_credential HTTP/1.1\r\n"
+    "POST /api/confirm_credential HTTP/1.1\r\n"
     "Content-Type: application/json\r\n"
     "Content-Length: %ld\r\n"
     "\r\n"
