@@ -22,8 +22,8 @@
 #include "tpm_quote.h"
 #include "common.h"
 /* APIs */
-#define API_ATTEST "/request_attestation"
-#define API_ALIVE "/still_alive"
+#define API_ATTEST "/api/request_attestation"
+#define API_ALIVE "/api/still_alive"
 
 /* Trust status value */
 #define TRUSTED 0

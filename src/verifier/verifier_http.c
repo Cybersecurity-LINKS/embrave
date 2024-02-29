@@ -352,7 +352,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 
     /* Send request */
     mg_printf(c,
-      "POST /request_join_verifier HTTP/1.1\r\n"
+      "POST /api/request_join_verifier HTTP/1.1\r\n"
       "Content-Type: application/json\r\n"
       "Content-Length: %ld\r\n"
       "\r\n"
