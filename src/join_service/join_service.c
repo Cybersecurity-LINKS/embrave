@@ -19,6 +19,7 @@
 
 #define VALID 1
 #define REVOKED 0
+#define MAX_VERIFIERS 20
 
 static unsigned char secret [B64ENCODE_OUT_SAFESIZE(SECRET_SIZE)];
 static int verifier_num = 0;
@@ -29,7 +30,7 @@ struct mg_mgr mgr_mqtt;
 
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
-static int verifiers_id[20];
+static int verifiers_id[MAX_VERIFIERS] = { 0 };
 
 struct ek_db_entry {
     char uuid[1024];
@@ -1044,19 +1045,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
     return 0;
 } */
 
-/* return the DB id of a verifier based on a round-robin selection*/
-int get_verifier_id(void){
-    //last_requested_verifier++;
-    if(verifier_num == 0){
-        return -1;
-    }
-
-    if (last_requested_verifier == verifier_num){
-        last_requested_verifier = 0;
-    }
-    return verifiers_id[last_requested_verifier++];
-}
-
 static void is_alive(struct mg_connection *c, int ev, void *ev_data){
     if (ev == MG_EV_OPEN) {
         // Connection created. Store connect expiration time in c->data
@@ -1122,6 +1110,45 @@ int verifier_is_alive(char * ip){
 
   while (js.Continue) mg_mgr_poll(&mgr, 10); //10ms
     return js.value;
+}
+
+/* return the DB id of a verifier based on a round-robin selection*/
+int get_verifier_id(void){
+    //last_requested_verifier++;
+    int ret, id = -1;
+    char ip[25];
+
+    if(verifier_num == 0){
+        return -1;
+    }
+
+    do{
+        if (last_requested_verifier == verifier_num){
+            last_requested_verifier = 0;
+        }
+
+        id = verifiers_id[last_requested_verifier++];
+        get_verifier_ip(id, ip);
+        ret = verifier_is_alive(ip);
+
+        // delete form verifiers_id an unreachable verifier
+        if(ret != 0){
+            int idx;
+            for(int i = 0; verifiers_id[i] != 0; i++){
+                if(verifiers_id[i] == id){
+                    idx = i;
+                    break;
+                }
+            }
+            for(int i = idx; i < MAX_VERIFIERS-1; i++){
+                verifiers_id[i] = verifiers_id[i+1];
+            }
+            verifiers_id[MAX_VERIFIERS-1] = 0;
+        }
+
+    } while(ret != 0);
+
+    return id;
 }
 
 
