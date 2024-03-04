@@ -1,13 +1,25 @@
 Protocols
 =========
 
+.. _attester-join:
+
 Attester Join
 -------------
 
 .. figure:: ../protocols/join.svg
     :align: center
 
-    Join protocol
+    Attester Join protocol
+
+.. _verifier-join:
+
+Verifier Join
+-------------
+
+.. figure:: ../protocols/verifier_join.svg
+    :align: center
+
+    Verifier Join protocol
 
 Remote Attestation
 ------------------

@@ -1,0 +1,14 @@
+@startuml verifier_join
+title
+Verifier Join protocol
+end title
+autonumber
+
+participant "Verifier" as verifier
+participant "Join\nService" as join_service
+
+verifier->join_service: Send request to join
+'join_service->join_service: Chek if the verfier\nalready performed\nthe join operation
+join_service->verifier: Send the topic on which\nthe verifier needs to subscribe
+
+@enduml

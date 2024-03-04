@@ -1,6 +1,6 @@
 @startuml join
 title
-Join protocol
+Attester Join protocol
 end title
 autonumber
 
