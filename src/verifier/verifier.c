@@ -27,6 +27,7 @@ const char* errorMessages[MAX_TRUST_VALUES] = {
     "Unknown IMA template",
     "IMA parsing error",
     "Golden value mismatch",
+    "PCR10 value mismatch",
     "Verifier internal error"
     // Add more error messages here...
 };

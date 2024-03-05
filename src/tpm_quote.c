@@ -674,8 +674,9 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         free(path_name);
 
         //Compute PCR10
-        if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
-            fprintf(stderr, "ERROR: pcr10 digest error\n");
+        ret = compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256);
+        if(ret != 0){
+            fprintf(stderr, "ERROR: PCR10 digest error\n");
             free(path_name);
             goto error;
         }
@@ -708,7 +709,7 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         printf("\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
-        
+        ret = PCR10_VALUE_MISMATCH;
         goto error;
     }
 

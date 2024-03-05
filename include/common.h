@@ -51,7 +51,7 @@
 
 #define MAX_BUF 255
 
-#define MAX_TRUST_VALUES 13
+#define MAX_TRUST_VALUES 14
 /* Trust status value */
 #define TRUSTED 0
 
@@ -67,6 +67,7 @@
 #define UNKNOWN_IMA_TEMPLATE -9
 #define IMA_PARSING_ERROR -10
 #define GOLDEN_VALUE_MISMATCH -11
+#define PCR10_VALUE_MISMATCH -12
 
 #define VERIFIER_INTERNAL_ERROR -(MAX_TRUST_VALUES - 1)
 
