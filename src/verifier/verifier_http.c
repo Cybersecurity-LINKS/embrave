@@ -102,7 +102,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
-    //s_conn = NULL;  // Mark that we're closed
+    
   }
   (void) c->fn_data;
 }
@@ -359,7 +359,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       "%s\n",
       strlen(buff),
       buff);
-      fprintf(stdout, "INFO: %s\n", buff);
+
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
@@ -377,7 +377,6 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       return;
     } else if (status == OK){
       
-      //verifier_config.topic_id = mg_json_get_long(hm->body, "$.topic_id", -1);
       id = mg_json_get_long(hm->body, "$.topic_id", -1);
 
       char topic[25];
@@ -628,7 +627,6 @@ static int init_database(void){
     return -1;
   }
   
-  
   sqlite3_close(db);
   return 0;
 }
@@ -729,7 +727,7 @@ int main(int argc, char *argv[]) {
 //Print received data
 void print_data(tpm_challenge_reply *rpl){
   
-  printf("NONCE Received:");
+  printf("DEBUG: Nonce received:");
   for(int i= 0; i< (int) NONCE_SIZE * sizeof(uint8_t); i++)
     printf("%02X", rpl->nonce[i]);
   printf("\n");
@@ -745,8 +743,8 @@ void print_data(tpm_challenge_reply *rpl){
   
   print_quoted(rpl->quoted);
 
-  printf("IMA log size recived:%d\n", rpl->ima_log_size);
-  printf("IMA whole log %d\n", rpl->wholeLog);
+  printf("DEBUG: IMA log size received: %d\n", rpl->ima_log_size);
+  printf("DEBUG: IMA whole log %d\n", rpl->wholeLog);
   fflush(stdin);
 }
 

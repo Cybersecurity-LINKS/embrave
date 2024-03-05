@@ -30,7 +30,7 @@ int attester_init(/* struct attester_conf* conf */) {
   tool_rc rc_tool;
   uint16_t ek_handle[HANDLE_SIZE];
 
-  fprintf(stdout, "INFO: agent init\n");
+  fprintf(stdout, "INFO: Agent init\n");
 
   tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
@@ -55,21 +55,21 @@ int attester_init(/* struct attester_conf* conf */) {
   {
   case RSA_CHECK:
     algo = "rsa";
-    fprintf(stdout, "RSA certificate found in tpm nv ram\n");
+    fprintf(stdout, "INFO: RSA certificate found in tpm nv ram\n");
     break;
   
   case ECC_CHECK:
     algo = "ecc";
-    fprintf(stdout, "ECC certificate found in tpm nv ram\n");
+    fprintf(stdout, "INFO: ECC certificate found in tpm nv ram\n");
     break;
 
   case ECC_AND_RSA_CHECK:
     algo = "ecc";
-    fprintf(stdout, "ECC and RSA certificates found in tpm nv ram\n");
+    fprintf(stdout, "INFO: ECC and RSA certificates found in tpm nv ram\n");
     break;
 
   case NO_CERT_CHECK:
-    fprintf(stdout, "No certificate found in tpm nv ram\n");
+    fprintf(stdout, "INFO: No certificate found in tpm nv ram\n");
     break;
 
   case ERR_CHECK:
@@ -254,8 +254,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   FILE *fp;
   size_t read_bytes, buff_sz;
   uint32_t ima_byte_sent;
-
-  fprintf(stdout, "INFO; request all ima log%d or from byte %d\n", all_log, from_bytes);
+  all_log ? fprintf(stdout, "INFO: request all IMA log\n") :  fprintf(stdout, "INFO: request IMA log from byte %d\n", from_bytes);
   fp = fopen(path, "rb");
 	if (!fp) {
 	  fprintf(stderr, "ERROR: Unable to open IMA file\n");
@@ -295,7 +294,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          printf("No need to send the IMA log\n");
+          fprintf(stdout, "INFO: No need to send the IMA log\n");
           break;
         }
       } else {

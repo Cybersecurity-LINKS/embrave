@@ -81,13 +81,14 @@ static tool_rc process_output(ESYS_CONTEXT *ectx, unsigned char **secret, unsign
     /*
      * 2. Outputs generated after TPM2_CC_<command> dispatch
      */
+    #ifdef DEBUG
     tpm2_tool_output("certinfodata:");
     size_t i;
     for (i = 0; i < ctx.cert_info_data->size; i++) {
         tpm2_tool_output("%.2x", ctx.cert_info_data->buffer[i]);
     }
     tpm2_tool_output("\n");
-
+    #endif
     /* is_file_op_success = files_save_bytes_to_file(NULL,
         ctx.cert_info_data->buffer, ctx.cert_info_data->size); */ // -> this allow to print on stdout the secret
     is_file_op_success = files_save_bytes_to_buffer(secret, secret_len,

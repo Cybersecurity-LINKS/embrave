@@ -230,7 +230,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  printf("EK cert size: %ld\n", size);
+  //printf("EK cert size: %ld\n", size);
 
   ret = fread(ek_cert, 1, (size_t) size, fd_ek_cert);
   if(ret != size){
@@ -411,17 +411,11 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 #endif
     int status = mg_http_status(hm);
-    printf("%d\n", status);
+    
     if(status == FORBIDDEN){ /* forbidden */
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
       //mg_http_reply(c, 500, NULL, "\n");
       return;
-    } else if (status == ALREDY_JOINED){
-        fprintf(stdout, "INFO: ak present in the join service db\n");
-        c->is_draining = 1;        // Tell mongoose to close this connection
-        Continue = false;  // Tell event loop to stop
-        mkcred_out->len = 0; 
-        return;
     } else if (status == CREATED){
 
       unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
@@ -446,7 +440,6 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
           return;
       }
 
-
       #ifdef DEBUG
       fprintf(stdout, "INFO: MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
@@ -454,8 +447,8 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       }
       printf("\n");
       fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out->len); 
-      #endif
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      #endif
       free(mkcred_out_b64);
 
       c->is_draining = 1;        // Tell mongoose to close this connection

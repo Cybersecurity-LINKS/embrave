@@ -109,8 +109,6 @@ int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle) {
     }
     free(capabilityData);
 
-    fprintf(stdout, "EK: %d\n", h1);
-
     if(h1)
       return 0;
     return -1;

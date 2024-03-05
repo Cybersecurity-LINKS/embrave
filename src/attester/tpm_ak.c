@@ -276,13 +276,14 @@ tool_rc attester_create_ak(ESYS_CONTEXT *ectx, struct attester_conf *conf){
     }
 
     /* Output in YAML format */
+    #ifdef DEBUG
     tpm2_tool_output("loaded-key:\n  name: ");
     tpm2_util_print_tpm2b(key_name);
     tpm2_tool_output("\n");
     tpm2_tool_output("  qualified name: ");
     tpm2_util_print_tpm2b(&qname);
     tpm2_tool_output("\n");
-
+    #endif
     // write name to ak.name file
     if (ctx.ak.out.name_file) {
         if (!files_save_bytes_to_file(ctx.ak.out.name_file, key_name->name,
