@@ -1,6 +1,12 @@
+NOTE
+join_service.c +665 perchè usare come nome ak_pub_b64 se poi è in pem
+ha ancora senso controllare il reboot?
+se prima js poi agent al posto che dormire, il js pubblica su attest/-1
+
+
+
 1
 scrivere la documentazione (README)
-gestire il riavvio del join service
 rivedere tpm.c
 pulizia codice e script
 join service gestire output degli integrity report 
@@ -8,6 +14,7 @@ join service gestire output degli integrity report
 2
 rivedere creazione delle goldevalues
 exclude list fatta bene regex
+prendere ip del agent da socket => https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
 
 3
 server del produttore per le golden value in ci il verifier scarica 
@@ -18,3 +25,4 @@ file log
 wrappare funzioni db per supporto multi db
 supporto per altri schemi di attestazione
 rendere configurabile i PCR inviati
+

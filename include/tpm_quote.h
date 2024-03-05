@@ -33,16 +33,13 @@
 
 #include <openssl/rand.h>
 
-#define NONCE_SIZE 32
-
-
-typedef struct {
+typedef struct tpm_challenge{
     uint8_t nonce[NONCE_SIZE];
     uint8_t send_wholeLog;
     uint32_t send_from_byte;
 } tpm_challenge;
 
-typedef struct {
+typedef struct tpm_challenge_reply{
     uint8_t nonce[NONCE_SIZE];
     UINT16 sig_size;
     BYTE *sig;

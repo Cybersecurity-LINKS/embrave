@@ -58,7 +58,7 @@ int get_verifier_ip(int id, char *ip);
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 int stop_event = 0;
-static int stop_polling = 1;
+//static int stop_polling = 1;
 
 struct queue_entry {
   char uuid[128];
@@ -970,12 +970,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
            }
         } 
         else {
-            mg_http_reply(c, 500, NULL, "\n");
+            mg_http_reply(c, 404, NULL, "\n");
         }
-    } else if (ev == MG_EV_WAKEUP) {
-        struct mg_str *data = (struct mg_str *) ev_data;
-        mg_http_reply(c, 200, "", "Result: %.*s\n", data->len, data->ptr);
-  }
+    } 
+    //else if (ev == MG_EV_WAKEUP) {
+        //struct mg_str *data = (struct mg_str *) ev_data;
+        //mg_http_reply(c, 200, "", "Result: %.*s\n", data->len, data->ptr);
+  //}
 }
 
 /* static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
@@ -1062,7 +1063,7 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
 
         //object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
-        mg_printf(c, "GET /still_alive HTTP/1.1\r\n"
+        mg_printf(c, "GET /api/still_alive HTTP/1.1\r\n"
         "\r\n"
         );
     } else if (ev == MG_EV_HTTP_MSG) {
@@ -1073,7 +1074,6 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
         int status = mg_http_status(hm);
         
         if(status == 200){
-            printf("%d\n", status);
             js->value = 0;
             
         }
@@ -1220,7 +1220,6 @@ static int init_database(void){
         while (sqlite3_step(res) == SQLITE_ROW){
             int id = sqlite3_column_int(res, 0);
             char *ip = ( char *)sqlite3_column_text(res, 1);
-            printf("quiiiiii\n");
             ret = verifier_is_alive(ip);
             if(ret == 0){
                 //verifier still present, adjust the count number

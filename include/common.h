@@ -51,6 +51,29 @@
 
 #define MAX_BUF 255
 
+#define MAX_TRUST_VALUES 13
+/* Trust status value */
+#define TRUSTED 0
+
+/* Untrust status value -x */
+#define AGENT_REBOOTED -1
+#define RETRY -2
+#define UNREACHABLE -3
+#define AK_PUBKEY_CHECK_FAILED -4
+#define TPM2B_TO_TPMS_ERROR -5
+#define QUOTE_VERIFICATION_FAILED -6
+#define NONCE_MISMATCH -7
+#define PCR_DIGEST_MISMATCH -8
+#define UNKNOWN_IMA_TEMPLATE -9
+#define IMA_PARSING_ERROR -10
+#define GOLDEN_VALUE_MISMATCH -11
+
+#define VERIFIER_INTERNAL_ERROR -(MAX_TRUST_VALUES - 1)
+
+#define NONCE_SIZE 32
+
+
+
 enum { NS_PER_SECOND = 1000000000 };
 
 typedef struct _agent_list agent_list;

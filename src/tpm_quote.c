@@ -188,18 +188,18 @@ int verify_pcrsdigests(TPM2B_DIGEST *quote_digest, TPM2B_DIGEST *pcr_digest) {
     // Sanity check -- they should at least be same size!
     if (quote_digest->size != pcr_digest->size) {
         fprintf(stderr, "ERROR: PCR values failed to match quote's digest!\n");
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     // Compare running digest with quote's digest
     int k;
     for (k = 0; k < quote_digest->size; k++) {
         if (quote_digest->buffer[k] != pcr_digest->buffer[k]) {
-            return -1;
+            return PCR_DIGEST_MISMATCH;
         }
     }
 
-    return 0;
+    return TRUSTED;
 }
 
 int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
@@ -210,12 +210,13 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     TPM2B_DIGEST msg_hash =  TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPM2B_DIGEST pcr_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
     TPML_PCR_SELECTION pcr_select;
-    if( rply == NULL || ak_pub == NULL) return -1;
+    int rc = 0;
+    if( rply == NULL || ak_pub == NULL) return VERIFIER_INTERNAL_ERROR;
 
     bio = BIO_new_mem_buf((void *) ak_pub, strlen(ak_pub));
     if (!bio) {
         fprintf(stderr, "ERROR: Failed to open AK public key file '%s': %s\n", ak_pub, ERR_error_string(ERR_get_error(), NULL));
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     //Load AK pub key from BIO
@@ -223,7 +224,7 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     if (!pkey) {
         fprintf(stderr, "ERROR: Failed to convert public key from PEM\n");
         OPENSSL_free(bio);
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
@@ -231,26 +232,29 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
         fprintf(stderr, "ERROR: EVP_PKEY_CTX_new failed\n");
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     //Check if the key is a valid public key
     if(!EVP_PKEY_public_check(pkey_ctx)){
         fprintf(stderr, "ERROR: check key failed\n");
+        rc = AK_PUBKEY_CHECK_FAILED;
         goto err;
     }
 
     const EVP_MD *md = EVP_sha256();
 
-    int rc = EVP_PKEY_verify_init(pkey_ctx);
+    rc = EVP_PKEY_verify_init(pkey_ctx);
     if (!rc) {
         fprintf(stderr, "ERROR: EVP_PKEY_verify_init failed \n");
+        rc = VERIFIER_INTERNAL_ERROR;
         goto err;
     }
 
     rc = EVP_PKEY_CTX_set_signature_md(pkey_ctx, md);
     if (!rc) {
         fprintf(stderr, "ERROR: EVP_PKEY_CTX_set_signature_md failed \n");
+        rc = VERIFIER_INTERNAL_ERROR;
         goto err;
     }
 
@@ -258,6 +262,7 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     tool_rc tmp_rc = files_tpm2b_attest_to_tpms_attest(rply->quoted, &attest);
     if (tmp_rc != tool_rc_success) {
         fprintf(stderr, "ERROR: files_tpm2b_attest_to_tpms_attest failed \n");
+        rc = TPM2B_TO_TPMS_ERROR;
         goto err;
     }
 
@@ -269,13 +274,14 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
         OPENSSL_free(bio);
         EVP_PKEY_free(pkey);
         EVP_PKEY_CTX_free(pkey_ctx);
-        return -2;
+        return AGENT_REBOOTED;
     }
     
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
         fprintf(stderr, "ERROR: Compute message hash failed!\n");
+        rc = VERIFIER_INTERNAL_ERROR;
         goto err;
     }
 
@@ -284,8 +290,10 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     if (rc != 1) {
         if (rc == 0) {
             fprintf(stderr, "ERROR: Quote signature verification failed\n");
+            rc = QUOTE_VERIFICATION_FAILED;
         } else {
             fprintf(stderr, "ERROR: %s\n", ERR_error_string(ERR_get_error(), NULL));
+            rc = VERIFIER_INTERNAL_ERROR;
         }
         goto err;
     }
@@ -294,36 +302,39 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
     if (attest.extraData.size != NONCE_SIZE *sizeof(uint8_t) || 
         memcmp(attest.extraData.buffer, rply->nonce, attest.extraData.size) != 0) {
         fprintf(stderr, "ERROR: Error validating nonce\n");
+        rc = NONCE_MISMATCH;
         goto err;
     }
 
     // Define the pcr selection
     if (!pcr_parse_selections("sha1:10+sha256:all", &pcr_select, NULL)) {
         fprintf(stderr, "ERROR: pcr_parse_selections failed\n");
+        rc = VERIFIER_INTERNAL_ERROR;
         goto err;
     } 
 
     //Create the pcr digest with the received pcrs
     if (!tpm2_openssl_hash_pcr_banks_le(TPM2_ALG_SHA256, &pcr_select, &rply->pcrs, &pcr_hash)) {
         fprintf(stderr, "ERROR: Failed to hash PCR values\n");
+        rc = VERIFIER_INTERNAL_ERROR;
         goto err;
     }
 
     // Verify that the digest from quote matches PCR digest
     rc = verify_pcrsdigests(&attest.attested.quote.pcrDigest, &pcr_hash);
-    if (rc == -1) {
+    if (rc != 0) {
         goto err;
     } 
 
     OPENSSL_free(bio);
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(pkey_ctx);
-    return 0;
+    return TRUSTED;
 err:
     OPENSSL_free(bio);
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(pkey_ctx);
-    return -1;
+    return rc;
 }
 
 
@@ -446,7 +457,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
         fprintf(stderr, "ERROR: Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
@@ -454,10 +465,10 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
-        fprintf(stderr, "ERROR: Mismatch template hash agaist calculated one\n");
+        fprintf(stderr, "ERROR: Mismatch template hash against calculated one\n");
         free(calculated_template_hash);
         free(entry_aggregate);
-        return -1;
+        return IMA_PARSING_ERROR;
         //tpm2_util_hexdump((uint8_t*) calculated_template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         //printf("\n");
         //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
@@ -472,7 +483,7 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
         fprintf(stderr, "ERROR: Digest creation error\n");
         free(calculated_template_hash);
         free(entry_aggregate);
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     free(calculated_template_hash);
@@ -498,6 +509,7 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         sqlite3_bind_text(res, idx2, hash_name, strlen(hash_name), NULL);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        return VERIFIER_INTERNAL_ERROR;
     }
     
     //Execute the sql query
@@ -522,6 +534,7 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
         sqlite3_bind_text(res, idx, path_name, strlen(path_name), NULL);
     } else {
         fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        return VERIFIER_INTERNAL_ERROR;
     }
     
     //Execute the sql query
@@ -534,7 +547,7 @@ int check_goldenvalue(sqlite3 *db, char * hash_name, char * path_name){
     sqlite3_finalize(res);
 
     //IMA row not found in the whitelist db 
-    return -1;
+    return GOLDEN_VALUE_MISMATCH;
 }
 
 int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_concatenated, 
@@ -553,13 +566,13 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     //SHA256
     if (digest_message(sha256_concatenated, (SHA256_DIGEST_LENGTH *2 * sizeof(uint8_t)), 0, pcr10_sha256, &sz) != 0){
         fprintf(stderr, "ERROR: Digest creation error\n");
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     //SHA1
     if (digest_message(sha1_concatenated, (SHA_DIGEST_LENGTH *2 * sizeof(uint8_t)), 1, pcr10_sha1, &sz) != 0){
         fprintf(stderr, "ERROR: Digest creation error\n");
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     return 0;
@@ -585,7 +598,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
 
     if((rply->ima_log == NULL && rply->ima_log_size > 0) || (rply->ima_log_size < 0) || (db == NULL)){
         fprintf(stderr, "ERROR: verify_ima_log bad input\n");
-        return -1;
+        return VERIFIER_INTERNAL_ERROR;
     }
 
     if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL ){
@@ -611,7 +624,8 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         goto PCR10;
 
     } else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
-        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 in the agent db error\n");
+        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 present\n");
+        ret = VERIFIER_INTERNAL_ERROR;
         goto error;
     }
     
@@ -624,32 +638,36 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     memcpy(event_name, rply ->ima_log + total_read, template_len);
     total_read = 0;
 
+    /*TODO other template*/
     if(strcmp(event_name, "ima-ng") != 0){
         //printf("%s\n", event_name);
         fprintf(stderr, "ERROR: Unknown IMA template\n");
-        return -1;
+        return UNKNOWN_IMA_TEMPLATE;
     }//other template here
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
         ret = read_ima_log_row(rply, &total_read, template_hash, template_hash_sha256, file_hash, &path_name, hash_name_byte);
         if (ret == 1){
-            //Error in the IMA log so skip the golden value verification
-            if(compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256) != 0){
+            //Error in the IMA log so skip the golden value verification`
+            ret = compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256);
+            if(ret != 0){
                 fprintf(stderr, "ERROR: pcr10 digest error\n");
                 goto error;
             }
             continue;
-        } else if(ret == -1){
+        } else if(ret != 0){
             free(path_name);
             fprintf(stderr, "ERROR: Error during read_ima_log_row\n");
             goto error;
         }
 
         //verify that (name,hash) present in in golden values db
-        if(check_goldenvalue(db, file_hash, path_name) != 0){
+        ret = check_goldenvalue(db, file_hash, path_name);
+        if(ret != 0){
             //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             //free(path_name);
+            //ret = GOLDEN_VALUE_MISMATCH;
             //goto error;
         }
         
@@ -708,14 +726,14 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    return 0;
+    return TRUSTED;
 error:
     free(pcr10_sha1);
     free(pcr10_sha256);
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    return -1;
+    return ret;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {

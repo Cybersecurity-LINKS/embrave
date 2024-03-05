@@ -21,15 +21,16 @@
 
 #include "tpm_quote.h"
 #include "common.h"
+
 /* APIs */
 #define API_ATTEST "/api/request_attestation"
 #define API_ALIVE "/api/still_alive"
 
-/* Trust status value */
-#define TRUSTED 0
-#define UNTRUSTED -1
-#define UNREACHABLE -2
 
+
+
+
+char* get_error(int errorCode);
 int ra_challenge_create(tpm_challenge *chl, agent_list *agent_data);
 int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data);
 void ra_free(tpm_challenge_reply *rpl, agent_list *tpa_data);

@@ -403,7 +403,7 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
       MG_INFO(("%s %d", API_ALIVE, 200));
     }
     else {
-      mg_http_reply(c, 500, NULL, "\n");
+      mg_http_reply(c, 404, NULL, "\n");
     }
   }
 }
@@ -441,12 +441,16 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     //Create nonce
     if(ra_challenge_create(&chl, agent_data)!= 0){
       agent_data->continue_polling = false;
+      agent_data->trust_value = VERIFIER_INTERNAL_ERROR;
+      c->is_draining = 1;        // Tell mongoose to close this connection
       return;
     }
 
     //Encode it in json form
     if(encode_challenge(&chl, buff, &buff_length)!= 0){
       agent_data->continue_polling = false;
+      agent_data->trust_value = VERIFIER_INTERNAL_ERROR;
+      c->is_draining = 1;        // Tell mongoose to close this connectio
       return;
     }
 
@@ -485,7 +489,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     fflush(stdin);
 
     agent_data->connection_retry_number++;
-    agent_data->trust_value = UNREACHABLE;
+    agent_data->trust_value = RETRY;
   }
 }
 
@@ -519,12 +523,12 @@ void *attest_agent(void *arg) {
     agent->continue_polling = true;
     if(agent->connection_retry_number == agent->max_connection_retry_number){
       /*Unreachable agent =>  untrusted*/
-      agent->trust_value = UNTRUSTED;
+      agent->trust_value = UNREACHABLE;
     }
         
     create_integrity_report(agent, buff);
     mqtt_publish(c_mqtt, topic, buff);
-    if(agent->trust_value == UNTRUSTED){
+    if(agent->trust_value != TRUSTED){
       /*Remove from DB*/
       remove_agent(agent);
       /*stop the attestation process*/
