@@ -260,10 +260,10 @@ void *queue_manager(void *vargp){
         /*Uuid and AK pem and ip address*/
         struct ak_db_entry *ak_entry = retrieve_ak(uuid);
         int id = get_verifier_id();
-        /* if(id == -1){
-            fprintf(stderr, "ERROR: could not get verifier id\n");
-            continue;
-        } */
+        // if(id == -1){
+           // fprintf(stderr, "ERROR: could not get verifier id\n");
+            //continue;
+        //} 
         
         //get_verifier_ip(id, ip);
         char topic[25];
@@ -1117,20 +1117,25 @@ int get_verifier_id(void){
     //last_requested_verifier++;
     int ret, id = -1;
     char ip[25];
-
-    if(verifier_num == 0){
-        return -1;
-    }
+    printf("verifier_num %d\n", verifier_num);
 
     do{
+        if(verifier_num == 0){
+            id = -1;
+            break;
+        }
+
         if (last_requested_verifier == verifier_num){
             last_requested_verifier = 0;
         }
 
         id = verifiers_id[last_requested_verifier++];
-        get_verifier_ip(id, ip);
+        ret = get_verifier_ip(id, ip);
+        if(ret != 0){
+            id = -1;
+            break;
+        }
         ret = verifier_is_alive(ip);
-
         // delete form verifiers_id an unreachable verifier
         if(ret != 0){
             int idx;
@@ -1144,9 +1149,10 @@ int get_verifier_id(void){
                 verifiers_id[i] = verifiers_id[i+1];
             }
             verifiers_id[MAX_VERIFIERS-1] = 0;
+            verifier_num--;
         }
 
-    } while(ret != 0);
+    } while(verifier_num != 0 && ret != 0);
 
     return id;
 }
