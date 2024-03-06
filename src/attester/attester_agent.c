@@ -223,7 +223,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
   }
   
   //TPM Quote creation
-  ret = create_quote(chl, rpl, esys_context);
+  ret = create_quote(chl, rpl, esys_context, attester_config.ak_ctx);
   if(ret != 0) goto end;
 
   //Load IMA log

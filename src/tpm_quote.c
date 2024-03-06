@@ -51,8 +51,8 @@ int nonce_create(uint8_t *nonce){
     return 0;
 }
 
-int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx){
-    char handle[27]= "/var/lemon/attester/ak.ctx";
+int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx, char * ak_ctx_path){
+    char handle[255];
     TPML_PCR_SELECTION pcr_select;
     int ret;
     tpm2_algorithm algs;
@@ -62,6 +62,8 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     if (ectx == NULL || rply == NULL || chl == NULL) {
         return -1;
     }
+
+    strcpy(handle, ak_ctx_path);
 
     if(access(handle, F_OK)){
         fprintf(stderr, "ERROR: AK handle not found in /var/lemon/attester/\n");

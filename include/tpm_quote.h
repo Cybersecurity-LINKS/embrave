@@ -53,7 +53,7 @@ typedef struct tpm_challenge_reply{
 } tpm_challenge_reply;
 
 int nonce_create(uint8_t *nonce);
-int create_quote (tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx);
+int create_quote (tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *ectx, char * ak_ctx_path);
 void print_quoted(TPM2B_ATTEST * quoted);
 void free_data (tpm_challenge_reply *rply);
 BYTE * copy_signature(UINT16* size);

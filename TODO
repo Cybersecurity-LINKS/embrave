@@ -1,24 +1,20 @@
-NOTE
-join_service.c +665 perchè usare come nome ak_pub_b64 se poi è in pem
-ha ancora senso controllare il reboot?
-se prima js poi agent al posto che dormire, il js pubblica su attest/-1
 
 1
-
+js when agent untrusted?
 write documentation 
 write README
-review tpm.c
-clean code and script
+clean git ignore
 join service output integrity report 
 
 2
+agent ip from socket => https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
 goldevalues creation rework
 exclude list with regex
-agent ip from socket => https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
+dashboard
 
 3
+
 OEM server with golden value for the verifiers to download 
-dashboard
 parameter for config file path
 debug print level
 file log
