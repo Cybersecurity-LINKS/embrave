@@ -16,7 +16,6 @@ agent_list *agents = NULL;
 
 const char* errorMessages[MAX_TRUST_VALUES] = {
     "No error, trusted",
-    "Agent rebooted after last attestation",
     "Agent is unreachable, there will be more connection retries",
     "Agent is unreachable after the retries",
     "The given AK pem is not a valid public key",

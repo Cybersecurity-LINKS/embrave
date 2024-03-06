@@ -51,23 +51,22 @@
 
 #define MAX_BUF 255
 
-#define MAX_TRUST_VALUES 14
+#define MAX_TRUST_VALUES 13
 /* Trust status value */
 #define TRUSTED 0
 
 /* Untrust status value -x */
-#define AGENT_REBOOTED -1
-#define RETRY -2
-#define UNREACHABLE -3
-#define AK_PUBKEY_CHECK_FAILED -4
-#define TPM2B_TO_TPMS_ERROR -5
-#define QUOTE_VERIFICATION_FAILED -6
-#define NONCE_MISMATCH -7
-#define PCR_DIGEST_MISMATCH -8
-#define UNKNOWN_IMA_TEMPLATE -9
-#define IMA_PARSING_ERROR -10
-#define GOLDEN_VALUE_MISMATCH -11
-#define PCR10_VALUE_MISMATCH -12
+#define RETRY -1
+#define UNREACHABLE -2
+#define AK_PUBKEY_CHECK_FAILED -3
+#define TPM2B_TO_TPMS_ERROR -4
+#define QUOTE_VERIFICATION_FAILED -5
+#define NONCE_MISMATCH -6
+#define PCR_DIGEST_MISMATCH -7
+#define UNKNOWN_IMA_TEMPLATE -8
+#define IMA_PARSING_ERROR -9
+#define GOLDEN_VALUE_MISMATCH -10
+#define PCR10_VALUE_MISMATCH -11
 
 #define VERIFIER_INTERNAL_ERROR -(MAX_TRUST_VALUES - 1)
 
@@ -89,7 +88,6 @@ struct  _agent_list{
     char* pcr10_sha256;
     int trust_value;
     int sleep_value;
-    uint32_t resetCount;
     uint32_t byte_rcv;
     uint32_t connection_retry_number;
     uint32_t max_connection_retry_number;

@@ -266,17 +266,6 @@ int verify_quote(tpm_challenge_reply *rply, char* ak_pub, agent_list *agent){
         goto err;
     }
 
-    if(agent->pcr10_sha256 == NULL ){
-        //Save resetCount
-        agent->resetCount = attest.clockInfo.resetCount;
-    } else if(agent->resetCount != attest.clockInfo.resetCount && rply->wholeLog == 1 ) {
-        fprintf(stdin, "INFO: agent rebooted after last attestation\n");
-        OPENSSL_free(bio);
-        EVP_PKEY_free(pkey);
-        EVP_PKEY_CTX_free(pkey_ctx);
-        return AGENT_REBOOTED;
-    }
-    
     //Hash the quoted data
     rc = tpm2_openssl_hash_compute_data(TPM2_ALG_SHA256, rply->quoted->attestationData, rply->quoted->size, &msg_hash);
     if (!rc) {
@@ -588,7 +577,6 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     char *path_name = NULL;
     int ret;
     size_t total_read = 0;
-    size_t old_byte_read = 0;
     uint32_t template_len;
     uint8_t * pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(uint8_t));
     uint8_t * pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(uint8_t));
