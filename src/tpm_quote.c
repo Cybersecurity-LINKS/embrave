@@ -588,6 +588,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     char *path_name = NULL;
     int ret;
     size_t total_read = 0;
+    size_t old_byte_read = 0;
     uint32_t template_len;
     uint8_t * pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(uint8_t));
     uint8_t * pcr10_sha256 = calloc(SHA256_DIGEST_LENGTH, sizeof(uint8_t));
@@ -681,9 +682,24 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
             goto error;
         }
 
+        
+
+        if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) == 0 
+            && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) == 0){
+                goto ok;
+        }
+
     }
-    printf("WARNING check_goldenvalue output todo!\n");
-    fprintf(stdout, "INFO: IMA log verification OK\n");
+
+
+    fprintf(stdout, "ERROR: PCR10 calculation mismatch, PCR10:\n");
+    tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\n");
+    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");  
+    ret = PCR10_VALUE_MISMATCH;
+    goto error;
+
 
     //pcrs.pcr_values[0].digests->size == 20 == sha1
     //pcrs.pcr_values[1].digests->size == 32 == sha256
@@ -713,14 +729,18 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
         goto error;
     }
 
+ok: 
+    agent->byte_rcv += total_read;
+    printf("WARNING check_goldenvalue output todo!\n");
+    fprintf(stdout, "INFO: IMA log verification OK\n");
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
-
+    
     //Convert PCR10 to save it
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
     //Update the number of received bytes
-    agent->byte_rcv += rply->ima_log_size;
+    //agent->byte_rcv += rply->ima_log_size;
 
     free(pcr10_sha1);
     free(pcr10_sha256);
