@@ -25,10 +25,6 @@
 #include "mongoose.h"
 #include "tpm_makecredential.h"
 
-
-//https://github.com/tpm2-software/tpm2-tools/blob/master/tools/tpm2_makecredential
-//https://github.com/tpm2-software/tpm2-tools/blob/master/man/tpm2_makecredential.1.md
-
 static tpm_makecred_ctx ctx = {
     .object_name = TPM2B_EMPTY_INIT,
     .public = TPM2B_EMPTY_INIT,

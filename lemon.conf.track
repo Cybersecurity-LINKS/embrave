@@ -49,6 +49,7 @@ join_service_ip = localhost
 
 # Port where it runs the http Join Service server
 join_service_port = 8000
+
 ##################################
 # Verifier configuration section #
 ##################################
@@ -80,6 +81,7 @@ join_service_ip = localhost
 
 # Port where it runs the http Join Service server
 join_service_port = 8000
+
 ######################################
 # Join Service configuration section #
 ######################################

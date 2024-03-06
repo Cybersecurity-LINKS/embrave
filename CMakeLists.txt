@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(lemon)
 
-#cmake -DCMAKE_C_FLAGS="-DVERBOSE=1" ..
-
 set(tpm2-tools_srcdir ${CMAKE_SOURCE_DIR}/lib/tpm2-tools)
 set(patchdir ${CMAKE_SOURCE_DIR}/patches)
 set(agent_srcdir ${CMAKE_SOURCE_DIR}/src/attester)
@@ -26,34 +24,11 @@ macro(add_patch level submodule patch working_directory patch_list)
     COMMAND touch ${CMAKE_BINARY_DIR}/${patch}.applied
     COMMENT "Applying ${patch}")
   list(APPEND ${patch_list} ${patch}.applied)
-  #message("PIPPO")
 endmacro()
-
-#macro(mv name file dir)
-#  add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/config.h.moved
-#    COMMAND mv ${file} ${dir}
-#    COMMAND touch ${CMAKE_BINARY_DIR}/config.h.moved
-#  )
-#  set(${name} ${dir})
-#  set(${name}_exists ${dir}/.exists)
-#endmacro()
 
 #######################################################################
 ## tpm2-tools patch
 #######################################################################
-
-#add_patch(1 "tpm2-tools" "tool_as_lib.patch" ${tpm2-tools_srcdir} tpm2-tools_patches)
-#set(patch "tool_as_lib.patch")
-#set(submodule "tpm2-tools")
-#set(working_directory ${tpm2-tools_srcdir})
-#set(patch_list tpm2-tools_patches)
-#set(level 1)
-#add_custom_command(OUTPUT ${patch}.applied PRE_BUILD
-#    WORKING_DIRECTORY ${working_directory}
-#    COMMAND patch --forward -p${level} < ${patchdir}/${submodule}/${patch}
-#    COMMAND touch ${CMAKE_BINARY_DIR}/${patch}.applied
-#    COMMENT "Applying ${patch}")
-#  list(APPEND ${patch_list} ${patch}.applied)
 
 # copy config.h into lib/tpm2-tools/lib
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied PRE_BUILD
@@ -67,8 +42,6 @@ add_custom_target(patch_tpm2-tools ALL DEPENDS ${CMAKE_BINARY_DIR}/tpm2-tools-co
 #######################################################################
 
 # create hash of root CA certificates
-#execute_process (COMMAND ${scripts_wrkdir}/create_hash_dir.sh ${CMAKE_SOURCE_DIR}
-#  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_custom_command(OUTPUT ${ca_hash_dir} PRE_BUILD COMMAND ${scripts_wrkdir}/create_hash_dir.sh ${CMAKE_SOURCE_DIR})
 
@@ -90,11 +63,6 @@ add_dependencies(attester_server patch_tpm2-tools)
 target_compile_options(attester_server PUBLIC -g  -Wall -fPIC)
 target_link_libraries(attester_server -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread -lcurl)
 
-#add_custom_target("attester" ALL DEPENDS ${agent_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
-#    COMMAND $(MAKE) -C ${agent_srcdir} O=${agent_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
-#    COMMENT "Building attester agent"
-#)
-
 #######################################################################
 ## verifier
 #######################################################################
@@ -111,12 +79,6 @@ add_dependencies(verifier patch_tpm2-tools)
 target_compile_options(verifier PUBLIC -g  -Wall -fPIC)
 target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread)
 
-#add_custom_target("verifier" ALL DEPENDS ${verifier_wrkdir} ${tpm2-tools_patches} ${CMAKE_BINARY_DIR}/tpm2-tools-config.copied
-#    COMMAND $(MAKE) -C ${verifier_srcdir} O=${verifier_wrkdir} lemondir=${CMAKE_SOURCE_DIR}
-#    COMMENT "Building verifier"
-#)
-
-
 #######################################################################
 ## join service
 #######################################################################
@@ -129,6 +91,5 @@ include_directories("include" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(join_service ${sources})
-#add_dependencies(verifier patch_tpm2-tools)
 target_compile_options(join_service PUBLIC -g  -Wall -fPIC)
 target_link_libraries(join_service -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc  -lcrypto -ldl -pthread) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
