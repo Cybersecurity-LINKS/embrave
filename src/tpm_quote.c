@@ -354,28 +354,21 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
-    //printf("%d ", pcr);
 
     memcpy(template_hash, rply ->ima_log + *total_read, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     *total_read += sizeof(uint8_t) * SHA_DIGEST_LENGTH;
-    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    //printf("\n");
 
     uint32_t template_name_len;
     memcpy(&template_name_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
-    //printf("%d ", template_name_len);
 
     char template_type[TCG_EVENT_NAME_LEN_MAX + 1];
     memcpy(template_type, rply ->ima_log + *total_read, template_name_len);
     *total_read += template_name_len * sizeof(char);
-    //printf("%s ", template_type);
-    
 
     uint32_t template_len;
     memcpy(&template_len, rply ->ima_log + *total_read, sizeof(uint32_t));
     *total_read += sizeof(uint32_t);
-    //printf("%d ", template_len);
 
     //Allocate a buffer for PCR extension verification
     entry_aggregate = calloc(template_len + 1, sizeof(uint8_t));
@@ -413,7 +406,6 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
     *total_read += 8 * sizeof(uint8_t);
-    //printf("%s", alg_field);
 
     memcpy(entry_aggregate + acc, alg_field, sizeof alg_field);
     acc += 8*sizeof(uint8_t);
@@ -435,7 +427,6 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
 
     memcpy(*path_name, rply ->ima_log + *total_read, sizeof(char) * field_path_len);
     *total_read += sizeof(char) * field_path_len;
-    //printf("%ld %s\n",field_path_len, *path_name);
 
     memcpy(entry_aggregate + acc, *path_name, sizeof(uint8_t) * field_path_len);
     acc += sizeof(char) * field_path_len;
@@ -449,23 +440,13 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
         return VERIFIER_INTERNAL_ERROR;
     }
 
-    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    //printf("\n");
-
     //Compare the read SHA1 template hash agaist his calculation
     if(memcmp(calculated_template_hash, template_hash,sizeof(uint8_t) *   SHA_DIGEST_LENGTH) != 0) {
         fprintf(stderr, "ERROR: Mismatch template hash against calculated one\n");
         free(calculated_template_hash);
         free(entry_aggregate);
         return IMA_PARSING_ERROR;
-        //tpm2_util_hexdump((uint8_t*) calculated_template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        //printf("\n");
-        //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        //printf("\n\n\n");
     } 
-
-    //tpm2_util_hexdump(template_hash, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    //printf("\n");
 
     //Compute the template digest SHA256
     if (digest_message(entry_aggregate, template_len, 0, template_hash_sha256, &sz) != 0){
@@ -567,8 +548,7 @@ int compute_pcr10(uint8_t * pcr10_sha1, uint8_t * pcr10_sha256, uint8_t * sha1_c
     return 0;
 }
 
-int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
-    
+int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){ 
     char file_hash[(SHA256_DIGEST_LENGTH * 2) + 1];
     uint8_t template_hash[SHA_DIGEST_LENGTH];
     uint8_t template_hash_sha256[SHA256_DIGEST_LENGTH];
@@ -594,17 +574,12 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha1, &sz1, pcr10_sha1);
-/*         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-        printf("\n");
-        tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-        printf("\n"); */
     } else {
+        //No old PCR10 values, allocates space for saving them
         if(agent->pcr10_sha256 == NULL){
             agent->pcr10_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
             agent->pcr10_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
         }
-        //No old PCR10 values, allocates space for saving them
-
     }
 
     /*No new event in the agent*/
@@ -670,7 +645,10 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
             goto error;
         }
 
-        
+        //pcrs.pcr_values[0].digests->size == 20 == sha1
+        //pcrs.pcr_values[1].digests->size == 32 == sha256
+        //digests[i] i = pcrid mod 8 => 10 mod 8 2
+        //Compare PCR10 with the received one
 
         if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) == 0 
             && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) == 0){
@@ -679,38 +657,42 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
 
     }
 
-
-    fprintf(stdout, "ERROR: PCR10 calculation mismatch, PCR10:\n");
+    fprintf(stdout, "ERROR: PCR10 calculation mismatch\n");
+    fprintf(stdout, "SHA256 received:\n");
     tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
     printf("\n");
+
+    fprintf(stdout, "SHA256 computed:\n");
+    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+    printf("\n");
+
+    fprintf(stdout, "SHA1 received:\n");
+    tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+    printf("\n");
+
+    fprintf(stdout, "SHA1 computed:\n");
     tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     printf("\n");  
     ret = PCR10_VALUE_MISMATCH;
     goto error;
 
-
-    //pcrs.pcr_values[0].digests->size == 20 == sha1
-    //pcrs.pcr_values[1].digests->size == 32 == sha256
-    //digests[i] i = pcrid mod 8 => 10 mod 8 2
-/*     printf("Compued pcrs10 OK\n");
-    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
-    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
-
-    printf("Computed pcrs10 OK\n");
-    tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
-    tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n"); */
-
-    //Compare PCR10 with the received one
-PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0 
-            && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
-        
-        printf("PCR10 calculation mismatch, PCRS10:\n");
+PCR10:  
+    if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) != 0
+        && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) != 0){
+        fprintf(stdout, "ERROR: PCR10 calculation mismatch\n");
+        fprintf(stdout, "SHA256 received:\n");
         tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
         printf("\n");
+
+        fprintf(stdout, "SHA256 computed:\n");
+        tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("\n");
+
+        fprintf(stdout, "SHA1 received:\n");
+        tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
+
+        fprintf(stdout, "SHA1 computed:\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
         ret = PCR10_VALUE_MISMATCH;
@@ -720,15 +702,12 @@ PCR10:  if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof
 ok: 
     agent->byte_rcv += total_read;
     printf("WARNING check_goldenvalue output todo!\n");
-    fprintf(stdout, "INFO: IMA log verification OK\n");
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
-    
-    //Convert PCR10 to save it
+    fprintf(stdout, "INFO: IMA log verification OK\n");
+
+    //Convert PCR10 and save it
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
     bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-
-    //Update the number of received bytes
-    //agent->byte_rcv += rply->ima_log_size;
 
     free(pcr10_sha1);
     free(pcr10_sha256);
