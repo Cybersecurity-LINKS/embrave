@@ -38,7 +38,6 @@ int update_agent_data(agent_list * ptr);
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     MG_INFO(("%lu CREATED", c->id));
-    // c->is_hexdumping = 1;
   } else if (ev == MG_EV_ERROR) {
     // On error, log error message
     MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
@@ -66,7 +65,6 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     agent_list *last_ptr = agent_list_find_uuid(uuid);
 
     if(last_ptr != NULL){
-      
       last_ptr->running = false;
       last_ptr->continue_polling = false;
 
@@ -74,7 +72,8 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");/*TODO configurable*/
+
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
 
@@ -85,15 +84,14 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db"); /*TODO configurable*/
+
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
 
       /*add attester dato to verifier db*/
       add_agent_data(last_ptr);
       create_attestation_thread(last_ptr);
-      
-      
     }
 
     free(uuid);
@@ -279,7 +277,7 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     return -1;
   }
 
-  /*Read the buffer*/
+  // Read the buffer
   //Signature
   memcpy(&rpl->sig_size, byte_buff,  sizeof(UINT16));
   i += sizeof(UINT16);
@@ -315,7 +313,9 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     memcpy(&rpl->wholeLog, byte_buff + i, sizeof(uint8_t));
     i += sizeof(uint8_t);
   }
-  print_data(rpl) ;
+//#ifdef DEBUG  
+  print_data(rpl);
+//#endif
   return 0;
 
 }
@@ -368,7 +368,6 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
 #endif
     int status = mg_http_status(hm);
-    //printf("%d\n", status);
     if(status == 403){ /* forbidden */
       /*TODO ERRORI*/
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
@@ -470,7 +469,6 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     int n = load_challenge_reply(hm, &rpl);
     if(n < 0){
-      //end = true;
       agent_data->trust_value = n;
       c->is_draining = 1;        // Tell mongoose to close this connection
       agent_data->continue_polling = false;  // Tell event loop to stop

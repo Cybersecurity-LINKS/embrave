@@ -5,13 +5,9 @@
 /var/lib/dhcpcd/
 /var/log/
 /var/lib/logrotate/status
-/home/pi/tpa/Protocols/Explicit/goldenvalues.db
-/home/pi/tpa/Server/Verifier/client
-/home/pi/tpa/Server/Attester/TPA
 /boot/System_Volume_Information/
 /etc/resolv.conf
 /etc/unbound/unbound.conf.d/resolvconf_resolvers.conf
-/home/pi/tpa/Agents/Remote_Attestor/tpa.db
 /var/lib/systemd/backlight/platform-backlight
 /var/lib/alsa/asound.state
 /var/lib/NetworkManager/NetworkManager.state

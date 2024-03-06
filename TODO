@@ -2,7 +2,6 @@
 1
 js when agent untrusted?
 write documentation 
-write README
 clean git ignore
 join service output integrity report 
 
@@ -20,5 +19,5 @@ debug print level
 file log
 support multi db
 support for other attestation schemes
-PCR configurables
+PCR configurables at agent side and send them to js 
 
