@@ -1,7 +1,33 @@
 # Build and Install
 The following dependencies must be installed before installing the application
 ## TPM2 Software Stack (TSS)
-
+Install the required packages
+```sh
+sudo apt -y install \
+  autoconf-archive \
+  libcmocka0 \
+  libcmocka-dev \
+  procps \
+  iproute2 \
+  build-essential \
+  git \
+  pkg-config \
+  gcc \
+  libtool \
+  automake \
+  libssl-dev \
+  uthash-dev \
+  autoconf \
+  doxygen \
+  libjson-c-dev \
+  libini-config-dev \
+  libcurl4-openssl-dev \
+  uuid-dev \
+  libltdl-dev \
+  libusb-1.0-0-dev \
+  libftdi-dev
+```
+Install tpm2-tss software
 ```sh
 git clone -n https://github.com/tpm2-software/tpm2-tss
 git checkout 40485d368dbd8ad92c8c062ba38cd7eaa4489472
@@ -25,6 +51,12 @@ sudo systemctl daemon-reload
 ```
 ## Dependencies of tpm2-tools
 install the dependencies listed at this [link](https://tpm2-tools.readthedocs.io/en/latest/INSTALL/)
+
+## a preferred MQTT broker
+E.g Mosquitto
+```sh
+sudo apt install mosquitto
+```
 
 # Installation
 
