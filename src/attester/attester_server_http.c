@@ -599,21 +599,21 @@ int main(int argc, char *argv[]) {
   char s_conn[500];
   struct stat st = {0};
 
-  if (stat("/var/lemon", &st) == -1) {
-    if(!mkdir("/var/lemon", 0711)) {
-        fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
+  if (stat("/var/embrave", &st) == -1) {
+    if(!mkdir("/var/embrave", 0711)) {
+        fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
       }
       else {
-        fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
+        fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
       }
   }
 
-  if (stat("/var/lemon/attester", &st) == -1) {
-      if(!mkdir("/var/lemon/attester", 0711)) {
-        fprintf(stdout, "INFO: /var/lemon/attester directory successfully created\n");
+  if (stat("/var/embrave/attester", &st) == -1) {
+      if(!mkdir("/var/embrave/attester", 0711)) {
+        fprintf(stdout, "INFO: /var/embrave/attester directory successfully created\n");
       }
       else {
-        fprintf(stderr, "ERROR: cannot create /var/lemon/attester directory\n");
+        fprintf(stderr, "ERROR: cannot create /var/embrave/attester directory\n");
       }
   }
 

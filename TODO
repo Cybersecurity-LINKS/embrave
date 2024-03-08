@@ -1,9 +1,7 @@
 
 1
-js when agent untrusted?
-write documentation 
-clean git ignore
-join service output integrity report 
+write readme 
+join service output integrity report and agent untrusted
 
 2
 agent ip from socket => https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux

@@ -49,13 +49,13 @@ Get the main repo:
 
     .. code-block:: bash
         
-        $ git clone https://github.com/Cybersecurity-LINKS/lemon.git
+        $ git clone https://github.com/Cybersecurity-LINKS/embrave.git
 
 Get the submodules:
 
     .. code-block:: bash
 
-        $ cd lemon
+        $ cd embrave
         $ git submodule update --init --recursive
         $ cd lib/tpm2-tools
         $ git checkout 4998ecfea817cd0efdd47bdf11a02dedab51c723

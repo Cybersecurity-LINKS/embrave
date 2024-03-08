@@ -48,7 +48,7 @@
 .tmp_versions/
 
 # for development
-lemon.conf
+embrave.conf
 swtpm-localca-rootca-cert.pem
 
 # Submodules
@@ -67,4 +67,4 @@ dkms.conf
 src/verifier/client
 src/verifier/verifier
 src/attester/attester_server
-lemon.conf
+embrave.conf

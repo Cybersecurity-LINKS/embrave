@@ -1,12 +1,12 @@
 Configuration File
 ==================
 
-The system supports configuration through a a file, located in ``/etc/lemon.conf``. The file is in the format of a standard INI file, with sections and key-value pairs. The following sections are supported:
+The system supports configuration through a a file, located in ``/etc/embrave.conf``. The file is in the format of a standard INI file, with sections and key-value pairs. The following sections are supported:
 
 Sections
 --------
 
-The ``lemon.conf`` file is divided into several sections, each used by a specific component.
+The ``embrave.conf`` file is divided into several sections, each used by a specific component.
 
 AttesterAgent
 -------------
@@ -30,18 +30,18 @@ The ``[AttesterAgent]`` section contains general settings for Attester.
     ip = 127.0.0.1
 
     # Certificate and key for TLS paths
-    tls_cert = /var/lemon/attester/tls/cert.crt
-    tls_key = /var/lemon/attester/tls/key.pem
+    tls_cert = /var/embrave/attester/tls/cert.crt
+    tls_key = /var/embrave/attester/tls/key.pem
 
     # Path where store the EK certificates
-    ek_rsa_cert = /var/lemon/attester/ek_rsa_cert.pem
-    ek_ecc_cert = /var/lemon/attester/ek_ecc_cert.pem
+    ek_rsa_cert = /var/embrave/attester/ek_rsa_cert.pem
+    ek_ecc_cert = /var/embrave/attester/ek_ecc_cert.pem
 
     # Path where store the AK info
-    ak_pub = /var/lemon/attester/ak_pub.pem
-    ak_name = /var/lemon/attester/ak.name
-    ak_ctx = /var/lemon/attester/ak.ctx
-    ak_cert = /var/lemon/attester/ak.crt
+    ak_pub = /var/embrave/attester/ak_pub.pem
+    ak_name = /var/embrave/attester/ak.name
+    ak_ctx = /var/embrave/attester/ak.ctx
+    ak_cert = /var/embrave/attester/ak.crt
 
     # Join Service IP address
     join_service_ip = localhost
@@ -73,12 +73,12 @@ The ``[Verifier]`` section contains settings related to the Verifier.
     use_tls = 1
 
     # Certificate and key for TLS paths
-    tls_cert_ca = /var/lemon/verifier/tls/ca.crt
-    tls_cert = /var/lemon/verifier/tls/cert.crt
-    tls_key = /var/lemon/verifier/tls/key.pem
+    tls_cert_ca = /var/embrave/verifier/tls/ca.crt
+    tls_cert = /var/embrave/verifier/tls/cert.crt
+    tls_key = /var/embrave/verifier/tls/key.pem
 
     # Path of the verfier database (sqlite)
-    db = file:/var/lemon/verifier/db.sqlite
+    db = file:/var/embrave/verifier/db.sqlite
 
     # Join Service IP address
     join_service_ip = localhost
@@ -109,12 +109,12 @@ The ``[JoinService]`` section contains settings related to the Join Service.
     use_tls = 1
 
     # Certificate and key for TLS paths
-    tls_cert_ca = /var/lemon/join_servicetls/ca.crt
-    tls_cert = /var/lemon/join_service/tls/cert.crt
-    tls_key = /var/lemon/join_service/tls/key.pem
+    tls_cert_ca = /var/embrave/join_servicetls/ca.crt
+    tls_cert = /var/embrave/join_service/tls/cert.crt
+    tls_key = /var/embrave/join_service/tls/key.pem
 
     # Path of the verfier database (sqlite)
-    db = file:/var/lemon/join_service/db.sqlite
+    db = file:/var/embrave/join_service/db.sqlite
 
     # Path of ca hash certificates
-    ca_x509_path = /home/linux/Documents/lemon/tpm_ca_certs_hash_dir
+    ca_x509_path = /home/linux/Documents/embrave/tpm_ca_certs_hash_dir

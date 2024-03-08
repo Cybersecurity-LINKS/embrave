@@ -246,7 +246,7 @@ tool_rc tpm_activatecredential(ESYS_CONTEXT *ectx, struct attester_conf *atteste
 
     ctx.credentialed_key.ctx_path = attester_config->ak_ctx;
     ctx.credential_key.ctx_path = "0x81000003"; /* EK handle */
-    ctx.credential_key.auth_str = "session:/var/lemon/attester/session.ctx";
+    ctx.credential_key.auth_str = "session:/var/embrave/attester/session.ctx";
 
     /* Where to read the mkcred_out */
     ctx.is_credential_blob_specified = 1;

@@ -26,22 +26,27 @@ sudo systemctl daemon-reload
 ## Dependencies of tpm2-tools
 install the dependencies listed at this [link](https://tpm2-tools.readthedocs.io/en/latest/INSTALL/)
 
-## sqlite3
-```sh
-sudo apt install libsqlite3-dev
-```
 # Installation
 
 ```sh
-git clone https://github.com/Cybersecurity-LINKS/tpa
-cd tpa/tpm2-tools/
-git apply tool_as_lib.patch
-./bootstrap
-./configure
-cd ..
-(cd ./Server/Attester/ && make )
-(cd ./Server/Verifier/ && make )
+git clone https://github.com/Cybersecurity-LINKS/embrave
+cd embrave
+git submodule update --init --recursive
+cd lib/tpm2-tools
+git checkout 4998ecfea817cd0efdd47bdf11a02dedab51c723
+cd ../../
+mkdir build
+cd build
+cmake ..
+sudo make 
 ```
+The ``sudo make`` command will build all the binaries. If the intention is to build only a specific compoents, the command is ``sudo make <target-name>`` with targets defined as:
+
+- ``attester-server``: The Attester component
+- ``verifier``: The Verifier component
+- ``join-service``: The Join Service component
+
+
 
 
 

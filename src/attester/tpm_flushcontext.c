@@ -16,7 +16,7 @@ static struct tpm_flush_context_ctx ctx;
 
 tool_rc tpm_flushcontext(ESYS_CONTEXT *ectx) {
 
-    ctx.context_arg = "/var/lemon/attester/session.ctx";
+    ctx.context_arg = "/var/embrave/attester/session.ctx";
 
     if (!ctx.context_arg) {
         LOG_ERR("Specify options to evict handles or a session context.");

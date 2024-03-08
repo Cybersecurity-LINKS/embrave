@@ -1,9 +1,9 @@
-.. lemon documentation master file, created by
+.. embrave documentation master file, created by
    sphinx-quickstart on Wed Nov 22 11:24:12 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to lemon's documentation!
+Welcome to embrave's documentation!
 =================================
 
 .. toctree::

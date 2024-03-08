@@ -151,7 +151,7 @@ static tool_rc process_inputs(ESYS_CONTEXT *ectx) {
 
 tool_rc tpm_policysecret(ESYS_CONTEXT *ectx) {
 
-    ctx.extended_session_path = "/var/lemon/attester/session.ctx";
+    ctx.extended_session_path = "/var/embrave/attester/session.ctx";
     ctx.auth_entity.ctx_path = "e";
 
     /*

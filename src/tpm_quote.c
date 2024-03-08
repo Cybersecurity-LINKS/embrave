@@ -66,7 +66,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     strcpy(handle, ak_ctx_path);
 
     if(access(handle, F_OK)){
-        fprintf(stderr, "ERROR: AK handle not found in /var/lemon/attester/\n");
+        fprintf(stderr, "ERROR: AK handle not found in /var/embrave/attester/\n");
         return -1;
     }
 
@@ -631,10 +631,10 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         //verify that (name,hash) present in in golden values db
         ret = check_goldenvalue(db, file_hash, path_name);
         if(ret != 0){
-            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
-            //free(path_name);
-            //ret = GOLDEN_VALUE_MISMATCH;
-            //goto error;
+            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            free(path_name);
+            ret = GOLDEN_VALUE_MISMATCH;
+            goto error;
         }
         
         free(path_name);
@@ -703,7 +703,7 @@ PCR10:
 
 ok: 
     agent->byte_rcv += total_read;
-    printf("WARNING check_goldenvalue output todo!\n");
+    //printf("WARNING check_goldenvalue output todo!\n");
     fprintf(stdout, "INFO: PCR10 calculation OK\n");
     fprintf(stdout, "INFO: IMA log verification OK\n");
 

@@ -28,7 +28,7 @@ static tpm2_startauthsession_ctx ctx = {
         .size = BUFFER_SIZE(TPM2B_NAME, name)
     },
     .output = {
-        .path = "/var/lemon/attester/session.ctx"
+        .path = "/var/embrave/attester/session.ctx"
     }
 };
 

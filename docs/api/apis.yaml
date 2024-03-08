@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Lemon APIs
+  title: Embrave APIs
   description: |-
-    List of REST APIs exposed by Lemon components.
+    List of REST APIs exposed by Embrave components.
   termsOfService: http://swagger.io/terms/
   contact:
     email: apiteam@swagger.io

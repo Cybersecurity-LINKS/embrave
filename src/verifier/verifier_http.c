@@ -72,7 +72,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");/*TODO configurable*/
+      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db");/*TODO configurable*/
 
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
@@ -84,7 +84,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db"); /*TODO configurable*/
+      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db"); /*TODO configurable*/
 
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
@@ -314,7 +314,7 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     i += sizeof(uint8_t);
   }
 //#ifdef DEBUG  
-  print_data(rpl);
+  //print_data(rpl);
 //#endif
   return 0;
 
@@ -596,7 +596,7 @@ static int init_database(void){
       strcpy(last_ptr->ip_addr, ip);
       strcpy(last_ptr->ak_pub, ak);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/lemon/verifier/goldenvalues.db");
+      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db");
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 1;
 
@@ -638,22 +638,22 @@ int main(int argc, char *argv[]) {
   mg_mgr_init(&mgr_mqtt);
   c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "verifier");
   
-  if (stat("/var/lemon", &st) == -1) {
-    if(!mkdir("/var/lemon", 0711)) {
-      fprintf(stdout, "INFO: /var/lemon directory successfully created\n");
+  if (stat("/var/embrave", &st) == -1) {
+    if(!mkdir("/var/embrave", 0711)) {
+      fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
     }
     else {
-      fprintf(stderr, "ERROR: cannot create /var/lemon directory\n");
+      fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
       exit(-1);
     }
   } 
   
-  if (stat("/var/lemon/verifier", &st) == -1) {
-    if(!mkdir("/var/lemon/verifier", 0711)) {
-      fprintf(stdout, "INFO: /var/lemon/verifier directory successfully created\n");
+  if (stat("/var/embrave/verifier", &st) == -1) {
+    if(!mkdir("/var/embrave/verifier", 0711)) {
+      fprintf(stdout, "INFO: /var/embrave/verifier directory successfully created\n");
     }
     else {
-      fprintf(stderr, "ERROR: cannot create /var/lemon/verifier directory\n");
+      fprintf(stderr, "ERROR: cannot create /var/embrave/verifier directory\n");
     }
   }
 

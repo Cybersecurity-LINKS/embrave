@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'lemon'
+project = 'embrave'
 copyright = '2023, Alessio Claudio, Enrico Bravi'
 author = 'Alessio Claudio, Enrico Bravi'
 release = '0.1'
@@ -31,7 +31,7 @@ html_show_sourcelink = False
 html_context = {
     "display_github": True, # Integrate GitHub
     "github_user": "Cybersecurity-LINKS", # Username
-    "github_repo": "lemon", # Repo name
+    "github_repo": "embrave", # Repo name
     "github_version": "main", # Version
     "conf_py_path": "/docs/source/", # Path in the checkout to the docs root
 }

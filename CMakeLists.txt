@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(lemon)
+project(embrave)
 
 set(tpm2-tools_srcdir ${CMAKE_SOURCE_DIR}/lib/tpm2-tools)
 set(patchdir ${CMAKE_SOURCE_DIR}/patches)
