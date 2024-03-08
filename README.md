@@ -6,7 +6,7 @@ Limitation:
 - Some files must be excluded manually
 - Exclusive support of TPM2.0
 
-More details in the documentation LINK.
+More details in the [documentation](https://cybersecurity-links.github.io/embrave/intro) .
 ## Build and install
 Refer to the [INSTALL.md](INSTALL.md) file for instructions about building and installing the applications.
 
@@ -23,7 +23,7 @@ sudo python3 ./script/add_excludelist.py <path/file_to_exclude>
 
 ### Config file
 
-link to documentation
+TODO
 
 ### Remote Attestor Preparation
 Copy the goldenvalue database to the path defined by the config file
