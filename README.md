@@ -12,7 +12,7 @@ Refer to the [INSTALL.md](INSTALL.md) file for instructions about building and i
 
 ## Provisioning
 ### Golden values database and the exclude list database
-A python script is provided to create the database of trusted values. In case of known files to be excluded in the verification, add the file or path name in the file ./script/exclude.txtone per line. Then run this Python script on the Attester Agent. It will take some time.
+A python script is provided to create the database of trusted values. In case of known files to be excluded in the verification, add the file or path name in the file ./script/exclude.txt one per line. Then run this Python script on the Attester Agent. It will take some time.
 ```sh
 sudo python3 ./script/goldenvalue_db_generator.py sha256 /
 ```
