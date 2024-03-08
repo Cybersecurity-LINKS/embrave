@@ -2,7 +2,7 @@
 C-language implementation of a Remote Attestation Framework. Implements an Attester Agent, a Verifier, and a Join service to register agents and Verifiers.
 
 Limitation:
-- Only ima-ng format of IMA log is supported at the moment
+- Only ```ima-ng``` format of IMA log is supported at the moment
 - Some files must be excluded manually
 - Exclusive support of TPM2.0
 
