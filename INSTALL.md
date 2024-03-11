@@ -63,7 +63,7 @@ sudo systemctl daemon-reload
 **Dependencies of tpm2-tools:**
 install the dependencies listed at this [link](https://tpm2-tools.readthedocs.io/en/latest/INSTALL/)
 
-## Installation
+## Build
 
 ```sh
 git clone https://github.com/Cybersecurity-LINKS/embrave
@@ -72,10 +72,9 @@ git submodule update --init --recursive
 cd lib/tpm2-tools
 git checkout 4998ecfea817cd0efdd47bdf11a02dedab51c723
 cd ../../
-mkdir build
+cmake -B build .
 cd build
-cmake ..
-sudo make 
+make
 ```
 The ``sudo make`` command will build all the binaries. If the intention is to build only a specific compoents, the command is ``sudo make <target-name>`` with targets defined as:
 
