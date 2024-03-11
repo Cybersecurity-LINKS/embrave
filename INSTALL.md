@@ -1,6 +1,17 @@
 # Build and Install
-The following dependencies must be installed before installing the application
-## TPM2 Software Stack (TSS)
+## Requirements
+The following dependencies must be installed:
+```sh
+sudo apt-get install git make cmake gcc libssl-dev openssl
+```
+and a preferred MQTT broker E.g Mosquitto
+```sh
+sudo apt install mosquitto
+```
+## Attester Requirements
+The following dependencies must be installed specific for the Attester application.
+
+**TPM2 Software Stack (TSS):**
 Install the required packages
 ```sh
 sudo apt -y install \
@@ -37,7 +48,7 @@ sudo make -j8
 sudo make install
 sudo ldconfig
 ```
-## TPM2 Access Broker & Resource Manager
+**TPM2 Access Broker & Resource Manager:**
 
 ```sh
 git clone -n https://github.com/tpm2-software/tpm2-abrmd
@@ -49,16 +60,10 @@ sudo make install
 sudo udevadm control --reload-rules && sudo udevadm trigger
 sudo systemctl daemon-reload
 ```
-## Dependencies of tpm2-tools
+**Dependencies of tpm2-tools:**
 install the dependencies listed at this [link](https://tpm2-tools.readthedocs.io/en/latest/INSTALL/)
 
-## a preferred MQTT broker
-E.g Mosquitto
-```sh
-sudo apt install mosquitto
-```
-
-# Installation
+## Installation
 
 ```sh
 git clone https://github.com/Cybersecurity-LINKS/embrave
@@ -77,7 +82,6 @@ The ``sudo make`` command will build all the binaries. If the intention is to bu
 - ``attester-server``: The Attester component
 - ``verifier``: The Verifier component
 - ``join-service``: The Join Service component
-
 
 
 
