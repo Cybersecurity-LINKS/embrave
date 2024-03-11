@@ -1,4 +1,4 @@
-#  embrave
+#  EMBRAVE: EMBedded Remote Attestation and Verification framEwork
 C-language implementation of a Remote Attestation Framework. Implements an Attester Agent, a Verifier, and a Join service to register agents and Verifiers.
 
 Limitation:
