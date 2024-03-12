@@ -8,7 +8,7 @@ Limitation:
 
 More details in the [documentation](https://cybersecurity-links.github.io/embrave/intro) .
 ## Build and install
-Refer to the [Quick-start](https://cybersecurity-links.github.io/embrave/quick-start) for instructions about building and installing the applications.
+Refer to the [Quick-start](https://cybersecurity-links.github.io/embrave/category/quick-start) for instructions about building and installing the applications.
 
 ## License
 [GNU General Public License v2.0 only](https://spdx.org/licenses/GPL-2.0-only.html)
