@@ -17,6 +17,7 @@
 #include <errno.h>
 
 #define CONFIG_FILE_PATH "/etc/embrave.conf"  /* development path */
+
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 11
