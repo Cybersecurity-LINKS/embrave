@@ -66,7 +66,7 @@ int create_quote(tpm_challenge *chl, tpm_challenge_reply *rply,  ESYS_CONTEXT *e
     strcpy(handle, ak_ctx_path);
 
     if(access(handle, F_OK)){
-        fprintf(stderr, "ERROR: AK handle not found in /var/embrave/attester/\n");
+        fprintf(stderr, "ERROR: AK ctx not found in /var/embrave/attester/\n");
         return -1;
     }
 
