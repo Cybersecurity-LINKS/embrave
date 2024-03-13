@@ -20,8 +20,8 @@
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 11
-#define VERIFIER_NUM_CONFIG_PARAMS 9
-#define JOIN_SERVICE_NUM_CONFIG_PARAMS 8
+#define VERIFIER_NUM_CONFIG_PARAMS 11
+#define JOIN_SERVICE_NUM_CONFIG_PARAMS 10
 
 enum attester_keys_config{
     ATTESTER_UUID,
@@ -45,7 +45,9 @@ enum verifier_keys_config{
     VERIFIER_TLS_CERT_CA,
     VERIFIER_DB,
     VERIFIER_JOIN_SERVICE_IP,
-    VERIFIER_JOIN_SERVICE_PORT
+    VERIFIER_JOIN_SERVICE_PORT,
+    VERIFIER_MQTT_BROKER_IP,
+    VERIFIER_MQTT_BROKER_PORT
 };
 enum join_service_keys_config{
     JOIN_SERVICE_IP,
@@ -55,7 +57,9 @@ enum join_service_keys_config{
     JOIN_SERVICE_TLS_KEY,
     JOIN_SERVICE_TLS_CERT_CA,
     JOIN_SERVICE_DB,
-    JOIN_SERVICE_CA_X509
+    JOIN_SERVICE_CA_X509,
+    JOIN_SERVICE_BROKER_IP,
+    JOIN_SERVICE_BROKER_PORT
 };
 
 struct attester_conf {
@@ -79,22 +83,26 @@ struct verifier_conf {
     uint32_t port;
     uint32_t tls_port;
     uint32_t join_service_port;
+    uint32_t mqtt_broker_port;
     char ip[MAX_BUF];
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
     char join_service_ip[MAX_BUF];
+    char mqtt_broker_ip[MAX_BUF];
 };
 
 struct join_service_conf {
     char db[MAX_LINE_LENGTH];
     uint32_t port;
     uint32_t tls_port;
+    uint32_t mqtt_broker_port;
     char ip[MAX_BUF];
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];
     char tls_key[MAX_LINE_LENGTH];
     char ca_x509_path[MAX_LINE_LENGTH];
+    char mqtt_broker_ip[MAX_BUF];
 };
 
 enum attester_keys_config attester_parse_key(char* key);

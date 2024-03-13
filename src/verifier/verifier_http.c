@@ -633,10 +633,10 @@ int main(int argc, char *argv[]) {
   struct mg_mgr mgr;  // Event manager
   struct mg_connection *c;
   char s_conn[250];
+  char mqtt_conn[281];
   struct stat st = {0};
 
   mg_mgr_init(&mgr_mqtt);
-  c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "verifier");
   
   if (stat("/var/embrave", &st) == -1) {
     if(!mkdir("/var/embrave", 0711)) {
@@ -663,6 +663,10 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "ERROR: could not read configuration file\n");
     exit(err);
   }
+
+  snprintf(mqtt_conn, 280, "http://%s:%d", verifier_config.mqtt_broker_ip, verifier_config.mqtt_broker_port);
+
+  c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "verifier", mqtt_conn);
 
 #ifdef DEBUG
   printf("verifier_config->ip: %s\n", verifier_config.ip);

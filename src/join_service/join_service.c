@@ -1345,11 +1345,19 @@ int main(int argc, char *argv[]) {
     struct mg_connection *c;
     mg_mgr_init(&mgr);
     char url[MAX_BUF];
+    char mqtt_conn[281];
     pthread_t thread_id;  // queue manager thread
     stop_event = 0;
 
+    /* read configuration from cong file */
+    if(read_config(/* join_service */ 2, (void * ) &js_config)){
+        int err = errno;
+        fprintf(stderr, "ERROR: could not read configuration file\n");
+        exit(err);
+    }
+    snprintf(mqtt_conn, 280, "http://%s:%d", js_config.mqtt_broker_ip, js_config.mqtt_broker_port);
     mg_mgr_init(&mgr_mqtt);
-    c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "join_service");
+    c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "join_service", mqtt_conn);
 
     int ret = pthread_create(&thread_id, NULL, queue_manager, NULL);
     if(ret != 0){
@@ -1379,12 +1387,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* read configuration from cong file */
-    if(read_config(/* join_service */ 2, (void * ) &js_config)){
-        int err = errno;
-        fprintf(stderr, "ERROR: could not read configuration file\n");
-        exit(err);
-    }
+
 
     /* init database */
     if(init_database()){

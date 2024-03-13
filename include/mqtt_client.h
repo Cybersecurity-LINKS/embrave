@@ -20,5 +20,5 @@
 
 void mqtt_publish(struct mg_connection *c, char *topic, char *message);
 void mqtt_subscribe(struct mg_connection *c, char *topic);
-struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name);
+struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name, char * s_url);
 #endif

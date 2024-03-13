@@ -13,13 +13,13 @@
 #include "mqtt_client.h"
 #include "mongoose.h"
 
-static const char *s_url = "mqtt://localhost:1883";
+//static const char *s_url = "mqtt://localhost:1883";
 static int s_qos = 1;                             // MQTT QoS
 
 // Handle interrupts, like Ctrl-C
 
 // Timer function - recreate client connection if it is closed
-struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name) {
+struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name, char * s_url) {
   struct mg_connection *conn;
 
   struct mg_mqtt_opts opts = {.client_id = mg_str(client_name)};

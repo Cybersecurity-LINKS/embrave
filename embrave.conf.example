@@ -82,6 +82,12 @@ join_service_ip = localhost
 # Port where it runs the http Join Service server
 join_service_port = 8000
 
+# MQTT broker IP address
+mqtt_broker_ip = localhost
+
+# Port where it runs the MQTT broker
+mqtt_broker_port = 1883
+
 ######################################
 # Join Service configuration section #
 ######################################
@@ -110,3 +116,9 @@ db = file:/var/embrave/join_service/db.sqlite
 
 # Path of ca hash certificates
 ca_x509_path = /home/pi/embrave/tpm_ca_certs_hash_dir
+
+# MQTT broker IP address
+mqtt_broker_ip = localhost
+
+# Port where it runs the MQTT broker
+mqtt_broker_port = 1883
