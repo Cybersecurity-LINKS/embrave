@@ -50,6 +50,7 @@
 # for development
 embrave.conf
 swtpm-localca-rootca-cert.pem
+01.pem
 
 # Submodules
 lib/tpm2-tools/
