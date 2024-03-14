@@ -588,8 +588,15 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
         fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one:\n");
         goto PCR10;
-
-    } else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
+    } 
+    else if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
+        /*check if the log has grown by one line but the PCR10 of the Quote has remained the same as the old one*/
+            if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) == 0 
+                && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) == 0){
+            goto ok;
+        }
+    } 
+    else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
         fprintf(stderr, "ERROR: No IMA log received but no old PCR10 present\n");
         ret = VERIFIER_INTERNAL_ERROR;
         goto error;
@@ -635,7 +642,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
             free(path_name);
             ret = GOLDEN_VALUE_MISMATCH;
             goto error;
-        }
+        } 
         
         free(path_name);
 
