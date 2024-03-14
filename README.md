@@ -2,9 +2,9 @@
 C-language implementation of a Remote Attestation Framework. Implements an Attester Agent, a Verifier, and a Join service to register agents and Verifiers.
 
 Limitation:
-- Only ```ima-ng``` template is supported at the moment
+- Only ```ima-ng``` template [[1](https://www.kernel.org/doc/html/latest/security/IMA-templates.html)] is supported at the moment
 - Some files must be excluded manually
-- Exclusive support of TPM2.0
+- Exclusive support of TPM2.0 [[2](https://trustedcomputinggroup.org/resource/tpm-library-specification/)]
 
 More details in the [documentation](https://cybersecurity-links.github.io/embrave/intro) .
 ## Build and install
