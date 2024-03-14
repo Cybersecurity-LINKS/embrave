@@ -523,7 +523,7 @@ static int save_ak(struct ak_db_entry *ak_entry){
     sqlite3_stmt *res;
     char *sql = "SELECT * FROM attesters_credentials WHERE uuid=?;";
     char *sql1 = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?);";
-    char *sql2 = "UPDATE attesters_credentials SET ak_pub=? WHERE uuid=?;";
+    char *sql2 = "UPDATE attesters_credentials SET ak_pub=?, ip=? WHERE uuid=?;";
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
@@ -595,7 +595,12 @@ static int save_ak(struct ak_db_entry *ak_entry){
                 sqlite3_close(db);
                 return -1;
             }
-            rc = sqlite3_bind_text(res, 2, ak_entry->uuid, -1, SQLITE_TRANSIENT);
+            rc = sqlite3_bind_text(res, 2, (char *) ak_entry->ip, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_text(res, 3, ak_entry->uuid, -1, SQLITE_TRANSIENT);
             if (rc != SQLITE_OK ) {
                 sqlite3_close(db);
                 return -1;
