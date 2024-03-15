@@ -29,7 +29,7 @@
 uuid = 12345678-1234-1234-1234-123456789012
 
 # Port where it runs the http server
-port = 80
+port = 800
 
 # Ip address on which make the binding
 ip = 127.0.0.1
@@ -122,3 +122,6 @@ mqtt_broker_ip = localhost
 
 # Port where it runs the MQTT broker
 mqtt_broker_port = 1883
+
+#Join Service Log file
+log_path = /var/embrave/join_service/log.txt

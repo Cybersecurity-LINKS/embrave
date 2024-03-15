@@ -105,5 +105,5 @@ void get_start_timer(void);
 void get_finish_timer(void);
 void print_timer(int n);
 void save_timer(void);
-
+void log_event(char * log_path, char * buff);
 #endif
