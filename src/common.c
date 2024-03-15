@@ -155,3 +155,32 @@ int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsi
 
   return 0;
 }
+const char* errorMessages[MAX_TRUST_VALUES] = {
+    "No error, trusted",
+    "Agent is unreachable, there will be more connection retries",
+    "Agent is unreachable after the retries",
+    "The given AK pem is not a valid public key",
+    "Error during convesion from TPM2B to TPMS format",
+    "Quote verification failed",
+    "Nonce mismatch",
+    "PCR digest mismatch",
+    "Unknown IMA template",
+    "IMA parsing error",
+    "Golden value mismatch",
+    "PCR10 value mismatch",
+    "Verifier internal error"
+    // Add more error messages here...
+};
+
+
+char* get_error(int errorCode) {
+  printf("%d\n", errorCode);
+  errorCode = - errorCode;
+  printf("%d\n", errorCode);
+  if (errorCode >= 0 && errorCode < MAX_TRUST_VALUES) {
+    return (char *) errorMessages[errorCode];
+  } else {
+    return "Unknown error";
+  }
+}
+
