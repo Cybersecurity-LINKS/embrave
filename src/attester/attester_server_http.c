@@ -631,7 +631,17 @@ int main(int argc, char *argv[]) {
 
   /* Create TPM keys*/
   if((attester_init(&attester_config)) != 0) return -1;
- 
+  //attester_config.use_ip = 0;
+  /**/
+  if(attester_config.use_ip == 0){
+    while (!get_ipaddr_from_interface("eth1", attester_config.ip))
+    {
+      sleep(5);
+    }
+    
+  }
+  
+
   /* Perform the join procedure */
   if (join_procedure() != 0){
     fprintf(stderr, "ERROR: could not reach the join service\n");
@@ -640,7 +650,7 @@ int main(int argc, char *argv[]) {
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
-
+  
   snprintf(s_conn, 500, "http://%s:%d", attester_config.ip, attester_config.port);
 
   c = mg_http_listen(&mgr, s_conn, fn, &mgr);  /* Create server connection */

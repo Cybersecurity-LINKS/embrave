@@ -67,6 +67,7 @@ enum join_service_keys_config{
 struct attester_conf {
     uint32_t port;
     uint32_t join_service_port;
+    uint32_t use_ip;
     char ip[MAX_BUF];
     char ek_rsa_cert[MAX_BUF];
     char ek_ecc_cert[MAX_BUF];

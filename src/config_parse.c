@@ -148,6 +148,7 @@ uint16_t read_config(char user, void* config_struct){
 
                         case ATTESTER_IP:
                             strcpy(attester_config->ip, value);
+                            attester_config->use_ip = 1;
                             break;
 
                         case ATTESTER_PORT:

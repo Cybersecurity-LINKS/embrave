@@ -22,6 +22,12 @@
 #include <tss2/tss2_tctildr.h>
 #include <openssl/evp.h>
 #include <time.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <unistd.h>
+
 
 #define HANDLE_EK 0x81000003
 #define TCG_EVENT_NAME_LEN_MAX	255
@@ -106,4 +112,5 @@ void get_finish_timer(void);
 void print_timer(int n);
 void save_timer(void);
 void log_event(char * log_path, char * buff);
+bool get_ipaddr_from_interface(char * interface_name, char * buff);
 #endif
