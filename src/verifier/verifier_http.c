@@ -313,9 +313,9 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     memcpy(&rpl->wholeLog, byte_buff + i, sizeof(uint8_t));
     i += sizeof(uint8_t);
   }
-//#ifdef DEBUG  
-  //print_data(rpl);
-//#endif
+#ifdef DEBUG  
+  print_data(rpl);
+#endif
   return 0;
 
 }
@@ -406,11 +406,8 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   }
 }
 
-/*TODO*/
 void create_integrity_report(agent_list  *agent_data, char *buff){
-
-  snprintf(buff, 4096, "{\"integrity_report_for_uuid\":\"%s\",\"status\":\"%d\"}", agent_data->uuid, agent_data->trust_value);
-
+  snprintf(buff, 4096, "{\"integrity_report_for_uuid\":\"%s\",\"ak\":\"%s\",\"status\":\"%d\"}", agent_data->uuid, agent_data->ak_pub, agent_data->trust_value);
 }
 
 // Print HTTP response and signal that we're done
