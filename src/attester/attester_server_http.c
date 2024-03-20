@@ -402,8 +402,11 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       "%s\n",
       object_length,
       object);
-
+    get_finish_timer(2);
+  get_start_timer();
   } else if (ev == MG_EV_HTTP_MSG) {
+      get_finish_timer(3);
+  get_start_timer();
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
@@ -545,9 +548,13 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     "%s\n",
     strlen(object),
     object); 
+    get_finish_timer(4);
+    get_start_timer();
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
+    get_finish_timer(5);
+    get_start_timer();
 #ifdef DEBUG
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
@@ -628,9 +635,12 @@ int main(int argc, char *argv[]) {
   printf("attester_config->ip: %s\n", attester_config.ip);
   printf("attester_config->port: %d\n", attester_config.port);
   #endif
+  get_start_timer();
 
   /* Create TPM keys*/
   if((attester_init(&attester_config)) != 0) return -1;
+  get_finish_timer(1);
+  get_start_timer();
   //attester_config.use_ip = 0;
   /**/
   if(attester_config.use_ip == 0){
@@ -647,7 +657,13 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "ERROR: could not reach the join service\n");
     exit(-1);
   };
+  get_finish_timer(6);
+  save_timer("agent_text.txt");
 
+  //exit(0);
+
+
+  
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
   

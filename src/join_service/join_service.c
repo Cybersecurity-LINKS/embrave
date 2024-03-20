@@ -672,6 +672,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+                
+            get_start_timer();
         
         #ifdef DEBUG
             printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
@@ -872,7 +874,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
-           
+            get_finish_timer(1);
+            get_start_timer();
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -882,6 +885,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ip_addr);
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+
+                get_finish_timer(2);
+                get_start_timer();
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -935,6 +941,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_CONFIRM_CREDENTIAL, OK));
             c->is_draining = 1;
+            
+            get_finish_timer(3);
+            save_timer("js_test.txt");
 
             pthread_mutex_lock(&mutex);
             push_uuid((char *) uuid);

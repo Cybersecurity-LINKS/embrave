@@ -13,7 +13,10 @@
 
 #include "common.h"
 
-static struct timespec start, finish, delta_1, delta_2, delta_3;
+static struct timespec start, finish, delta_1, delta_2, delta_3, delta_4, delta_5, delta_6;
+static int t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0, t6 = 0;
+
+void set_flag(int n);
 
 void sub_timespec(struct timespec t1, struct timespec t2, struct timespec *td){
 
@@ -34,8 +37,35 @@ void get_start_timer(){
   clock_gettime(CLOCK_REALTIME, &start);
 }
 
-void get_finish_timer(){
+void get_finish_timer(int n){
   clock_gettime(CLOCK_REALTIME, &finish);
+  print_timer(n);
+  set_flag(n);
+}
+
+void set_flag(int n){
+
+  switch(n){
+    case 1:
+      t1 = 1;
+    break;
+    case 2:
+      t2=1;
+    break;
+    case 3:
+      t3=1;
+    break;
+    case 4:
+      t4=1;
+    break;
+    case 5:
+      t5=1;
+    break;
+    case 6:
+      t6=1;
+    break;
+  }
+
 }
 
 void print_timer(int n){
@@ -53,21 +83,41 @@ void print_timer(int n){
       sub_timespec(start, finish, &delta_3);
       fprintf(stdout,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
     break;
+    case 4:
+      sub_timespec(start, finish, &delta_4);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_4.tv_sec, delta_4.tv_nsec);
+    break;
+    case 5:
+      sub_timespec(start, finish, &delta_5);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_5.tv_sec, delta_5.tv_nsec);
+    break;
+    case 6:
+      sub_timespec(start, finish, &delta_6);
+      fprintf(stdout,"%d.%.9ld\n", (int) delta_6.tv_sec, delta_6.tv_nsec);
+    break;
   }
 
 }
 
-void save_timer(void){
-#ifdef TESTS
+void save_timer(char * path){
+//#ifdef TESTS
   FILE* fp = NULL;
-  fp = fopen("test.txt", "a");
-
-  fprintf(fp,"%d.%.9ld ", (int) delta_1.tv_sec, delta_1.tv_nsec);
-  fprintf(fp,"%d.%.9ld ", (int) delta_2.tv_sec, delta_2.tv_nsec);
-  fprintf(fp,"%d.%.9ld\n", (int) delta_3.tv_sec, delta_3.tv_nsec);
-
+  fp = fopen(path, "a");
+  if(t1)
+    fprintf(fp,"%d.%.9ld ", (int) delta_1.tv_sec, delta_1.tv_nsec);
+  if(t2)
+    fprintf(fp,"%d.%.9ld ", (int) delta_2.tv_sec, delta_2.tv_nsec);
+  if(t3)
+    fprintf(fp,"%d.%.9ld ", (int) delta_3.tv_sec, delta_3.tv_nsec);
+  if(t4)
+    fprintf(fp,"%d.%.9ld ", (int) delta_4.tv_sec, delta_4.tv_nsec);
+  if(t5)
+    fprintf(fp,"%d.%.9ld ", (int) delta_5.tv_sec, delta_5.tv_nsec);
+  if(t6)
+    fprintf(fp,"%d.%.9ld ", (int) delta_6.tv_sec, delta_6.tv_nsec);
+  fprintf(fp,"\n");
   fclose(fp);
-#endif
+//#endif
 }
 
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context) {
