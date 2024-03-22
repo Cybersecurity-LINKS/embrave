@@ -51,7 +51,7 @@ add_custom_target(tpm_ca_certs_hash_dir ALL DEPENDS ${ca_hash_dir})
 ## embrave conf
 #######################################################################
 
-# copy embrave.conf in defualt path
+# copy embrave.conf in default path
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/embrave.conf.copied PRE_BUILD
     COMMAND sudo cp ${CMAKE_SOURCE_DIR}/embrave.conf.example /etc/embrave.conf
