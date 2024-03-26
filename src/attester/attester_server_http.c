@@ -660,7 +660,7 @@ int main(int argc, char *argv[]) {
   get_finish_timer(6);
   save_timer("agent_text.txt");
 
-  //exit(0);
+  exit(0);
 
 
   
