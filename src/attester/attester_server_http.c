@@ -410,9 +410,9 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
-#ifdef DEBUG
+
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
-#endif
+
     int status = mg_http_status(hm);
     
     if(status == FORBIDDEN){ /* forbidden */
@@ -423,10 +423,10 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
 
       unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
-      #ifdef DEBUG
+
       fprintf(stdout, "INFO: MKCRED_OUT b64: %s\n", mkcred_out_b64);
       fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out_len);
-      #endif
+
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
           fprintf(stderr, "ERROR: cannot allocate mkcred_out buffer\n");
@@ -443,7 +443,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
           return;
       }
 
-      #ifdef DEBUG
+
       fprintf(stdout, "INFO: MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
@@ -451,7 +451,7 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       printf("\n");
       fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out->len); 
       fprintf(stdout, "INFO: mkcred_out received from join service.\n");
-      #endif
+
       free(mkcred_out_b64);
 
       c->is_draining = 1;        // Tell mongoose to close this connection
