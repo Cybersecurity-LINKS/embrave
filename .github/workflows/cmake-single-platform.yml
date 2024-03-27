@@ -27,9 +27,8 @@ jobs:
     - name: Install tss
       run: |
         sudo apt install -y pkg-config m4 libtool automake autoconf
-        git clone -n https://github.com/tpm2-software/tpm2-tss /tmp/tss-source
-        cd /tmp/tss-source
-        git checkout v4.0.1 
+        git clone -n https://github.com/tpm2-software/tpm2-tss --branch v4.0.1 /tmp/tpm2-tss
+        cd /tmp/tpm2-tss
         ./bootstrap
         sudo ./configure --prefix=/usr
         sudo make -j$(nproc)
