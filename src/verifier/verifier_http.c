@@ -505,7 +505,12 @@ void *attest_agent(void *arg) {
   if(agent->max_connection_retry_number == 0)
     agent->max_connection_retry_number = 3; /*TODO config and/or js*/
 
-  while (agent->running) {
+
+  int i = 0;
+
+
+  while (agent->running || i == 1000) {
+    i++;
     get_start_timer();
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
