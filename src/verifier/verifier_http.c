@@ -427,12 +427,13 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
     char buff [B64ENCODE_OUT_SAFESIZE(sizeof(tpm_challenge))];
 
     //If PCRs10 from agent db are null, ask all ima log
-    if(agent_data->pcr10_sha256 == NULL){
+/*     if(agent_data->pcr10_sha256 == NULL){
       chl.send_wholeLog = 1;
     } else {
       chl.send_wholeLog = 0;
    }
-
+ */
+    chl.send_wholeLog = 1;
     //Create nonce
     if(ra_challenge_create(&chl, agent_data)!= 0){
       agent_data->continue_polling = false;

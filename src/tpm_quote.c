@@ -572,7 +572,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         return VERIFIER_INTERNAL_ERROR;
     }
 
-    if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL ){
+/*     if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL ){
         //Old PCR 10 values to use, convert to byte
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha256, &sz, pcr10_sha256);
         tpm2_util_bin_from_hex_or_file(agent->pcr10_sha1, &sz1, pcr10_sha1);
@@ -582,7 +582,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
             agent->pcr10_sha256 = calloc((SHA256_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
             agent->pcr10_sha1 = calloc((SHA_DIGEST_LENGTH * 2 + 1), sizeof(uint8_t));
         }
-    }
+    } */
 
     /*No new event in the agent*/
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
@@ -715,8 +715,8 @@ ok:
     fprintf(stdout, "INFO: IMA log verification OK\n");
 
     //Convert PCR10 and save it
-    bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+ //   bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+  //  bin_2_hash(agent->pcr10_sha256, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
 
     free(pcr10_sha1);
     free(pcr10_sha256);
