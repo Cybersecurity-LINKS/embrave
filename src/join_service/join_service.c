@@ -1419,8 +1419,8 @@ int main(int argc, char *argv[]) {
     MG_INFO(("Listening on http://%s:%d", js_config.ip, js_config.port));
 
     for (;;) {
-        mg_mgr_poll(&mgr, 1000);    //http
-        mg_mgr_poll(&mgr_mqtt, 1000);   //mqtt
+        mg_mgr_poll(&mgr, 10);    //http
+        mg_mgr_poll(&mgr_mqtt, 100);   //mqtt
     }
 
     mg_mgr_free(&mgr);                                      
