@@ -506,7 +506,7 @@ void *attest_agent(void *arg) {
     agent->max_connection_retry_number = 3; /*TODO config and/or js*/
 
   while (agent->running) {
-    //start timr 1
+    get_start_timer();
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
       MG_ERROR(("CLIENT cant' open a connection"));
@@ -522,6 +522,8 @@ void *attest_agent(void *arg) {
     }
         
     create_integrity_report(agent, buff);
+    get_finish_timer(1);
+    save_timer("verifier_ra_process.txt");
     //finish timer 1
     mqtt_publish(c_mqtt, topic, buff);
     if(agent->trust_value != TRUSTED && agent->trust_value != RETRY){

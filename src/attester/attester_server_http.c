@@ -658,9 +658,9 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
   get_finish_timer(6);
-  save_timer("agent_text.txt");
+  //save_timer("agent_text.txt");
 
-  exit(0);
+  //exit(0);
 
 
   
