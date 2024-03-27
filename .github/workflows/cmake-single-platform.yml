@@ -26,8 +26,8 @@ jobs:
 
     - name: Install dependecies
       run: |
-        sudo apt-get install -y libssl-dev openssl build-essential autoconf-archive \
-        libcmocka0 libcmocka-dev procps iproute2 pkg-config automake uthash-dev autoconf doxygen \ 
+        sudo apt-get install -y libssl-dev \
+        libcmocka0 libcmocka-dev uthash-dev \ 
         libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev
     
     - name: Configure CMake
