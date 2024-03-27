@@ -25,10 +25,7 @@ jobs:
         submodules: recursive
 
     - name: Install dependecies
-      run: |
-        sudo apt-get install -y libssl-dev \
-        libcmocka0 libcmocka-dev uthash-dev \ 
-        libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev
+      run: sudo apt-get install -y libssl-dev libcmocka0 libcmocka-dev uthash-dev libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev
     
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
