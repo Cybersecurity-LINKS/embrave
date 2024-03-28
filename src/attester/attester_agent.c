@@ -221,11 +221,14 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
     Tss2_TctiLdr_Finalize (&tcti_context);
     return -1;
   }
-  
+
+	
+    get_start_timer();
   //TPM Quote creation
   ret = create_quote(chl, rpl, esys_context, attester_config.ak_ctx);
   if(ret != 0) goto end;
-
+	get_finish_timer(1);
+	save_timer("attester_agent_quote_imx8.txt");
   //Load IMA log
   ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog, chl->send_from_byte);
   
