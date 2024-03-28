@@ -510,7 +510,7 @@ void *attest_agent(void *arg) {
   int i = 0;
 
 
-  while (agent->running && i == 1000) {
+  while (agent->running && i != 1000) {
     i++;
     get_start_timer();
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
