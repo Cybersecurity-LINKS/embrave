@@ -49,6 +49,8 @@ The ``[AttesterAgent]`` section contains general settings for Attester.
     # Port where it runs the http Join Service server
     join_service_port = 8000
 
+    # URI where download the whitelist
+    whitelist_uri = https://location.where.whitelist/is/stored
 
 Verifier
 --------
