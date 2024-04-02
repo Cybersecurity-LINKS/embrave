@@ -359,7 +359,7 @@ int create_request_body(size_t *object_length, char *object){
 
   snprintf(buff, 500, "http://%s:%d", attester_config.ip, attester_config.port);
 
-  sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\",\"ip_addr\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64, buff);
+  sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\",\"ip_addr\":\"%s\",\"whitelist_uri\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64, buff, attester_config.whitelist_uri);
   *object_length = strlen(object);
 
 #ifdef DEBUG

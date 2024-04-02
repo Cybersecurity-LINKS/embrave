@@ -16,11 +16,11 @@
 #include <stdint.h>
 #include <errno.h>
 
-#define CONFIG_FILE_PATH "/etc/embrave.conf"  /* development path */
+#define CONFIG_FILE_PATH "/etc/embrave.conf"
 
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
-#define ATTESTER_NUM_CONFIG_PARAMS 11
+#define ATTESTER_NUM_CONFIG_PARAMS 12
 #define VERIFIER_NUM_CONFIG_PARAMS 11
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 10
 
@@ -35,7 +35,8 @@ enum attester_keys_config{
     ATTESTER_AK_CTX,
     ATTESTER_AK_CERT,
     ATTESTER_JOIN_SERVICE_IP,
-    ATTESTER_JOIN_SERVICE_PORT
+    ATTESTER_JOIN_SERVICE_PORT,
+    ATTESTER_WHITELIST_URI
 };
 enum verifier_keys_config{
     VERIFIER_IP,
@@ -75,6 +76,7 @@ struct attester_conf {
     char ak_cert[MAX_BUF];
     char join_service_ip[MAX_BUF];
     char uuid[MAX_BUF];
+    char whitelist_uri[MAX_BUF];
     //char pcr_parse_selections[MAX_BUF];
 };
 
