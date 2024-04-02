@@ -20,7 +20,7 @@ char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port","ek_rs
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
             "tls_cert_ca", "db", "join_service_ip", "join_service_port", "mqtt_broker_ip", "mqtt_broker_port"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
-            "tls_key", "tls_cert_ca", "db", "ca_x509_path", "mqtt_broker_ip", "mqtt_broker_port"};
+            "tls_key", "tls_cert_ca", "db", "ca_x509_path", "mqtt_broker_ip", "mqtt_broker_port", "log_path"};
 
 enum attester_keys_config attester_parse_key(char* key){
     int i = 0;
@@ -148,6 +148,7 @@ uint16_t read_config(char user, void* config_struct){
 
                         case ATTESTER_IP:
                             strcpy(attester_config->ip, value);
+                            attester_config->use_ip = 1;
                             break;
 
                         case ATTESTER_PORT:
@@ -324,6 +325,10 @@ uint16_t read_config(char user, void* config_struct){
 
                         case JOIN_SERVICE_BROKER_PORT:
                             join_service_config->mqtt_broker_port = (uint32_t) atoi(value);
+                        break;
+
+                        case JOIN_SERVICE_LOG:
+                            strcpy(join_service_config->log_path, value);
                         break;
 
                         case JOIN_SERVICE_NUM_CONFIG_PARAMS:

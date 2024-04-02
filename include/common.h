@@ -22,6 +22,12 @@
 #include <tss2/tss2_tctildr.h>
 #include <openssl/evp.h>
 #include <time.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <unistd.h>
+
 
 #define HANDLE_EK 0x81000003
 #define TCG_EVENT_NAME_LEN_MAX	255
@@ -97,11 +103,14 @@ struct  _agent_list{
     agent_list * previous_ptr;
 };
 
+char* get_error(int errorCode);
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context);
 int getCap_handles_persistent(ESYS_CONTEXT *esys_context, uint16_t *ek_handle);
 int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsigned char *digest, int *digest_len);
 void get_start_timer(void);
-void get_finish_timer(void);
+void get_finish_timer(int n);
 void print_timer(int n);
-void save_timer(void);
+void save_timer(char * path);
+void log_event(char * log_path, char * buff);
+bool get_ipaddr_from_interface(char * interface_name, char * buff);
 #endif

@@ -313,9 +313,9 @@ int load_challenge_reply(struct mg_http_message *hm, tpm_challenge_reply *rpl){
     memcpy(&rpl->wholeLog, byte_buff + i, sizeof(uint8_t));
     i += sizeof(uint8_t);
   }
-//#ifdef DEBUG  
-  //print_data(rpl);
-//#endif
+#ifdef DEBUG  
+  print_data(rpl);
+#endif
   return 0;
 
 }
@@ -406,11 +406,8 @@ static void verifier_manager(struct mg_connection *c, int ev, void *ev_data){
   }
 }
 
-/*TODO*/
 void create_integrity_report(agent_list  *agent_data, char *buff){
-
-  snprintf(buff, 4096, "{\"integrity_report_for_uuid\":\"%s\",\"status\":\"%d\"}", agent_data->uuid, agent_data->trust_value);
-
+  snprintf(buff, 4096, "{\"uuid\":\"%s\",\"ak_pub\":\"%s\",\"status\":%d}", agent_data->uuid, agent_data->ak_pub, agent_data->trust_value);
 }
 
 // Print HTTP response and signal that we're done
@@ -518,14 +515,14 @@ void *attest_agent(void *arg) {
 
     while (agent->continue_polling) mg_mgr_poll(&mgr, 100); //10ms
     agent->continue_polling = true;
-    if(agent->connection_retry_number == agent->max_connection_retry_number){
+    if(agent->connection_retry_number == agent->max_connection_retry_number && agent->trust_value == RETRY){
       /*Unreachable agent =>  untrusted*/
       agent->trust_value = UNREACHABLE;
     }
         
     create_integrity_report(agent, buff);
     mqtt_publish(c_mqtt, topic, buff);
-    if(agent->trust_value != TRUSTED){
+    if(agent->trust_value != TRUSTED && agent->trust_value != RETRY){
       /*Remove from DB*/
       remove_agent(agent);
       /*stop the attestation process*/

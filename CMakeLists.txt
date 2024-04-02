@@ -51,10 +51,10 @@ add_custom_target(tpm_ca_certs_hash_dir ALL DEPENDS ${ca_hash_dir})
 ## embrave conf
 #######################################################################
 
-# copy embrave.conf in defualt path
+# copy embrave.conf in default path
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/embrave.conf.copied PRE_BUILD
-    COMMAND sudo cp ${CMAKE_SOURCE_DIR}/embrave.conf.example /etc/embrave.conf
+    COMMAND cp ${CMAKE_SOURCE_DIR}/embrave.conf.example /etc/embrave.conf
     COMMAND touch ${CMAKE_BINARY_DIR}/embrave.conf.copied)
     
 add_custom_target(cp_embrave_conf ALL DEPENDS ${CMAKE_BINARY_DIR}/embrave.conf.copied)
@@ -98,7 +98,7 @@ target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-
 add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${join_service_wrkdir})
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${join_service_wrkdir})
-file(GLOB_RECURSE sources sources src/config_parse.c src/mqtt_client.c src/join_service/*.c lib/sqlite3/*  lib/tpm2-tools/lib/*.c lib/mongoose/*)
+file(GLOB_RECURSE sources sources src/config_parse.c src/common.c src/mqtt_client.c src/join_service/*.c lib/sqlite3/*  lib/tpm2-tools/lib/*.c lib/mongoose/*)
 include_directories("include" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 

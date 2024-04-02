@@ -22,7 +22,7 @@
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 12
 #define VERIFIER_NUM_CONFIG_PARAMS 11
-#define JOIN_SERVICE_NUM_CONFIG_PARAMS 10
+#define JOIN_SERVICE_NUM_CONFIG_PARAMS 11
 
 enum attester_keys_config{
     ATTESTER_UUID,
@@ -61,12 +61,14 @@ enum join_service_keys_config{
     JOIN_SERVICE_DB,
     JOIN_SERVICE_CA_X509,
     JOIN_SERVICE_BROKER_IP,
-    JOIN_SERVICE_BROKER_PORT
+    JOIN_SERVICE_BROKER_PORT,
+    JOIN_SERVICE_LOG
 };
 
 struct attester_conf {
     uint32_t port;
     uint32_t join_service_port;
+    uint32_t use_ip;
     char ip[MAX_BUF];
     char ek_rsa_cert[MAX_BUF];
     char ek_ecc_cert[MAX_BUF];
@@ -106,6 +108,7 @@ struct join_service_conf {
     char tls_key[MAX_LINE_LENGTH];
     char ca_x509_path[MAX_LINE_LENGTH];
     char mqtt_broker_ip[MAX_BUF];
+    char log_path[MAX_LINE_LENGTH];
 };
 
 enum attester_keys_config attester_parse_key(char* key);

@@ -270,7 +270,7 @@ void *queue_manager(void *vargp){
         sprintf(topic, "attest/%d", id);
         char object[4096];
 
-        //fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
+        fprintf(stdout, "INFO: Request attestation of agent uuid %s\n from verifier id %d\n", ak_entry->uuid, id);
 
         snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
 
@@ -672,6 +672,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+                
+            get_start_timer();
         
         #ifdef DEBUG
             printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
@@ -695,11 +697,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
-            printf("%s\n", ip_addr);
-
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
             
-
         #ifdef DEBUG
             printf("EK_CERT: %s\n", ek_cert_b64);
             printf("AK_PUB: %s\n", ak_pub_b64);
@@ -715,11 +714,13 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
+
                 #ifdef DEBUG
                 printf("%s\n", ek_cert_b64);
                 printf("%d\n", ek_cert_len);
                 printf("%d\n", strlen((char *) ek_cert_b64));
                 #endif
+
                 //Decode b64
                 if(mg_base64_decode((char *) ek_cert_b64, strlen((char *) ek_cert_b64), (char *) ek_cert_buff, ek_cert_len + 1) == 0){
                     fprintf(stderr, "ERROR: Transmission challenge data error.\n");
@@ -785,7 +786,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
-
             }
 
             unsigned char *ak_name_buff = (unsigned char *) malloc(ak_name_len + 1);
@@ -874,7 +874,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
-           
+            get_finish_timer(1);
+            get_start_timer();
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -884,6 +885,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ip_addr);
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
+
+                get_finish_timer(2);
+                get_start_timer();
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -937,6 +941,9 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_CONFIRM_CREDENTIAL, OK));
             c->is_draining = 1;
+            
+            get_finish_timer(3);
+            save_timer("js_test.txt");
 
             pthread_mutex_lock(&mutex);
             push_uuid((char *) uuid);
@@ -978,10 +985,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, 404, NULL, "\n");
         }
     } 
-    //else if (ev == MG_EV_WAKEUP) {
-        //struct mg_str *data = (struct mg_str *) ev_data;
-        //mg_http_reply(c, 200, "", "Result: %.*s\n", data->len, data->ptr);
-  //}
 }
 
 /* static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
@@ -1060,14 +1063,6 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
             mg_error(c, "Connect timeout");
         }
     } else if (ev == MG_EV_CONNECT){
-        //struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
-        //size_t object_length = 0;
-        //char object[4096];
-
-        //fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
-
-        //object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
-
         mg_printf(c, "GET /api/still_alive HTTP/1.1\r\n"
         "\r\n"
         );
@@ -1080,7 +1075,6 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
         
         if(status == 200){
             js->value = 0;
-            
         }
         else{
             js->value = -1;
@@ -1102,7 +1096,6 @@ int verifier_is_alive(char * ip){
     js.value = -1;
 
     /* Contact the verifier */
-    //snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
     mg_mgr_init(&mgr);
 
     /* request to join (receive tpm_makecredential output) */
@@ -1122,7 +1115,7 @@ int get_verifier_id(void){
     //last_requested_verifier++;
     int ret, id = -1;
     char ip[25];
-    printf("verifier_num %d\n", verifier_num);
+   // printf("verifier_num %d\n", verifier_num);
 
     do{
         if(verifier_num == 0){
@@ -1161,8 +1154,6 @@ int get_verifier_id(void){
 
     return id;
 }
-
-
 
 /*Create db connection and, if not presents, create the keys databases
     ret:
@@ -1322,12 +1313,9 @@ static int init_database(void){
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     MG_INFO(("%lu CREATED", c->id));
-    // c->is_hexdumping = 1;
   } else if (ev == MG_EV_ERROR) {
     // On error, log error message
     MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
-  } else if (ev == MG_EV_CONNECT) {
-
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
     MG_INFO(("%lu CONNECTED", c->id));
@@ -1336,8 +1324,22 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
-    MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
-             mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
+
+    char* uuid = mg_json_get_str(mm->data, "$.uuid");
+    char* ak_pub = mg_json_get_str(mm->data, "$.ak_pub");
+    int status = (int) mg_json_get_long(mm->data, "$.status", -99);
+
+    printf("STATUS: Integrity report from topic %s.\n UUID %s => %s\n", mm->topic.ptr, uuid, get_error(status));
+    if(status != 0){
+        /*Log the error*/
+        char buff[4096]; 
+        snprintf(buff, 4096, "{\"uuid\":\"%s\",\n\"ak_pub\":\"%s\",\n\"error\":\"%s\"}", uuid, ak_pub, get_error(status));
+        log_event(js_config.log_path, buff);
+    }
+
+    free(uuid);
+    free(ak_pub);
+
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
     //s_conn = NULL;  // Mark that we're closed
@@ -1391,8 +1393,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "ERROR: cannot create /var/embrave/join_service directory\n");
         }
     }
-
-
 
     /* init database */
     if(init_database()){

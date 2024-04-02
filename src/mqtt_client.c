@@ -37,8 +37,8 @@ void mqtt_publish(struct mg_connection *c, char *topic, char *message){
   pub_opts.message = data;
   pub_opts.qos = s_qos, pub_opts.retain = false;
   mg_mqtt_pub(c, &pub_opts);
-  MG_INFO(("%lu PUBLISHED %.*s -> %.*s", c->id, (int) data.len, data.ptr,
-            (int) pubt.len, pubt.ptr));
+  //MG_INFO(("%lu PUBLISHED %.*s -> %.*s", c->id, (int) data.len, data.ptr,
+  //          (int) pubt.len, pubt.ptr));
 }
 
 void mqtt_subscribe(struct mg_connection *c, char *topic){
