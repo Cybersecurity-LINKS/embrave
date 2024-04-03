@@ -13,10 +13,9 @@
 #include "mqtt_client.h"
 #include "mongoose.h"
 
-//static const char *s_url = "mqtt://localhost:1883";
 static int s_qos = 1;                             // MQTT QoS
 
-// Handle interrupts, like Ctrl-C
+// Handle interrupts, like Ctrl-
 
 // Timer function - recreate client connection if it is closed
 struct mg_connection *mqtt_connect(struct mg_mgr *mgr, mg_event_handler_t fn, char *client_name, char * s_url) {
@@ -37,8 +36,10 @@ void mqtt_publish(struct mg_connection *c, char *topic, char *message){
   pub_opts.message = data;
   pub_opts.qos = s_qos, pub_opts.retain = false;
   mg_mqtt_pub(c, &pub_opts);
-  //MG_INFO(("%lu PUBLISHED %.*s -> %.*s", c->id, (int) data.len, data.ptr,
-  //          (int) pubt.len, pubt.ptr));
+#ifdef DEBUG
+  MG_INFO(("%lu PUBLISHED %.*s -> %.*s", c->id, (int) data.len, data.ptr,
+            (int) pubt.len, pubt.ptr));
+#endif
 }
 
 void mqtt_subscribe(struct mg_connection *c, char *topic){

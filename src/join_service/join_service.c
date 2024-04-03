@@ -267,7 +267,7 @@ void *queue_manager(void *vargp){
         
         //get_verifier_ip(id, ip);
         char topic[25];
-        sprintf(topic, "attest/%d", id);
+        sprintf(topic, "%s%d", ATTEST_TOPIC_PREFIX, id);
         char object[4096];
 
         fprintf(stdout, "INFO: Request attestation of agent uuid %s\n from verifier id %d\n", ak_entry->uuid, id);
@@ -1319,7 +1319,9 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
     MG_INFO(("%lu CONNECTED", c->id));
-    mqtt_subscribe(c_mqtt, "status/+");
+    char topic[20];
+    sprintf(topic, "%s+", STATUS_TOPIC_PREFIX);
+    mqtt_subscribe(c_mqtt, topic);
     
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it

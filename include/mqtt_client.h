@@ -15,8 +15,8 @@
 
 #include "mongoose.h"
 
-#define ATTESTER_TOPIC_PREFIX = "attest/"
-#define VERIFIERS_TOPIC = "verfier/+"
+#define ATTEST_TOPIC_PREFIX "attest/"
+#define STATUS_TOPIC_PREFIX "status/"
 
 void mqtt_publish(struct mg_connection *c, char *topic, char *message);
 void mqtt_subscribe(struct mg_connection *c, char *topic);

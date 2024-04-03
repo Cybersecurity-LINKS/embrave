@@ -379,7 +379,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       id = mg_json_get_long(hm->body, "$.topic_id", -1);
 
       char topic[25];
-      sprintf(topic, "attest/%d", id);
+      sprintf(topic, "%s%d", ATTEST_TOPIC_PREFIX, id);
       mqtt_subscribe(c_mqtt, topic);
 
       fprintf(stdout, "INFO: Topic id: %d\n", id);
@@ -495,7 +495,7 @@ void *attest_agent(void *arg) {
   char buff[4096]; 
   
   mg_mgr_init(&mgr);  
-  sprintf(topic, "status/%d", id);
+  sprintf(topic, "%s%d", STATUS_TOPIC_PREFIX, id);
     
   agent->byte_rcv = 0;
   agent->pcr10_sha256 = NULL;
