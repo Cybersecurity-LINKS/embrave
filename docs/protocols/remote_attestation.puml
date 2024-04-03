@@ -1,7 +1,7 @@
 @startuml remote_attestation
-title
-Remote Attestation protocol
-end title
+'title
+'Remote Attestation protocol
+'end title
 
 autonumber
 
@@ -18,10 +18,12 @@ attester_agent->TPM: Load EK
 TPM->attester_agent: (EK_handle, EK_pub)
 attester_agent->TPM: Load AK
 TPM->attester_agent: (AK_handle, AK_pub)
-attester_agent->TPM: tpm_quote (PCRs, nonce)
+attester_agent->TPM: tpm2_quote (PCRs, nonce)
 TPM->attester_agent: Quote
+attester_agent->TPM: tpm2_pcrread
+TPM->attester_agent: PCRs quoted
 attester_agent<-attester_agent: Collect IMA log
-attester_agent->verifier: Quote, IMA log
+attester_agent->verifier: Quote, PCRs, IMA log
 verifier->verifier: Verfiy quote
 verifier->verifier: Veryfy IMA log against the whitelist
 group if Verification fails

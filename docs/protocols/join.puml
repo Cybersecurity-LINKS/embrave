@@ -1,7 +1,7 @@
 @startuml join
-title
-Attester Join protocol
-end title
+'title
+'Attester Join protocol
+'end title
 autonumber
 
 box "Platform"
@@ -10,11 +10,11 @@ participant "Attester\nAgent" as attester_agent
 endbox
 participant "Join\nService" as join_service
 
-== LAK creation ==
-TPM<-attester_agent: tpm_createak
-TPM<-TPM:  Generate AK
+'== LAK creation ==
+TPM<-attester_agent: tpm2_createak
+TPM<-TPM: Generate AK
 
-== Start Join protocol ==
+'== Start Join protocol ==
 TPM<-attester_agent: request EK_cert
 TPM->attester_agent: EK_cert
 attester_agent->join_service: request to join, AK pub, AK name, EK cert
@@ -32,9 +32,9 @@ end note
     TPM is authentic
     (validation of the EK certificate OK)
   end note
-  join_service->join_service: challenge = tpm_makecredential(EK_pub, nonce, AK_name)
+  join_service->join_service: challenge = tpm2_makecredential(EK_pub, nonce, AK_name)
   attester_agent<-join_service: challenge
-  TPM<-attester_agent: tpm_activatecredential
+  TPM<-attester_agent: tpm2_activatecredential
   note left
     tpm_activate credential verifies
     the possession of AK_priv, EK_priv
