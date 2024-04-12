@@ -17,11 +17,10 @@ TPM<-TPM: Generate AK
 '== Start Join protocol ==
 TPM<-attester_agent: request EK_cert
 TPM->attester_agent: EK_cert
-attester_agent->join_service: request to join, AK pub, AK name, EK cert
+attester_agent->join_service: POST /api/request_join: AK pub, AK name, EK cert
 note right
 The attester notifies its presence.
-The join server responds with a challenge,
-or OK if already in its group
+The join server responds with a challenge.
 end note
 
 ' alt alredy joined
@@ -43,9 +42,9 @@ end note
   end note
   TPM<-TPM: activate_credential(EK_priv, challenge)
   TPM->attester_agent: nonce
-  attester_agent->join_service: nonce
-  join_service->join_service: Add AK to DB
-  join_service->Verifiers: notify verifiers of new agent in the group
+  attester_agent->join_service: POST /api/confirm_credential: nonce
+  join_service->join_service: Update Attester credential in the DB
+  join_service->Verifier: notify a Verifier to start RA on the new Attester
 ' end
 
 @enduml
