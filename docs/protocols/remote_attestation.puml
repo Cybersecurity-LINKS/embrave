@@ -21,7 +21,7 @@ TPM->attester_agent: (AK_handle, AK_pub)
 attester_agent->TPM: tpm2_quote (PCRs, nonce)
 TPM->attester_agent: Quote
 attester_agent->TPM: tpm2_pcrread
-TPM->attester_agent: PCRs quoted
+TPM->attester_agent: Values of PCRs quoted
 attester_agent<-attester_agent: Collect IMA log
 attester_agent->verifier: Quote, PCRs, IMA log
 verifier->verifier: Verfiy quote
