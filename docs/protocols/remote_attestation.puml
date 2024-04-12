@@ -13,7 +13,7 @@ participant "Verifier" as verifier
 participant "Join Service" as join_service
 
 loop
-verifier->attester_agent: Attestation request (PCRs, nonce)
+verifier->attester_agent: GET /api/quote: PCRs, nonce
 attester_agent->TPM: Load EK
 TPM->attester_agent: (EK_handle, EK_pub)
 attester_agent->TPM: Load AK
