@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Embrave APIs
+  title: EMBRAVE APIs
   description: |-
-    List of REST APIs exposed by Embrave components.
+    List of REST APIs exposed by EMBRAVE components.
   termsOfService: http://swagger.io/terms/
   contact:
     email: apiteam@swagger.io
