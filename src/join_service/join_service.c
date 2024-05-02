@@ -58,7 +58,6 @@ int get_verifier_ip(int id, char *ip);
 pthread_mutex_t mutex;
 pthread_cond_t cond;
 int stop_event = 0;
-//static int stop_polling = 1;
 
 struct queue_entry {
   char uuid[128];
@@ -230,8 +229,6 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
 
 void *queue_manager(void *vargp){
     struct mg_mgr mgr;
-    //struct mg_connection *c;
-    //char s_conn[280];
 
     mg_mgr_init(&mgr);
 
@@ -276,16 +273,7 @@ void *queue_manager(void *vargp){
 
         mqtt_publish(c_mqtt, topic, object);
 
-        /* snprintf(s_conn, 280, "http://%s", ip);
-
-        c = mg_http_connect(&mgr, s_conn, single_attestation, (void *) ak_entry);
-        if (c == NULL) {
-            MG_ERROR(("CLIENT cant' open a connection"));
-            continue;
-        }
-        while (stop_polling) mg_mgr_poll(&mgr, 10); //10ms */
     }
-    //pthread_mutex_unlock(&mutex);
 
     printf("INFO: queue manager ended\n");
     fflush(stdout);
@@ -671,10 +659,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
 static void join_service_manager(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-                
-            get_start_timer();
-        
+        if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {               
         #ifdef DEBUG
             printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
         #endif
@@ -704,7 +689,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             printf("AK_PUB: %s\n", ak_pub_b64);
         #endif
 
-            //ek_entry = retrieve_ek();
             if(!check_ek_presence((char *) uuid)) {
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
@@ -874,8 +858,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
-            get_finish_timer(1);
-            get_start_timer();
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -885,9 +867,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ip_addr);
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
-
-                get_finish_timer(2);
-                get_start_timer();
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
             unsigned char* secret_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.secret_b64");
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -941,9 +920,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                         "OK\n");
             MG_INFO(("%s %s %d", POST, API_CONFIRM_CREDENTIAL, OK));
             c->is_draining = 1;
-            
-            get_finish_timer(3);
-            save_timer("js_test.txt");
 
             pthread_mutex_lock(&mutex);
             push_uuid((char *) uuid);
@@ -1112,10 +1088,8 @@ int verifier_is_alive(char * ip){
 
 /* return the DB id of a verifier based on a round-robin selection*/
 int get_verifier_id(void){
-    //last_requested_verifier++;
     int ret, id = -1;
     char ip[25];
-   // printf("verifier_num %d\n", verifier_num);
 
     do{
         if(verifier_num == 0){
@@ -1260,7 +1234,6 @@ static int init_database(void){
         return 0;
     }
     
-
     //verifiers table
     rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
     if (rc != SQLITE_OK) {

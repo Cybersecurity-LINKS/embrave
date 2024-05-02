@@ -100,7 +100,6 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
-    
   }
   (void) c->fn_data;
 }

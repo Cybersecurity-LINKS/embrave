@@ -34,18 +34,17 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
   //verify quote
   ret = verify_quote(rpl, agent_data->ak_pub,  agent_data);
   if (ret != 0){
-    printf("Untrusted agent: %s\n", get_error(ret));
+    fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
     return ret;
   } else {
-    printf("Quote signature verification OK\n");
+    fprintf(stdout, "INFO: Successful verification of TPM quote\n");
   }
 
   //Open the goldenvalues DB
   int rc = sqlite3_open_v2((const char *) agent_data->gv_path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, NULL);
   if ( rc != SQLITE_OK) {
-    printf("Cannot open the golden values database, error %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "ERROR: Cannot open the golden values database. Reason: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
-    //printf("Untrusted agent\n");
     ret = VERIFIER_INTERNAL_ERROR;
     goto end;
   }
@@ -53,9 +52,9 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
   //verify IMA log
   ret = verify_ima_log(rpl, db, agent_data);
   if (ret != 0){
-    printf("Untrusted agent: %s\n", get_error(ret));
+    fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
   } else {
-    printf("Trusted agent\n");
+    fprintf(stdout, "INFO: Successful verification of IMA log and PCR10. Trust status: trusted \n");
   }
 
 end:

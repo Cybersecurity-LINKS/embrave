@@ -116,7 +116,6 @@ int send_challenge_reply(struct mg_connection *c, tpm_challenge_reply *rpl)
     i += rpl->ima_log_size;
     memcpy(byte_buff + i, &rpl->wholeLog, sizeof(uint8_t));
     i += sizeof(uint8_t);
-    
   }
 
   //Encode in b64
@@ -230,8 +229,6 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 
-  //printf("EK cert size: %ld\n", size);
-
   ret = fread(ek_cert, 1, (size_t) size, fd_ek_cert);
   if(ret != size){
     fclose(fd_ek_cert);
@@ -292,7 +289,7 @@ int create_request_body(size_t *object_length, char *object){
     free(b64_buff_ek);
     fclose(fd_ak_pub);
     free(ak_pub);
-    fprintf(stderr, "ERROR: cannot read the whole AK pem. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK pem\n");
     return -1;
   }
 
@@ -326,7 +323,7 @@ int create_request_body(size_t *object_length, char *object){
   if(ret != size){
     fclose(fd_ak_name);
     free(ak_name);
-    fprintf(stderr, "ERROR: cannot read the whole AK name. %ld/%ld bytes read\n", ret, size);
+    fprintf(stderr, "ERROR: cannot read the whole AK name\n");
     return -1;
   }
 
@@ -402,11 +399,9 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       "%s\n",
       object_length,
       object);
-    get_finish_timer(2);
-  get_start_timer();
+
   } else if (ev == MG_EV_HTTP_MSG) {
-      get_finish_timer(3);
-  get_start_timer();
+
     // Response is received. Print it
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     struct mkcred_out *mkcred_out = (struct mkcred_out *) c->fn_data;
@@ -548,13 +543,9 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     "%s\n",
     strlen(object),
     object); 
-    get_finish_timer(4);
-    get_start_timer();
 
   } else if (ev == MG_EV_HTTP_MSG) {
     // Response is received. Print it
-    get_finish_timer(5);
-    get_start_timer();
 #ifdef DEBUG
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     printf("%.*s", (int) hm->message.len, hm->message.ptr);
@@ -635,12 +626,10 @@ int main(int argc, char *argv[]) {
   printf("attester_config->ip: %s\n", attester_config.ip);
   printf("attester_config->port: %d\n", attester_config.port);
   #endif
-  get_start_timer();
 
   /* Create TPM keys*/
   if((attester_init(&attester_config)) != 0) return -1;
-  get_finish_timer(1);
-  get_start_timer();
+
   //attester_config.use_ip = 0;
   /**/
   if(attester_config.use_ip == 0){
@@ -648,22 +637,14 @@ int main(int argc, char *argv[]) {
     {
       sleep(5);
     }
-    
   }
   
-
   /* Perform the join procedure */
   if (join_procedure() != 0){
     fprintf(stderr, "ERROR: could not reach the join service\n");
     exit(-1);
   };
-  get_finish_timer(6);
-  save_timer("agent_text.txt");
 
-  //exit(0);
-
-
-  
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
   
