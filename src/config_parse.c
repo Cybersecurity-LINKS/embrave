@@ -18,7 +18,7 @@
 char* attester_params[ATTESTER_NUM_CONFIG_PARAMS] = {"uuid", "ip", "port","ek_rsa_cert",
             "ek_ecc_cert", "ak_pub", "ak_name", "ak_ctx", "ak_cert", "join_service_ip", "join_service_port", "whitelist_uri"};
 char* verifier_params[VERIFIER_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert", "tls_key",
-            "tls_cert_ca", "db", "join_service_ip", "join_service_port", "mqtt_broker_ip", "mqtt_broker_port"};
+            "tls_cert_ca", "db", "whitelist_path", "join_service_ip", "join_service_port", "mqtt_broker_ip", "mqtt_broker_port"};
 char* join_service_params[JOIN_SERVICE_NUM_CONFIG_PARAMS] = {"ip", "port", "tls_port", "tls_cert",
             "tls_key", "tls_cert_ca", "db", "ca_x509_path", "mqtt_broker_ip", "mqtt_broker_port", "log_path"};
 
@@ -185,11 +185,11 @@ uint16_t read_config(char user, void* config_struct){
 
                         case ATTESTER_JOIN_SERVICE_PORT:
                             attester_config->join_service_port = (uint32_t) atoi(value);
-                        break;
+                            break;
 
                         case ATTESTER_WHITELIST_URI:
                             strcpy(attester_config->whitelist_uri, value);
-                        break;
+                            break;
                         
                         case ATTESTER_NUM_CONFIG_PARAMS:
                             //unknown param
@@ -245,21 +245,25 @@ uint16_t read_config(char user, void* config_struct){
                             strcpy(verifier_config->db, value);
                             break;
 
+                        case VERIFIER_WHITELIST_PATH:
+                            strcpy(verifier_config->whitelist_path, value);
+                            break;
+
                         case VERIFIER_JOIN_SERVICE_IP:
                             strcpy(verifier_config->join_service_ip, value);
                             break;
 
                         case VERIFIER_JOIN_SERVICE_PORT:
                             verifier_config->join_service_port = (uint32_t) atoi(value);
-                        break;
+                            break;
 
                         case VERIFIER_MQTT_BROKER_IP:
                             strcpy(verifier_config->mqtt_broker_ip, value);
-                        break;
+                            break;
 
                         case VERIFIER_MQTT_BROKER_PORT:
                             verifier_config->mqtt_broker_port = (uint32_t) atoi(value);
-                        break;
+                            break;
 
                         case VERIFIER_NUM_CONFIG_PARAMS:
                             //unknown param
@@ -317,19 +321,19 @@ uint16_t read_config(char user, void* config_struct){
 
                         case JOIN_SERVICE_CA_X509:
                             strcpy(join_service_config->ca_x509_path, value);
-                        break;
+                            break;
 
                         case JOIN_SERVICE_BROKER_IP:
                             strcpy(join_service_config->mqtt_broker_ip, value);
-                        break;
+                            break;
 
                         case JOIN_SERVICE_BROKER_PORT:
                             join_service_config->mqtt_broker_port = (uint32_t) atoi(value);
-                        break;
+                            break;
 
                         case JOIN_SERVICE_LOG:
                             strcpy(join_service_config->log_path, value);
-                        break;
+                            break;
 
                         case JOIN_SERVICE_NUM_CONFIG_PARAMS:
                             //unknown param
