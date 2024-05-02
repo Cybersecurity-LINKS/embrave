@@ -54,7 +54,7 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
   if (ret != 0){
     fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
   } else {
-    fprintf(stdout, "INFO: Successful verification of IMA log and PCR10. Trust status: trusted \n");
+    fprintf(stdout, "INFO: Successful verification of IMA log and PCR10.\n Trusted agent\n");
   }
 
 end:

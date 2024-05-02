@@ -41,6 +41,7 @@ struct ak_db_entry {
     char uuid[1024];
     char ip[100];
     unsigned char ak_pem[1024];
+    char whitelist[1024];
     int confirmed;
     int validity;
     bool Continue;
@@ -169,8 +170,9 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
         strcpy(ak_entry->uuid, (char *) sqlite3_column_text(res, 0));
         strcpy((char *) ak_entry->ak_pem, (char *) sqlite3_column_text(res, 1));
         strcpy(ak_entry->ip, (char *) sqlite3_column_text(res, 2));
-        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 3));
-        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 4));
+        strcpy(ak_entry->whitelist, (char *) sqlite3_column_text(res, 3));
+        ak_entry->validity = atoi((char *) sqlite3_column_text(res, 4));
+        ak_entry->confirmed = atoi((char *) sqlite3_column_text(res, 5));
     #ifdef DEBUG
         printf("%s: ", sqlite3_column_text(res, 0));
         printf("%s\n", sqlite3_column_text(res, 1));
@@ -269,7 +271,7 @@ void *queue_manager(void *vargp){
 
         fprintf(stdout, "INFO: Request attestation of agent uuid %s\n from verifier id %d\n", ak_entry->uuid, id);
 
-        snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
+        snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\",\"whitelist_uri\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip, ak_entry->whitelist);
 
         mqtt_publish(c_mqtt, topic, object);
 
@@ -510,8 +512,8 @@ static int save_ak(struct ak_db_entry *ak_entry){
     sqlite3 *db;
     sqlite3_stmt *res;
     char *sql = "SELECT * FROM attesters_credentials WHERE uuid=?;";
-    char *sql1 = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?);";
-    char *sql2 = "UPDATE attesters_credentials SET ak_pub=?, ip=? WHERE uuid=?;";
+    char *sql1 = "INSERT INTO attesters_credentials values (?, ?, ?, ?, ?, ?);";
+    char *sql2 = "UPDATE attesters_credentials SET ak_pub=?, ip=?, whitelist=? WHERE uuid=?;";
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
@@ -552,12 +554,17 @@ static int save_ak(struct ak_db_entry *ak_entry){
                 sqlite3_close(db);
                 return -1;
             }
-            rc = sqlite3_bind_int(res, 4, ak_entry->validity);
+            rc = sqlite3_bind_text(res, 4, (char *) ak_entry->whitelist, -1, SQLITE_TRANSIENT);
             if (rc != SQLITE_OK ) {
                 sqlite3_close(db);
                 return -1;
             }
-            rc = sqlite3_bind_int(res, 5, ak_entry->confirmed);
+            rc = sqlite3_bind_int(res, 5, ak_entry->validity);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_int(res, 6, ak_entry->confirmed);
             if (rc != SQLITE_OK ) {
                 sqlite3_close(db);
                 return -1;
@@ -588,7 +595,12 @@ static int save_ak(struct ak_db_entry *ak_entry){
                 sqlite3_close(db);
                 return -1;
             }
-            rc = sqlite3_bind_text(res, 3, ak_entry->uuid, -1, SQLITE_TRANSIENT);
+            rc = sqlite3_bind_text(res, 3, ak_entry->whitelist, -1, SQLITE_TRANSIENT);
+            if (rc != SQLITE_OK ) {
+                sqlite3_close(db);
+                return -1;
+            }
+            rc = sqlite3_bind_text(res, 4, ak_entry->uuid, -1, SQLITE_TRANSIENT);
             if (rc != SQLITE_OK ) {
                 sqlite3_close(db);
                 return -1;
@@ -671,7 +683,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     "ek_cert_b64": "aaaaaaaaa",
                     "ak_pub_b64": "aaaaaaaa",
                     "ak_name_b64": "aaaaaaaa",
-                    "ip_addr": "ip:port"
+                    "ip_addr": "ip:port",
+                    "whitelist_uri":"aaaaaa"
                 }
             */
             unsigned char* uuid = (unsigned char *) mg_json_get_str(hm->body, "$.uuid");
@@ -679,6 +692,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             unsigned char* ak_pub_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_pub_b64");
             unsigned char* ak_name_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.ak_name_b64");
             char* ip_addr = mg_json_get_str(hm->body, "$.ip_addr");
+            char* whitelist_uri = mg_json_get_str(hm->body, "$.whitelist_uri");
             size_t ek_cert_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ek_cert_b64));
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
@@ -695,6 +709,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ak_name_b64);
+                    free(ip_addr);
+                    free(whitelist_uri);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -712,6 +728,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ip_addr);
+                    free(whitelist_uri);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -726,6 +743,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_b64);
                     free(ip_addr);
                     free(ak_pub_b64);
+                    free(whitelist_uri);
                     return;
                 }
                 else {
@@ -755,6 +773,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ak_pub_b64);
                     free(ak_name_b64);
                     free(ip_addr);
+                    free(whitelist_uri);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -767,6 +786,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     free(ek_cert_b64);
                     free(ak_pub_b64);
                     free(ip_addr);
+                    free(whitelist_uri);
                     mg_http_reply(c, 500, NULL, "\n");
                     return;
                 }
@@ -779,6 +799,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_name_b64);
                 free(ek_cert_buff);
                 free(ip_addr);
+                free(whitelist_uri);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -791,6 +812,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_pub_b64);
                 free(ak_name_b64);
                 free(ip_addr);
+                free(whitelist_uri);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -828,6 +850,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(ak_name_buff);
                 free(out_buf);
                 free(ip_addr);
+                free(whitelist_uri);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -842,6 +865,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 free(out_buf);
                 free(mkcred_out_b64);
                 free(ip_addr);
+                free(whitelist_uri);
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
@@ -850,6 +874,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             strcpy((char *) ak.ak_pem, (char *) ak_pub_b64);
             strcpy(ak.uuid, (char *) uuid);
             strcpy(ak.ip, ip_addr);
+            strcpy(ak.whitelist, whitelist_uri);
             ak.confirmed = 0;
             ak.validity = 0;
 
@@ -865,6 +890,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             free(ek_cert_b64);
             free(ak_pub_b64);
             free(ip_addr);
+            free(whitelist_uri);
         }
         else if (mg_http_match_uri(hm, API_CONFIRM_CREDENTIAL) && !strncmp(hm->method.ptr, POST, hm->method.len)) {
             /* receive and verify the value calculated by the attester with tpm_activatecredential */
@@ -1167,6 +1193,7 @@ static int init_database(void){
         uuid text NOT NULL,\
         ak_pub text NOT NULL,\
         ip text NOT NULL,\
+        whitelist text NOT NULL,\
         validity INT NOT NULL,\
         confirmed INT NOT NULL,\
         PRIMARY KEY (uuid)\

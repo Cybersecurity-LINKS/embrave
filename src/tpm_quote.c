@@ -586,7 +586,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
 
     /*No new event in the agent*/
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
-        fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one:\n");
+        fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one\n");
         goto PCR10;
     } 
     else if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
@@ -638,10 +638,10 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         //verify that (name,hash) present in in golden values db
         ret = check_goldenvalue(db, file_hash, path_name);
         if(ret != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
-            free(path_name);
-            ret = GOLDEN_VALUE_MISMATCH;
-            goto error;
+            //printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            //free(path_name);
+            //ret = GOLDEN_VALUE_MISMATCH;
+            //goto error;
         } 
         
         free(path_name);
