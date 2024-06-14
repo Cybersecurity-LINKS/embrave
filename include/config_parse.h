@@ -21,7 +21,7 @@
 #define MAX_BUF 255
 #define MAX_LINE_LENGTH 1023
 #define ATTESTER_NUM_CONFIG_PARAMS 12
-#define VERIFIER_NUM_CONFIG_PARAMS 11
+#define VERIFIER_NUM_CONFIG_PARAMS 12
 #define JOIN_SERVICE_NUM_CONFIG_PARAMS 11
 
 enum attester_keys_config{
@@ -46,6 +46,7 @@ enum verifier_keys_config{
     VERIFIER_TLS_KEY,
     VERIFIER_TLS_CERT_CA,
     VERIFIER_DB,
+    VERIFIER_WHITELIST_PATH,
     VERIFIER_JOIN_SERVICE_IP,
     VERIFIER_JOIN_SERVICE_PORT,
     VERIFIER_MQTT_BROKER_IP,
@@ -83,12 +84,13 @@ struct attester_conf {
 };
 
 struct verifier_conf {
-    char db[MAX_LINE_LENGTH];
     uint32_t topic_id;
     uint32_t port;
     uint32_t tls_port;
     uint32_t join_service_port;
     uint32_t mqtt_broker_port;
+    char db[MAX_LINE_LENGTH];
+    char whitelist_path[MAX_LINE_LENGTH];
     char ip[MAX_BUF];
     char tls_cert_ca[MAX_LINE_LENGTH];
     char tls_cert[MAX_LINE_LENGTH];

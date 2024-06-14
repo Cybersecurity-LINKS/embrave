@@ -215,8 +215,6 @@ out:
     return result;
 }
 
-
-
 static bool load_public_RSA_from_key(EVP_PKEY *key, TPM2B_PUBLIC *pub) {
 
     bool result = false;
@@ -403,14 +401,15 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
     return 0;
 }
 
-//input
-//-u EK PEM
-//-s The secret which will be protected by the key derived from the random seed. It can be specified as a file or passed from stdin
-//-n The name of the key for which certificate is to be created
-//output
-//TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret
-
-/* it is resposability of the caller to free out_buf */
+/*  
+    Tt is resposability of the caller to free out_buf 
+    Input:
+        ek_cert_der EK der
+        secret The secret which will be protected by the key derived from the random seed. It can be specified as a file or passed from stdin
+        name The name of the key for which certificate is to be created
+    Output:
+        -TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET *secret
+*/
 int tpm_makecredential (unsigned char* ek_cert_der, int ek_cert_len, unsigned char* secret, unsigned char* name, size_t name_size, unsigned char **out_buff, size_t *out_buff_size){
 
     /* 

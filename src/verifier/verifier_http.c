@@ -35,6 +35,33 @@ void create_attestation_thread(agent_list * agent);
 int add_agent_data(agent_list * ptr);
 int update_agent_data(agent_list * ptr);
 
+bool parse_whitelist(char * gv, char * whitelist_uri){
+  struct stat st = {0};
+  struct mg_str whitelist_uri_str = mg_str(whitelist_uri);
+  char buff[1025];
+
+  if(mg_strstr(whitelist_uri_str, mg_str("file://")) != NULL){
+    snprintf(buff, 1025, "%s%s",verifier_config.whitelist_path, whitelist_uri_str.ptr + 7 );
+
+    if (stat(buff, &st) == -1) {
+      /*TODO DOWNLOAD WHITELIST*/
+      printf("ERROR missing whitelist file %s\n", buff);
+      return false;
+    }
+
+    snprintf(gv, 2048, "file:%s", buff);
+    return true;
+  } else 
+  if (mg_strstr(whitelist_uri_str, mg_str("http")) != NULL){
+    /*TODO DOWNLOAD WHITELIST*/
+    printf("ERROR donwload wihitelist no implmented yet\n");
+    return false;
+  } 
+
+  printf("ERROR unknow URI format file %s\n", whitelist_uri_str.ptr);
+  return false;
+}
+
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
     MG_INFO(("%lu CREATED", c->id));
@@ -47,6 +74,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("%lu CONNECTED", c->id));
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
+    char gv[2048];
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
     MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
               mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
@@ -54,16 +82,20 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
           {
             "uuid": "aaaaaaaaa",
             "ip_port": "aaaaaaaaa",
-            "ak_pub_b64": "aaaaaaaa"
+            "ak_pub_b64": "aaaaaaaa",
+            "whitelist_uri": "aaaaaaaa"
           }
       */
 
     char* uuid = mg_json_get_str(mm->data, "$.uuid");
     char* ak_pub = mg_json_get_str(mm->data, "$.ak_pem");
     char* ip_addr = mg_json_get_str(mm->data, "$.ip_addr");
+    char* whitelist_uri = mg_json_get_str(mm->data, "$.whitelist_uri");
 
     agent_list *last_ptr = agent_list_find_uuid(uuid);
 
+    parse_whitelist(gv, whitelist_uri);
+    
     if(last_ptr != NULL){
       last_ptr->running = false;
       last_ptr->continue_polling = false;
@@ -72,7 +104,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db");/*TODO configurable*/
+      strcpy(last_ptr->gv_path, gv);
 
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
@@ -84,7 +116,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
       strcpy(last_ptr->ip_addr, ip_addr);
       strcpy(last_ptr->ak_pub, ak_pub);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db"); /*TODO configurable*/
+      strcpy(last_ptr->gv_path, gv); 
 
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 0;
@@ -97,10 +129,10 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     free(uuid);
     free(ak_pub);
     free(ip_addr);
+    //free(whitelist);
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
-    
   }
   (void) c->fn_data;
 }
@@ -369,7 +401,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
 #endif
     int status = mg_http_status(hm);
     if(status == 403){ /* forbidden */
-      /*TODO ERRORI*/
+      /*TODO errors*/
       fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
@@ -585,6 +617,7 @@ static int init_database(void){
       char *uuid = ( char *)sqlite3_column_text(res, 0);
       char *ak = ( char *)sqlite3_column_text(res, 1);
       char *ip = ( char *)sqlite3_column_text(res, 2);
+      char *whitelist = ( char *)sqlite3_column_text(res, 3);
 
       agent_list *last_ptr;
       last_ptr = agent_list_new();
@@ -593,7 +626,7 @@ static int init_database(void){
       strcpy(last_ptr->ip_addr, ip);
       strcpy(last_ptr->ak_pub, ak);
       strcpy(last_ptr->uuid, uuid);
-      strcpy(last_ptr->gv_path, "file:/var/embrave/verifier/goldenvalues.db");
+      strcpy(last_ptr->gv_path, whitelist);
       last_ptr->running = true;
       last_ptr->max_connection_retry_number = 1;
 
@@ -659,6 +692,15 @@ int main(int argc, char *argv[]) {
     int err = errno;
     fprintf(stderr, "ERROR: could not read configuration file\n");
     exit(err);
+  }
+
+  if (stat(verifier_config.whitelist_path, &st) == -1) {
+    if(!mkdir(verifier_config.whitelist_path, 0711)) {
+      fprintf(stdout, "INFO: %s directory successfully created\n", verifier_config.whitelist_path);
+    }
+    else {
+      fprintf(stderr, "ERROR: cannot create %s directory\n", verifier_config.whitelist_path);
+    }
   }
 
   snprintf(mqtt_conn, 280, "http://%s:%d", verifier_config.mqtt_broker_ip, verifier_config.mqtt_broker_port);

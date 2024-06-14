@@ -50,8 +50,10 @@ join_service_ip = localhost
 # Port where it runs the http Join Service server
 join_service_port = 8000
 
-# URI where download the whitelist
-whitelist_uri = https://location.where.whitelist/is/stored
+# URI whitelist
+# Format file://whitelistname.db or
+# https://location.where.whitelist/is/stored
+whitelist_uri = file://raspberrypi4b.db
 
 ##################################
 # Verifier configuration section #
@@ -78,6 +80,9 @@ tls_key = /var/embrave/verifier/tls/key.pem
 
 # Path of the verfier database (sqlite)
 db = file:/var/embrave/verifier/db.sqlite
+
+# Path where to store all whitelists databases (sqlite)
+whitelist_path = /var/embrave/verifier/whitelist/
 
 # Join Service IP address
 join_service_ip = localhost

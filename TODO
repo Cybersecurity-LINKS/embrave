@@ -1,20 +1,12 @@
 
-1
-join service output integrity report and agent untrusted
-
-2
 agent ip from socket => https://stackoverflow.com/questions/2283494/get-ip-address-of-an-interface-on-linux
 goldevalues creation rework
 exclude list with regex
 dashboard
-
-3
-
 OEM server with golden value for the verifiers to download 
 parameter for config file path
 debug print level
-file log
 support multi db
 support for other attestation schemes
 PCR configurables at agent side and send them to js 
-
+sleep value for verifier thread as config params
