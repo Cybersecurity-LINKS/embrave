@@ -5,9 +5,9 @@
 
 autonumber
 
-box "Platform"
+box "IoT Platform"
 participant TPM
-participant "Attester\nAgent" as attester_agent
+participant "EMBRAVE\nAgent" as attester_agent
 endbox
 participant "Verifier" as verifier
 participant "Join Service" as join_service
@@ -18,9 +18,9 @@ attester_agent->TPM: Load EK
 TPM->attester_agent: (EK_handle, EK_pub)
 attester_agent->TPM: Load AK
 TPM->attester_agent: (AK_handle, AK_pub)
-attester_agent->TPM: tpm2_quote (PCRs, nonce)
+attester_agent->TPM: TPM2_Quote (PCRs, nonce)
 TPM->attester_agent: Quote
-attester_agent->TPM: tpm2_pcrread
+attester_agent->TPM: Request quoted PCRs
 TPM->attester_agent: Values of quoted PCRs
 attester_agent<-attester_agent: Collect IMA log
 attester_agent->verifier: Quote, PCRs, IMA log
