@@ -9,7 +9,6 @@ Limitation:
 - Some files must be excluded manually
 - Exclusive support of TPM2.0 [[2](https://trustedcomputinggroup.org/resource/tpm-library-specification/)]
 
-More details in the [documentation](https://cybersecurity-links.github.io/embrave/intro) .
 ## Build and install
 Refer to the [Quick-start](https://cybersecurity-links.github.io/embrave/category/quick-start) for instructions about building and installing the applications.
 
