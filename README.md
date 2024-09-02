@@ -4,7 +4,7 @@
 #  EMBRAVE: EMBedded Remote Attestation and Verification framEwork
 C-language implementation of a Remote Attestation Framework. Implements an Attester Agent, a Verifier, and a Join service to register agents and Verifiers.
 
-Limitation:
+Current status:
 - Support for ```ima-ng``` template [[1](https://www.kernel.org/doc/html/latest/security/IMA-templates.html)]
 - Some files must be excluded manually
 - Support for TPM2.0 [[2](https://trustedcomputinggroup.org/resource/tpm-library-specification/)]
