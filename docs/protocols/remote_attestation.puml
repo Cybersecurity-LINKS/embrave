@@ -24,14 +24,14 @@ attester_agent->TPM: Request quoted PCRs
 TPM->attester_agent: Values of quoted PCRs
 attester_agent<-attester_agent: Collect IMA log
 attester_agent->verifier: Quote, PCRs, IMA log
-verifier->verifier: Verfiy quote
+verifier->verifier: Verify quote
 verifier->verifier: Verify IMA log integrity
-verifier->verifier: Veryfy IMA log against the whitelist
+verifier->verifier: Verify IMA log against the whitelist
 group if Verification fails
   verifier -> join_service: Notify the failure
-  verifier -> verifier: stop RA
+  verifier -> verifier: Stop RA
 else
-  verifier -> verifier: continue RA
+  verifier -> verifier: Continue RA
 end
 end
 join_service -> join_service: Store the failure event
