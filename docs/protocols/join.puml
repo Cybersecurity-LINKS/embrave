@@ -1,4 +1,4 @@
-@startuml join
+@startuml
 'title
 'Attester Join protocol
 'end title
@@ -20,7 +20,8 @@ TPM->attester_agent: EK_cert
 attester_agent->join_service: POST /api/request_join: AK pub, AK name, EK cert\n                                      IP address, port, Whitelist URI
 note right
 The attester notifies its presence.
-The join server responds with a challenge.
+The join server responds with a 
+challenge.
 end note
 
 ' alt alredy joined
@@ -29,22 +30,23 @@ end note
   join_service->join_service: Validate EK_cert
   note right
     TPM is authentic
-    (validation of the EK certificate OK)
+    (validation of the EK 
+    certificate OK)
   end note
-  join_service->join_service: challenge = TPM2_MakeCredential(EK_pub, nonce, AK_name)
+  join_service->join_service: challenge =\n        TPM2_MakeCredential(EK_pub,\n                                             nonce,\n                                             AK_name)
   attester_agent<-join_service: challenge
   TPM<-attester_agent: TPM2_ActivateCredential
   note left
-    TPM2_ActivateCredential verifies
-    the possession of AK_priv, EK_priv
-    and verifies that they are in the
-    same TPM
+    TPM2_ActivateCredential
+    verifies the possession
+    of AK_priv, EK_priv and
+    verifies that they are
+    in the same TPM
   end note
-  TPM<-TPM: activate_credential(EK_priv, challenge)
+  TPM->TPM: activate_credential(EK_priv,\n                               challenge)
   TPM->attester_agent: nonce
   attester_agent->join_service: POST /api/confirm_credential: nonce
   join_service->join_service: Store Attester credential in the DB
-  join_service->Verifier: Notify a Verifier to start RA on the new Attester
+  join_service->Verifier: Notify a Verifier to start RA on the\n new Attester
 ' end
-
 @enduml
