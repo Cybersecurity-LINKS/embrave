@@ -44,7 +44,7 @@ def add_row(conn, row):
 
 
 def main():
-    database = r"./certs/goldenvalues.db"
+    database = r"/var/embrave/verifier/whitelist/goldenvalues.db"
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
                                         name text NOT NULL,
                                         PRIMARY KEY (name)
