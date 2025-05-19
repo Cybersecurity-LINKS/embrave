@@ -62,20 +62,6 @@ end:
   return ret;
 }
 
-void ra_free(tpm_challenge_reply *rpl, agent_list *agent_data){
-  free(rpl->sig);
-  free(rpl->quoted);
-
-  if(agent_data->pcr10_sha1 != NULL){
-    free(agent_data->pcr10_sha1);
-  }
-  if(agent_data->pcr10_sha256 != NULL){
-    free(agent_data->pcr10_sha256);
-  }
-  if(agent_data->ip_addr != NULL)
-    free(agent_data->ip_addr);
-}
-
 agent_list *agent_list_new(){
   agent_list *ptr, *previous_ptr;
   ptr = agents;

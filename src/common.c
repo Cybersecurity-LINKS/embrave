@@ -100,7 +100,6 @@ void print_timer(int n){
 }
 
 void save_timer(char * path){
-//#ifdef TESTS
   FILE* fp = NULL;
   fp = fopen(path, "a");
   if(t1)
@@ -117,7 +116,6 @@ void save_timer(char * path){
     fprintf(fp,"%d.%.9ld ", (int) delta_6.tv_sec, delta_6.tv_nsec);
   fprintf(fp,"\n");
   fclose(fp);
-//#endif
 }
 
 bool check_ek(uint16_t *ek_handle, ESYS_CONTEXT *esys_context) {
@@ -245,7 +243,6 @@ void log_event(char * log_path, char * buff){
 bool get_ipaddr_from_interface(char * interface_name, char * buff){
 
   struct ifaddrs *ifaddr, *ifa;
-  int family, s;
   char host[NI_MAXHOST];
   bool found = false;
 
@@ -258,16 +255,9 @@ bool get_ipaddr_from_interface(char * interface_name, char * buff){
     if (ifa->ifa_addr == NULL)
       continue;  
 
-    s=getnameinfo(ifa->ifa_addr,sizeof(struct sockaddr_in),host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+    getnameinfo(ifa->ifa_addr,sizeof(struct sockaddr_in),host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
 
     if((strcmp(ifa->ifa_name, interface_name)==0)&&(ifa->ifa_addr->sa_family==AF_INET)){
-
-    /*if (s != 0){
-                printf("getnameinfo() failed: %s\n", gai_strerror(s));
-                exit(EXIT_FAILURE);
-      } */
-      //printf("\tInterface : <%s>\n",ifa->ifa_name );
-      //printf("\t  Address : <%s>\n", host);
       strcpy(buff, host);
       found = true;
       break;
