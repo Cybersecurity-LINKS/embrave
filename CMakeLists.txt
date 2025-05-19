@@ -88,7 +88,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(verifier ${sources})
 add_dependencies(verifier patch_tpm2-tools)
-target_compile_options(verifier PUBLIC -g  -Wall -fPIC)
+target_compile_options(verifier PUBLIC -g  -Wall -fPIC -Wno-deprecated-declarations)
 target_link_libraries(verifier -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl -pthread)
 
 #######################################################################
@@ -103,5 +103,5 @@ include_directories("include" "lib/mongoose" "lib/sqlite3")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
 
 add_executable(join_service ${sources})
-target_compile_options(join_service PUBLIC -g  -Wall -fPIC)
+target_compile_options(join_service PUBLIC -g  -Wall -fPIC -Wno-deprecated-declarations)
 target_link_libraries(join_service -lssl -lcrypto -ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc  -lcrypto -ldl -pthread) #-ltss2-esys -ltss2-tctildr -ltss2-mu -ltss2-sys -ltss2-rc -lssl -lcrypto -ldl
