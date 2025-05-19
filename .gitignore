@@ -51,6 +51,7 @@
 embrave.conf
 swtpm-localca-rootca-cert.pem
 01.pem
+goldenvalues.db
 
 # Submodules
 lib/tpm2-tools/
