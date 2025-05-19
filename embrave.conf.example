@@ -53,7 +53,7 @@ join_service_port = 8000
 # URI whitelist
 # Format file://whitelistname.db or
 # https://location.where.whitelist/is/stored
-whitelist_uri = file://raspberrypi4b.db
+whitelist_uri = file://goldenvalues.db
 
 ##################################
 # Verifier configuration section #
