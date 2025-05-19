@@ -87,8 +87,8 @@ int attester_init(/* struct attester_conf* conf */) {
     rc_tool = attester_create_ak(esys_context, &attester_config);
     if(rc_tool != TPM2_RC_SUCCESS){
       fprintf(stderr, "ERROR: attester_create_ak error\n");
-    goto error;
-  }
+      goto error;
+    }
     /* Check if present EK cert */
     FILE *fd = fopen(attester_config.ek_ecc_cert, "r");
     if(fd == NULL){
@@ -106,7 +106,7 @@ int attester_init(/* struct attester_conf* conf */) {
 
     return 0;
   }
-
+  
   /* tpm_createek */
   rc_tool = attester_create_ek(esys_context, algo);
   if(rc_tool != TPM2_RC_SUCCESS){

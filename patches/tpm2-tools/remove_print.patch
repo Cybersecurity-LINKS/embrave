@@ -1,0 +1,14 @@
+diff --git a/lib/tpm2_policy.c b/lib/tpm2_policy.c
+index c3009634..e400f270 100644
+--- a/lib/tpm2_policy.c
++++ b/lib/tpm2_policy.c
+@@ -727,9 +727,6 @@ tool_rc tpm2_policy_tool_finish(ESYS_CONTEXT *ectx, tpm2_session *session,
+         return rc;
+     }
+ 
+-    tpm2_util_hexdump(policy_digest->buffer, policy_digest->size);
+-    tpm2_tool_output("\n");
+-
+     rc = tool_rc_general_error;
+ 
+     if (save_path) {
