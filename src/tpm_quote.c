@@ -348,10 +348,12 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     uint32_t field_len;
 	uint32_t field_path_len;
 	uint8_t alg_field[8];
-    uint8_t alg_sha1_field[6];
+    //uint8_t alg_sha1_field[6];
     uint8_t acc = 0;
     uint8_t *entry_aggregate;
+    uint8_t zeros [SHA256_DIGEST_LENGTH] = {0};
     int sz;
+    int offset = 0;
     unsigned char *calculated_template_hash = NULL;
 
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
@@ -381,18 +383,21 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     memcpy(entry_aggregate + acc, &field_len, sizeof(uint32_t));
     acc += sizeof(uint32_t);
 
-
-    //sha256 len = 0x28
+    //sha1 or sha256
     if(field_len != 0x28){
-        //the next field must be "sha256:" 
-        //so if it is "sha1:" means that there was an error during the IMA log creation => skip row
-        //EX: 10 20..5c ima-ng sha256:a6..e6 /var/lib/logrotate/status
-        //10 00..00 ima-ng sha1:00..00 /var/lib/logrotate/status
-        memcpy(alg_sha1_field, rply ->ima_log + *total_read, 6*sizeof(uint8_t));
-        *total_read += 6 * sizeof(uint8_t);
-        memcpy(entry_aggregate + acc, alg_sha1_field, sizeof alg_sha1_field);
-        acc += sizeof alg_sha1_field;
-        
+        offset = 6;
+    } else {
+        offset = 8;
+    }
+
+    memcpy(alg_field, rply ->ima_log + *total_read, offset);
+    *total_read += offset;
+
+    memcpy(entry_aggregate + acc, alg_field, offset);
+    acc += offset;
+
+    if(offset == 6){
+        //SHA1 => 00..00 LOG VIOLATION
         *total_read += SHA_DIGEST_LENGTH * sizeof(uint8_t);
 
         //PCR10 extends FF not 00
@@ -404,17 +409,25 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
         *total_read += sizeof(char) * field_path_len;
         free(entry_aggregate);
         return 1;
-    } 
+        
+    } else {
+        //check for possibile sha2256 violation
+        memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+        *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
+        bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        
+        if(memcmp(hash_name_byte, zeros, SHA256_DIGEST_LENGTH) == 0){
+            //PCR10 extends FF not 00
+            memset(template_hash, 0xff, SHA_DIGEST_LENGTH);
+            memset(template_hash_sha256, 0xff, SHA256_DIGEST_LENGTH); 
 
-    memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
-    *total_read += 8 * sizeof(uint8_t);
-
-    memcpy(entry_aggregate + acc, alg_field, sizeof alg_field);
-    acc += 8*sizeof(uint8_t);
-
-    memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
-    *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-    bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+            memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+            *total_read += sizeof(uint32_t);
+            *total_read += sizeof(char) * field_path_len;
+            free(entry_aggregate);
+            return 1;
+        }
+    }
 
     memcpy(entry_aggregate + acc, hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     acc += SHA256_DIGEST_LENGTH *sizeof(uint8_t);
