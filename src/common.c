@@ -204,11 +204,11 @@ int digest_message(unsigned char *message, size_t message_len, int sha_alg, unsi
   return 0;
 }
 const char* errorMessages[MAX_TRUST_VALUES] = {
-    "Trusted, no error found",
-    "Unknown, agent is unreachable. Attempting to reconnection in progress",
+    "Trusted",
+    "Unknown, agent is unreachable. Attempting to reconnect",
     "Untrusted, agent is unreachable after the connection retries",
     "Untrusted, the given AK public pem is not a valid public key",
-    "Untrusted, error during convesion from TPM2B to TPMS format from the quote internal data",
+    "Untrusted, error during conversion from TPM2B to TPMS format from the quote internal data",
     "Untrusted, TPM quote verification failed",
     "Untrusted, nonce mismatch",
     "Untrusted, PCR digest mismatch",
