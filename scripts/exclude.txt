@@ -2,6 +2,7 @@
 /etc/resolv.conf
 /etc/cron.hourly/fake-hwclock
 /etc/fake-hwclock.data
+/etc/cron.daily
 /boot/System_Volume_Information/
 /root/.bash_history
 /var/lib/NetworkManager/
@@ -11,5 +12,7 @@
 /var/lib/logrotate/status
 /var/embrave/
 /var/log/
+/var/cache/
+/tmp
 /home/pi/embrave/
 /home/pi/.vscode-server/

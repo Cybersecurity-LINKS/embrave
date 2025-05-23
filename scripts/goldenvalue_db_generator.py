@@ -95,8 +95,7 @@ if __name__ == '__main__':
 
         for (root,dirs,files) in os.walk(path):
             print(root)
-            if root not in Include_paths:
-                continue
+
             for file in files:
                 file_path = root + "/" + file
                 
