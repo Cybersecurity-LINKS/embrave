@@ -1330,8 +1330,12 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     char* uuid = mg_json_get_str(mm->data, "$.uuid");
     char* ak_pub = mg_json_get_str(mm->data, "$.ak_pub");
     int status = (int) mg_json_get_long(mm->data, "$.status", -99);
+    
+    char topic [30];
+    memcpy(topic, mm->topic.ptr, mm->topic.len);
+    topic[mm->topic.len] = '\0';
 
-    printf("STATUS: Integrity report from topic %s.\n UUID %s => %s\n", mm->topic.ptr, uuid, get_error(status));
+    printf("STATUS: Integrity report from topic %s:\n UUID %s => %s\n", topic, uuid, get_error(status));
     if(status != 0){
         /*Log the error*/
         char buff[4096]; 
