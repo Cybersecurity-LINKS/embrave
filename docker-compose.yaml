@@ -1,0 +1,42 @@
+version: '3.9'
+services:
+  join-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: embrave
+    hostname: join-service
+    container_name: join-service
+    restart: unless-stopped
+    entrypoint: ["/app/join_service.sh"]
+    ports:
+      - "8000:8000"
+      - "1883:1883"
+    volumes:
+      - ./embrave.conf:/etc/embrave.conf
+    networks:
+      rete_custom:
+        ipv4_address: 172.20.0.12
+  verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: embrave
+    hostname: verifier
+    container_name: verifier
+    restart: unless-stopped
+    entrypoint: ["bash",  "/app/verifier.sh"]
+    ports:
+      - "8001:80"
+    volumes:
+      - ./embrave.conf:/etc/embrave.conf
+    networks:
+      rete_custom:
+        ipv4_address: 172.20.0.13
+
+networks:
+  rete_custom:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
