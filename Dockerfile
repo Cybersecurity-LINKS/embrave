@@ -6,7 +6,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && apt-get update \
-    && apt-get -y --no-install-recommends install ca-certificates git make cmake gcc libssl-dev openssl build-essential autoconf-archive libcmocka0 libcmocka-dev procps iproute2 pkg-config automake uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libtool mosquitto\ 
+    && apt-get -y --no-install-recommends install ca-certificates git make cmake gcc libssl-dev openssl build-essential autoconf-archive libcmocka0 libcmocka-dev procps iproute2 pkg-config automake uthash-dev autoconf doxygen libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libtool\ 
     tpm2-tools libtss2-dev\
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,14 +24,13 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
     && apt-get update \
-    && apt-get -y --no-install-recommends install ca-certificates libssl-dev openssl iproute2 libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libtool mosquitto\ 
+    && apt-get -y --no-install-recommends install ca-certificates libssl-dev openssl iproute2 libjson-c-dev libini-config-dev libcurl4-openssl-dev uuid-dev libltdl-dev libusb-1.0-0-dev libftdi-dev libtool\ 
     tpm2-tools libtss2-dev\
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/build/join_service.build/join_service /app/join_service.build/join_service
 COPY --from=build /app/build/verifier.build/verifier /app/verifier.build/verifier
 COPY --from=build /app/tpm_ca_certs_hash_dir  /app/tpm_ca_certs_hash_dir
-COPY --from=build /app/mosquitto.conf  /app/mosquitto.conf
 COPY --from=build /app/join_service.sh /app/join_service.sh
 COPY --from=build /app/verifier.sh /app/verifier.sh
 RUN mkdir -p /var/embrave/verifier/whitelist/

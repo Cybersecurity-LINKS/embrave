@@ -1,5 +1,18 @@
 version: '3.9'
 services:
+  mqtt_broker:
+    image: eclipse-mosquitto
+    hostname: mosquitto
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      rete_custom:
+        ipv4_address: 172.20.0.11
+
   join-service:
     build:
       context: .
@@ -11,9 +24,11 @@ services:
     entrypoint: ["/app/join_service.sh"]
     ports:
       - "8000:8000"
-      - "1883:1883"
+       #- "1883:1883"
     volumes:
       - ./embrave.conf:/etc/embrave.conf
+    depends_on:
+      - mqtt_broker
     networks:
       rete_custom:
         ipv4_address: 172.20.0.12
@@ -30,9 +45,14 @@ services:
       - "8001:80"
     volumes:
       - ./embrave.conf:/etc/embrave.conf
+    depends_on:
+      - mqtt_broker
+      - join-service
     networks:
       rete_custom:
         ipv4_address: 172.20.0.13
+ # mqtt_broker:
+
 
 networks:
   rete_custom:
