@@ -210,7 +210,7 @@ int create_request_body(size_t *object_length, char *object){
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
   if(fd_ek_cert == NULL){
-    fprintf(stdout, "INFO: EK ECC certificate not present, looking for RSA certificate\n");
+    fprintf(stdout, "EK ECC certificate not present, looking for RSA certificate\n");
     fd_ek_cert = fopen(attester_config.ek_rsa_cert, "r");
     if(fd_ek_cert == NULL){
       fprintf(stderr, "ERROR: EK RSA certificate not found\n");
@@ -567,6 +567,8 @@ static int join_procedure(){
   snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
   mg_mgr_init(&mgr);
 
+  fprintf(stdout, "[Join] attester request join\n");
+
   /* request to join (receive tpm_makecredential output) */
   c = mg_http_connect(&mgr, s_conn, request_join, (void *) &mkcred_out);
 
@@ -599,7 +601,7 @@ int main(int argc, char *argv[]) {
 
   if (stat("/var/embrave", &st) == -1) {
     if(!mkdir("/var/embrave", 0711)) {
-        fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
+        fprintf(stdout, "[Init] /var/embrave directory successfully created\n");
       }
       else {
         fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
@@ -608,7 +610,7 @@ int main(int argc, char *argv[]) {
 
   if (stat("/var/embrave/attester", &st) == -1) {
       if(!mkdir("/var/embrave/attester", 0711)) {
-        fprintf(stdout, "INFO: /var/embrave/attester directory successfully created\n");
+        fprintf(stdout, "[Init] /var/embrave/attester directory successfully created\n");
       }
       else {
         fprintf(stderr, "ERROR: cannot create /var/embrave/attester directory\n");
@@ -645,6 +647,8 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
 
+  fprintf(stdout, "[Join] successful join procedure\n");
+
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
   
@@ -657,7 +661,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stdout, "INFO: Server listen to %s \n", s_conn);
+  fprintf(stdout, "[Remote Attestation] agent server listen on %s \n", s_conn);
 
   Continue = true;
 
