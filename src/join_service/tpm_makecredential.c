@@ -521,7 +521,9 @@ static bool write_cred_and_secret(TPM2B_ID_OBJECT *cred, TPM2B_ENCRYPTED_SECRET 
     result = true;
 
     *out_buff_size = ftell(stream);
+#ifdef DEBUG
     fprintf(stdout, "INFO: tpm_makecredential output size: %ld\n", *out_buff_size);
+#endif
 
 out:
     fclose(stream);

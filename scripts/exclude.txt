@@ -14,5 +14,6 @@
 /var/log/
 /var/cache/
 /tmp
+/root/.lesshst
 /home/pi/embrave/
 /home/pi/.vscode-server/

@@ -205,7 +205,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   int ret;
 
-  fprintf(stdout, "[Remote Attestation] Attestation procedure started\n");
+  fprintf(stdout, "[Attestation] Attestation procedure started\n");
   //Set NULL pointers for safety
   rpl->ima_log = NULL;
   rpl->sig = NULL;
@@ -225,13 +225,13 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
   }
   
   //TPM Quote creation
-  fprintf(stdout, "[Remote Attestation] TPM quote creation\n");
+  fprintf(stdout, "[Attestation] TPM quote creation\n");
   ret = create_quote(chl, rpl, esys_context, attester_config.ak_ctx);
   if(ret != 0) goto end;
 
   //Load IMA log
   ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog, chl->send_from_byte);
-  fprintf(stdout, "[Remote Attestation] Attestation procedure terminated\n");
+  fprintf(stdout, "[Attestation] Attestation procedure terminated\n");
 
 end: 
   Esys_Finalize(&esys_context);
@@ -258,7 +258,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   FILE *fp;
   size_t read_bytes, buff_sz;
   uint32_t ima_byte_sent;
-  //all_log ? fprintf(stdout, "[Remote Attestation] request whole IMA log\n") :  fprintf(stdout, "[Remote Attestation] Request IMA log from byte %d\n", from_bytes);
+  //all_log ? fprintf(stdout, "[Attestation] request whole IMA log\n") :  fprintf(stdout, "[Attestation] Request IMA log from byte %d\n", from_bytes);
   fp = fopen(path, "rb");
 	if (!fp) {
 	  fprintf(stderr, "ERROR: Unable to open IMA file\n");
@@ -294,12 +294,12 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         if(rpl->ima_log_size != 0){
           //Eof, save the number of byte read
           ima_byte_sent += rpl->ima_log_size;
-          fprintf(stdout, "[Remote Attestation] IMA log: read %d bytes\n", ima_byte_sent);
+          fprintf(stdout, "[Attestation] IMA log: read %d bytes\n", ima_byte_sent);
           break;
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          fprintf(stdout, "[Remote Attestation] no new entries compared to the previous attestation, no need to send the IMA log\n");
+          fprintf(stdout, "[Attestation] No new entry in the IMA log: nothing to send to the verifier\n");
           break;
         }
       } else {

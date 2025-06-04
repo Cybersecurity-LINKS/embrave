@@ -34,7 +34,7 @@ void print_sent_data(tpm_challenge_reply *rpl);
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
 #ifdef DEBUG
-  printf("load challenge request\n");
+  printf("DEBUG: load challenge request\n");
   printf("%s\n", hm->body.ptr);
   printf("%d\n", hm->body.len);
 #endif
@@ -42,17 +42,17 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 
   size_t sz = mg_base64_decode(hm->body.ptr, hm->body.len,(char *) chl, dec);
   if(sz == 0){
-    printf("Transmission challenge data error \n");
+    printf("ERROR: Transmission challenge data error \n");
     return -1;
   }
 
 #ifdef DEBUG
-  printf("NONCE Received:");
+  printf("DEBUG: nonce Received:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
     printf("%02X", chl->nonce[i]);
   printf("\n");
-  printf("send all IMA LOG? %d\n", chl->send_wholeLog);
-  printf("from byte %d\n", chl->send_from_byte);
+  printf("DEBUG: send all log %d\n", chl->send_wholeLog);
+  printf("DEBUG: log from byte %d\n", chl->send_from_byte);
 #endif
 
   return 0;
@@ -281,7 +281,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 #ifdef DEBUG
-  fprintf(stdout, "INFO: AK pem size: %ld\n", size);
+  fprintf(stdout, "DEBUG: AK pem size: %ld\n", size);
 #endif
   ret = fread(ak_pub, 1, (size_t) size, fd_ak_pub);
   ak_pub[size] = '\0';
@@ -359,9 +359,6 @@ int create_request_body(size_t *object_length, char *object){
   sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\",\"ip_addr\":\"%s\",\"whitelist_uri\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64, buff, attester_config.whitelist_uri);
   *object_length = strlen(object);
 
-#ifdef DEBUG
-  printf("Final object : %s\n", object);
-#endif
   free(b64_buff_ek);
   free(ak_pub);
   free(ak_name_b64);
@@ -385,10 +382,6 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       fprintf(stderr, "ERROR: cannot create the http body contacting the join_service\n");
       exit(-1);
     }
-
-#ifdef DEBUG
-    printf("%s\n", object);
-#endif
 
     /* Send request */
     mg_printf(c,
@@ -439,13 +432,13 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       }
 
       #ifdef DEBUG
-      fprintf(stdout, "INFO: MKCRED_OUT: ");
+      fprintf(stdout, "DEBUG: MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
       }
       printf("\n");
-      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out->len); 
-      fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      fprintf(stdout, "DEBUG: MKCRED_OUT len:%d\n", mkcred_out->len); 
+      fprintf(stdout, "DEBUG: mkcred_out received from join service.\n");
       #endif
       free(mkcred_out_b64);
 
@@ -661,7 +654,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stdout, "[Remote Attestation] Agent server listen on %s \n", s_conn);
+  fprintf(stdout, "[Attestation] Agent server listen on %s \n", s_conn);
 
   Continue = true;
 

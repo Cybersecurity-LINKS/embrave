@@ -72,12 +72,15 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
     MG_INFO(("%lu CONNECTED", c->id));
+    printf("[Init] Connected\n");
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
     char gv[2048];
     struct mg_mqtt_message *mm = (struct mg_mqtt_message *) ev_data;
+  #ifdef DEBUG
     MG_INFO(("%lu RECEIVED %.*s <- %.*s", c->id, (int) mm->data.len,
               mm->data.ptr, (int) mm->topic.len, mm->topic.ptr));
+  #endif
     /*
           {
             "uuid": "aaaaaaaaa",
@@ -180,7 +183,9 @@ int update_agent_data(agent_list * ptr){
   int step = sqlite3_step(res);
     
   if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-    fprintf(stdout, "INFO: attester succesfully updated into the db\n");
+  #ifdef DEBUG
+    fprintf(stdout, "attester successfully updated into the db\n");
+  #endif
   }
   else {
     fprintf(stderr, "ERROR: could not update the attester into the db\n");
@@ -236,7 +241,9 @@ int add_agent_data(agent_list * ptr){
   int step = sqlite3_step(res);
     
   if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-    fprintf(stdout, "INFO: attester succesfully inserted into the db\n");
+  #ifdef DEBUG
+    fprintf(stdout, "attester successfully inserted into the db\n");
+  #endif
   }
   else {
     fprintf(stderr, "ERROR: could not insert attester into the db\n");
@@ -281,7 +288,9 @@ int remove_agent(agent_list * ptr){
   int step = sqlite3_step(res);
     
   if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-    fprintf(stdout, "INFO: attester succesfully removed from the db\n");
+  #ifdef DEBUG
+    fprintf(stdout, "DEBUG: attester succesfully removed from the db\n");
+  #endif
   }
   else {
     fprintf(stderr, "ERROR: could not remove attester from the db\n");
@@ -365,6 +374,7 @@ int encode_challenge(tpm_challenge *chl, char* buff, size_t *buff_length){
 }
 
 static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data) {
+  fflush(stdout);
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -402,7 +412,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
     int status = mg_http_status(hm);
     if(status == 403){ /* forbidden */
       /*TODO errors*/
-      fprintf(stderr, "ERROR: join service response code is not 403 (forbidden)\n");
+      fprintf(stderr, "ERROR: join service response code is 403 (forbidden)\n");
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
       return;
@@ -414,7 +424,7 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       sprintf(topic, "%s%d", ATTEST_TOPIC_PREFIX, id);
       mqtt_subscribe(c_mqtt, topic);
 
-      fprintf(stdout, "INFO: Topic id: %d\n", id);
+      fprintf(stdout, "Topic id: %d\n", id);
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
 
@@ -444,6 +454,7 @@ void create_integrity_report(agent_list  *agent_data, char *buff){
 
 // Print HTTP response and signal that we're done
 static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
+  fflush(stdout);
   if (ev == MG_EV_OPEN) {
     // Connection created. Store connect expiration time in c->data
     *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
@@ -511,7 +522,7 @@ static void remote_attestation(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_ERROR) {
     agent_list *agent_data = (agent_list *) c->fn_data;
     agent_data->continue_polling = false;  // Error, tell event loop to stop
-    fprintf(stdout, "INFO: unreachable agent uuid %s, retry number %d\n", agent_data->uuid, agent_data->connection_retry_number);
+    fprintf(stdout, "[%s Attestation] Attester is unreachable, retry number %d\n", agent_data->uuid, agent_data->connection_retry_number);
     fflush(stdin);
 
     agent_data->connection_retry_number++;
@@ -564,7 +575,7 @@ void *attest_agent(void *arg) {
       sleep(agent->sleep_value); 
   }
 
-  fprintf(stdout, "INFO: attestation thread stopped for agent uuid:%s\n", agent->uuid);
+  fprintf(stdout, "[%S Attestation] attestation thread stopped \n", agent->uuid);
   fflush(stdout);
 
   agent_list_remove(agent);
@@ -586,7 +597,7 @@ void create_attestation_thread(agent_list * agent){
   }
 
   pthread_attr_destroy(&attr);
-  fprintf(stdout, "INFO: attestation thread created for agent uuid:%s\n", agent->uuid);
+  fprintf(stdout, "[%s Attestation] Starting the attestation thread\n", agent->uuid);
 
 }
 
@@ -670,7 +681,7 @@ int main(int argc, char *argv[]) {
   
   if (stat("/var/embrave", &st) == -1) {
     if(!mkdir("/var/embrave", 0711)) {
-      fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
+      fprintf(stdout, "[Init] /var/embrave directory successfully created\n");
     }
     else {
       fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
@@ -680,7 +691,7 @@ int main(int argc, char *argv[]) {
   
   if (stat("/var/embrave/verifier", &st) == -1) {
     if(!mkdir("/var/embrave/verifier", 0711)) {
-      fprintf(stdout, "INFO: /var/embrave/verifier directory successfully created\n");
+      fprintf(stdout, "[Init] /var/embrave/verifier directory successfully created\n");
     }
     else {
       fprintf(stderr, "ERROR: cannot create /var/embrave/verifier directory\n");
@@ -696,7 +707,7 @@ int main(int argc, char *argv[]) {
 
   if (stat(verifier_config.whitelist_path, &st) == -1) {
     if(!mkdir(verifier_config.whitelist_path, 0711)) {
-      fprintf(stdout, "INFO: %s directory successfully created\n", verifier_config.whitelist_path);
+      fprintf(stdout, "[Init] %s directory successfully created\n", verifier_config.whitelist_path);
     }
     else {
       fprintf(stderr, "ERROR: cannot create %s directory\n", verifier_config.whitelist_path);
@@ -704,6 +715,7 @@ int main(int argc, char *argv[]) {
   }
 
   snprintf(mqtt_conn, 280, "http://%s:%d", verifier_config.mqtt_broker_ip, verifier_config.mqtt_broker_port);
+  printf("[Init] Connecting to the MQTT broker on %s:%d\n", verifier_config.mqtt_broker_ip, verifier_config.mqtt_broker_port);
 
   c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "verifier", mqtt_conn);
 
@@ -718,6 +730,7 @@ int main(int argc, char *argv[]) {
 
   /* Contact the join service */
   snprintf(s_conn, 280, "http://%s:%d", verifier_config.join_service_ip, verifier_config.join_service_port);
+  printf("[Init] Connecting to Join Service on http://%s:%d\n", verifier_config.join_service_ip, verifier_config.join_service_port);
 
   mg_mgr_init(&mgr);
 
@@ -739,10 +752,16 @@ int main(int argc, char *argv[]) {
 
   Continue = true;
 
+#ifdef DEBUG
   mg_log_set(MG_LL_INFO);  /* Set log level */
+#else
+  mg_log_set(MG_LL_NONE);
+#endif
+
   mg_mgr_init(&mgr);        /* Initialize event manager */
 
   snprintf(s_conn, 500, "http://%s:%d", verifier_config.ip, verifier_config.port);
+  
   c = mg_http_listen(&mgr, s_conn, verifier_manager, &mgr);  /* Create server connection */
 
   if (c == NULL) {
@@ -750,8 +769,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  MG_INFO(("Listening on http://%s:%d", verifier_config.ip, verifier_config.port));
-
+  printf("[Init] Listening on http://%s:%d\n", verifier_config.ip, verifier_config.port);
+  fflush(stdout);
   Continue = true;
 
   while (Continue) {
