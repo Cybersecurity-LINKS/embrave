@@ -575,7 +575,7 @@ void *attest_agent(void *arg) {
       sleep(agent->sleep_value); 
   }
 
-  fprintf(stdout, "[%S Attestation] attestation thread stopped \n", agent->uuid);
+  fprintf(stdout, "[%s Attestation] attestation thread stopped \n", agent->uuid);
   fflush(stdout);
 
   agent_list_remove(agent);
