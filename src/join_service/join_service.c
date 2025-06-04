@@ -304,7 +304,9 @@ static int set_agent_data(char *uuid){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
+#ifdef DEBUG
         fprintf(stdout, "AK confirmed and validity, succesfully updated\n");
+#endif
     }
     else {
         fprintf(stderr, "ERROR: could not update confirmed and validity of AK\n");
@@ -804,7 +806,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             unsigned char *out_buf;
             size_t out_buf_size;
 
-            fprintf(stdout, "[Agent Join] Creating the challange on the secret with the tpm makecredential\n");
+            fprintf(stdout, "[Agent Join] Creating the challenge on the secret with the tpm makecredential\n");
 
             if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
@@ -863,7 +865,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
-            fprintf(stdout, "[Agent Join] Sending the challange to the attester, waiting for a reply ...\n");
+            fprintf(stdout, "[Agent Join] Sending the challenge to the attester, waiting for a reply ...\n");
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -901,7 +903,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             }
             secret_buff[secret_len] = '\0';
             
-            fprintf(stdout, "[Agent Join] Received challange reply. Secret received: %s\n", secret_buff);
+            fprintf(stdout, "[Agent Join] Received challenge reply. Secret received: %s\n", secret_buff);
 
             /* verify the correctness of the secret_buff received */
             if(!strcmp((char *) secret_buff, (char *) secret)){
