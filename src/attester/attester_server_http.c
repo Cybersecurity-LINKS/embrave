@@ -257,7 +257,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 #ifdef DEBUG
-  fprintf(stdout, "INFO: EK cert base64: %s\n", b64_buff_ek);
+  fprintf(stdout, "DEBUG: EK cert base64: %s\n", b64_buff_ek);
 #endif
   free(ek_cert);
 
@@ -295,7 +295,7 @@ int create_request_body(size_t *object_length, char *object){
 
   fclose(fd_ak_pub);
 #ifdef DEBUG
-  fprintf(stdout, "INFO: AK pem \n%s\n", ak_pub);
+  fprintf(stdout, "DEBUG: AK pem \n%s\n", ak_pub);
 #endif
   tot_sz += size;
   //Encode in b64
@@ -419,8 +419,8 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
       #ifdef DEBUG
-      fprintf(stdout, "INFO: MKCRED_OUT b64: %s\n", mkcred_out_b64);
-      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out_len);
+      fprintf(stdout, "DEBUG: MKCRED_OUT b64: %s\n", mkcred_out_b64);
+      fprintf(stdout, "DEBUG: MKCRED_OUT len:%d\n", mkcred_out_len);
       #endif
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
@@ -567,7 +567,7 @@ static int join_procedure(){
   snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
   mg_mgr_init(&mgr);
 
-  fprintf(stdout, "[Join] attester request join\n");
+  fprintf(stdout, "[Join] Attester request join to join service on %s\n", s_conn);
 
   /* request to join (receive tpm_makecredential output) */
   c = mg_http_connect(&mgr, s_conn, request_join, (void *) &mkcred_out);
@@ -647,7 +647,7 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
 
-  fprintf(stdout, "[Join] successful join procedure\n");
+  fprintf(stdout, "[Join] Successful join procedure\n");
 
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
@@ -661,7 +661,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stdout, "[Remote Attestation] agent server listen on %s \n", s_conn);
+  fprintf(stdout, "[Remote Attestation] Agent server listen on %s \n", s_conn);
 
   Continue = true;
 

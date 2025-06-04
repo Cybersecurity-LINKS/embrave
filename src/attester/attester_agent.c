@@ -30,7 +30,7 @@ int attester_init(/* struct attester_conf* conf */) {
   tool_rc rc_tool;
   uint16_t ek_handle[HANDLE_SIZE];
 
-  fprintf(stdout, "[Init] initialisation of TPM keys\n");
+  fprintf(stdout, "[Init] Initialisation of TPM keys...\n");
 
   tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
@@ -176,7 +176,7 @@ int attester_activatecredential(unsigned char *mkcred_out, unsigned int mkcred_o
     goto error;
   }
 
-  fprintf(stdout, "[Join] prove AK possession with tpm activatecredential\n");
+  fprintf(stdout, "[Join] Prove AK possession with tpm activatecredential\n");
   rc_tool = tpm_activatecredential(esys_context, &attester_config, mkcred_out, mkcred_out_len, secret, secret_len);
   if(rc_tool != tool_rc_success){
     fprintf(stderr, "ERROR: Could not activate credential\n");
@@ -205,7 +205,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
   TSS2_TCTI_CONTEXT *tcti_context = NULL;
   int ret;
 
-  fprintf(stdout, "[Remote Attestation] attestation procedure started\n");
+  fprintf(stdout, "[Remote Attestation] Attestation procedure started\n");
   //Set NULL pointers for safety
   rpl->ima_log = NULL;
   rpl->sig = NULL;
@@ -231,7 +231,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
 
   //Load IMA log
   ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog, chl->send_from_byte);
-  fprintf(stdout, "[Remote Attestation] attestation procedure terminated\n");
+  fprintf(stdout, "[Remote Attestation] Attestation procedure terminated\n");
 
 end: 
   Esys_Finalize(&esys_context);
@@ -294,7 +294,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         if(rpl->ima_log_size != 0){
           //Eof, save the number of byte read
           ima_byte_sent += rpl->ima_log_size;
-          fprintf(stdout, "[Remote Attestation] read %d bytes of the IMA log\n", ima_byte_sent);
+          fprintf(stdout, "[Remote Attestation] IMA log: read %d bytes\n", ima_byte_sent);
           break;
         }
         else{
