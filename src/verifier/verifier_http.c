@@ -64,15 +64,16 @@ bool parse_whitelist(char * gv, char * whitelist_uri){
 
 static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_OPEN) {
-    MG_INFO(("%lu CREATED", c->id));
+    //MG_INFO(("%lu CREATED", c->id));
   } else if (ev == MG_EV_ERROR) {
     // On error, log error message
-    MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+    //MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+    fprintf(stderr, "ERROR: %s\n", (char *) ev_data);
   } else if (ev == MG_EV_CONNECT) {
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
-    MG_INFO(("%lu CONNECTED", c->id));
-    printf("[Init] Connected\n");
+   // MG_INFO(("%lu CONNECTED", c->id));
+    fprintf(stdout, "[Init] Connected to the MQTT broker\n");
   } else if (ev == MG_EV_MQTT_MSG) {
     // When we get echo response, print it
     char gv[2048];
@@ -136,6 +137,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
+    fprintf(stdout, "[Init] Connection to the MQTT broker closed\n");
   }
   (void) c->fn_data;
 }
@@ -424,7 +426,6 @@ static void request_join_verifier(struct mg_connection *c, int ev, void *ev_data
       sprintf(topic, "%s%d", ATTEST_TOPIC_PREFIX, id);
       mqtt_subscribe(c_mqtt, topic);
 
-      fprintf(stdout, "Topic id: %d\n", id);
       c->is_draining = 1;        // Tell mongoose to close this connection
       Continue = false;  // Tell event loop to stop
 
@@ -551,7 +552,8 @@ void *attest_agent(void *arg) {
   while (agent->running) {
     c = mg_http_connect(&mgr, agent->ip_addr, remote_attestation, (void *) agent);
     if (c == NULL) {
-      MG_ERROR(("CLIENT cant' open a connection"));
+      //MG_ERROR(("CLIENT cant' open a connection"));
+      fprintf(stderr, "ERROR: CLIENT cant' open a connection\n");
       fflush(stdout);
       continue;
     }
@@ -653,7 +655,7 @@ static int init_database(void){
   //attesters table
   rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
   if (rc != SQLITE_OK) {
-    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return -1;
   }
@@ -661,7 +663,7 @@ static int init_database(void){
   rc = sqlite3_exec(db, sql, NULL, NULL, NULL);
 
   if (rc != SQLITE_OK) {
-    fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
     return -1;
   }

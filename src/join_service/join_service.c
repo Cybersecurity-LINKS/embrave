@@ -142,7 +142,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open database %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return NULL;
     }
@@ -156,7 +156,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
             return NULL;
         }
     } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
         
     int step = sqlite3_step(res);
@@ -212,7 +212,7 @@ void *queue_manager(void *vargp){
 
         pthread_mutex_unlock(&mutex);
 
-        fprintf(stderr, "[Attestation Request]: Request attestation for %s, selecting a verifier...\n", uuid);
+        fprintf(stdout, "[Attestation Request]: Request attestation for %s, selecting a verifier...\n", uuid);
         fflush(stdout);
 
         /*Uuid and AK pem and ip address*/
@@ -222,7 +222,7 @@ void *queue_manager(void *vargp){
         {
             id = get_verifier_id();
             if(id == -1){
-                fprintf(stderr, "[Attestation Request]: No available verifier, waiting for a verifier join\n");
+                fprintf(stdout, "[Attestation Request]: No available verifier, waiting for a verifier join\n");
                 fflush(stdout);
                 sleep(5);
             } 
@@ -497,7 +497,7 @@ static int save_ak(struct ak_db_entry *ak_entry){
             return -1;
         }
     } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
         
     int step = sqlite3_step(res);
@@ -745,6 +745,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             #endif
             }
             else {
+                fprintf(stdout, "[Agent Join] EK certificate alredy verified\n");
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
                     free(ek_cert_b64);
@@ -890,8 +891,6 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-            
-            
             /* Decode b64 */
             secret_len = mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len);
             if(secret_len == 0){
@@ -903,7 +902,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             }
             secret_buff[secret_len] = '\0';
             
-            fprintf(stdout, "[Agent Join] Received challenge reply. Secret received: %s\n", secret_buff);
+            fprintf(stdout, "[Agent Join] Received challenge reply, secret received: %s\n", secret_buff);
 
             /* verify the correctness of the secret_buff received */
             if(!strcmp((char *) secret_buff, (char *) secret)){
@@ -999,14 +998,16 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
         
         if(status == 200){
             js->value = 0;
+            fprintf(stdout, "[Attestation] Verifier /api/still_alive 200 OK\n");
         }
         else{
             js->value = -1;
+            fprintf(stdout, "[Attestation] Verifier /api/still_alive response error, status %d\n", status); 
         }
         js->Continue = false;
     } else if (ev == MG_EV_ERROR) {
         struct js_reboot *js = (struct js_reboot *) c->fn_data;
-
+        fprintf(stdout, "[Attestation] Verifier is unreachable, removing it from verifier list\n");
         js->Continue = false;  // Error, tell event loop to stop
     }
 }
@@ -1026,11 +1027,14 @@ int verifier_is_alive(char * ip){
     c = mg_http_connect(&mgr, ip, is_alive, (void *) &js);
 
     if (c == NULL) {
-    MG_ERROR(("CLIENT cant' open a connection"));
-    return -1;
-  }
+        //MG_ERROR(("CLIENT cant' open a connection"));
+        fprintf(stderr, "ERROR CLIENT cant' open a connection\n");
+        return -1;
+    }
 
   while (js.Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+    fflush(stdout);
     return js.value;
 }
 
@@ -1041,7 +1045,6 @@ int get_verifier_id(void){
 
     do{
         if(verifier_num == 0){
-            printf("verifier_num == 0\n");
             id = -1;
             break;
         }
@@ -1053,10 +1056,12 @@ int get_verifier_id(void){
         id = verifiers_id[last_requested_verifier++];
         ret = get_verifier_ip(id, ip);
         if(ret != 0){
-            printf("get_verifier_ip(id, ip) %d\n", ret);
             id = -1;
             break;
         }
+
+        fprintf(stdout, "[Attestation] Selected verifier id %d on %s\n", id, ip);
+
         ret = verifier_is_alive(ip);
         // delete form verifiers_id an unreachable verifier
         if(ret != 0){
@@ -1072,6 +1077,8 @@ int get_verifier_id(void){
             }
             verifiers_id[MAX_VERIFIERS-1] = 0;
             verifier_num--;
+
+            id = -1;
         }
 
     } while(verifier_num != 0 && ret != 0);
@@ -1157,9 +1164,10 @@ static int init_database(void){
         }
 
         sqlite3_reset(res);
-
+        #ifdef DEBUG
         fprintf(stdout, "Old database present with %d verifiers joined still connected\n", verifier_num);
         fprintf(stdout, "delete number = %d\n", delete_numer);
+        #endif
         for(int i = 0 ; i <  delete_numer; i++){
             rc = sqlite3_prepare_v2(db, sql5, -1, &res, 0);
             if (rc == SQLITE_OK) {
@@ -1188,14 +1196,14 @@ static int init_database(void){
     //verifiers table
     rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql3, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -1203,14 +1211,14 @@ static int init_database(void){
     //attesters_ek_certs table
     rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql1, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -1218,14 +1226,14 @@ static int init_database(void){
     //attesters_credentials table
     rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }

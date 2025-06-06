@@ -345,7 +345,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
     if (type == EVP_PKEY_RSA) {
         RSA *rsa = EVP_PKEY_get1_RSA(pkey);
         if (rsa == NULL) {
-            fprintf(stderr, "Failed to get RSA key\n");
+            fprintf(stderr, "ERROR: Failed to get RSA key\n");
             EVP_PKEY_free(pkey);
             X509_free(cert);
             BIO_free(bio);
@@ -355,7 +355,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         ctx.public.publicArea.type = TPM2_ALG_RSA;
 
         if(!load_public_RSA_from_key(pkey, &ctx.public)){
-            fprintf(stderr, "Failed to load RSA key\n");
+            fprintf(stderr, "ERROR: Failed to load RSA key\n");
             EVP_PKEY_free(pkey);
             X509_free(cert);
             BIO_free(bio);
@@ -365,7 +365,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
     } else if (type == EVP_PKEY_EC) {
         EC_KEY *ec = EVP_PKEY_get1_EC_KEY(pkey);
         if (ec == NULL) {
-            fprintf(stderr, "Failed to get EC key\n");
+            fprintf(stderr, "ERROR: Failed to get EC key\n");
             EVP_PKEY_free(pkey);
             X509_free(cert);
             BIO_free(bio);
@@ -377,7 +377,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         /* set TPM2B_PUBLIC struct */
         ctx.public.publicArea.type = TPM2_ALG_ECC;
         if(!load_public_ECC_from_key(pkey, &ctx.public)){
-            fprintf(stderr, "Failed to load ECC key\n");
+            fprintf(stderr, "ERROR: Failed to load ECC key\n");
             EVP_PKEY_free(pkey);
             X509_free(cert);
             BIO_free(bio);
@@ -386,7 +386,7 @@ static int read_der_key_from_buf(unsigned char* ek_cert, int cert_len){
         
         EC_KEY_free(ec);
     } else {
-        fprintf(stderr, "Unsupported key type\n");
+        fprintf(stderr, "ERROR: Unsupported key type\n");
         EVP_PKEY_free(pkey);
         X509_free(cert);
         BIO_free(bio);

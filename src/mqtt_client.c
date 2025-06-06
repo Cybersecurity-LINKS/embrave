@@ -50,5 +50,6 @@ void mqtt_subscribe(struct mg_connection *c, char *topic){
   sub_opts.topic = subt;
   sub_opts.qos = s_qos;
   mg_mqtt_sub(c, &sub_opts);
-  MG_INFO(("%lu SUBSCRIBED to %.*s", c->id, (int) subt.len, subt.ptr));
+  //MG_INFO(("%lu SUBSCRIBED to %.*s", c->id, (int) subt.len, subt.ptr));
+  fprintf(stdout, "[Init] SUBSCRIBED to %.*s\n", (int) subt.len, subt.ptr);
 }
