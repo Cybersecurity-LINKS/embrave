@@ -1181,7 +1181,9 @@ static int init_database(void){
 
             int step = sqlite3_step(res);
             if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-                fprintf(stdout, "verifier succesfully removed from the db\n");
+                #ifdef DEBUG
+                fprintf(stdout, "DEBUG: verifier succesfully removed from the db\n");
+                #endif
             }
             else {
                 fprintf(stderr, "ERROR: could not remove verifier from the db\n");
