@@ -68,7 +68,8 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
   } else if (ev == MG_EV_ERROR) {
     // On error, log error message
     //MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
-    fprintf(stderr, "ERROR: %s\n", (char *) ev_data);
+    fprintf(stderr, "ERROR: Connection to the MQTT broker failed: %s\n", (char *) ev_data);
+    Continue = false;
   } else if (ev == MG_EV_CONNECT) {
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
