@@ -84,7 +84,7 @@ add_custom_command(OUTPUT ${verifier_wrkdir} PRE_BUILD COMMAND mkdir -p ${verifi
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${verifier_wrkdir})
 file(GLOB_RECURSE sources sources src/tpm_quote.c src/common.c src/mqtt_client.c src/config_parse.c src/verifier/*.c lib/tpm2-tools/lib/*.c lib/sqlite3/* lib/mongoose/*)
 include_directories("include" "lib/tpm2-tools/tools" "lib/tpm2-tools/lib" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 -DMG_MAX_RECV_SIZE=20485760")
 
 add_executable(verifier ${sources})
 add_dependencies(verifier patch_tpm2-tools)
@@ -100,7 +100,7 @@ add_custom_command(OUTPUT ${join_service_wrkdir} PRE_BUILD COMMAND mkdir -p ${jo
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${join_service_wrkdir})
 file(GLOB_RECURSE sources sources src/config_parse.c src/common.c src/mqtt_client.c src/join_service/*.c lib/sqlite3/*  lib/tpm2-tools/lib/*.c lib/mongoose/*)
 include_directories("include" "lib/mongoose" "lib/sqlite3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMG_ENABLE_OPENSSL=1 ")
 
 add_executable(join_service ${sources})
 target_compile_options(join_service PUBLIC -g  -Wall -fPIC -Wno-deprecated-declarations)

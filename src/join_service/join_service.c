@@ -112,7 +112,7 @@ int pop_uuid(char *uuid){
   }
 
   if(tail == NULL){
-    fprintf(stdout, "INFO: could not pop from queue because it is empty\n");
+    fprintf(stdout, "could not pop from queue because it is empty\n");
     return 1;
   }
 
@@ -142,7 +142,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
     int rc = sqlite3_open_v2(js_config.db, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI, NULL);
     
     if (rc != SQLITE_OK) {        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Cannot open database %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return NULL;
     }
@@ -156,7 +156,7 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
             return NULL;
         }
     } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
         
     int step = sqlite3_step(res);
@@ -185,56 +185,15 @@ static struct ak_db_entry *retrieve_ak(char *uuid){
     return ak_entry;
 }
 
-/* void single_attestation(struct mg_connection *c, int ev, void *ev_data) {
-    if (ev == MG_EV_OPEN) {
-        // Connection created. Store connect expiration time in c->data
-        *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
-    } else if (ev == MG_EV_POLL) {
-        if (mg_millis() > *(uint64_t *) c->data &&
-            (c->is_connecting || c->is_resolving)) {
-        mg_error(c, "Connect timeout");
-        }
-    } else if (ev == MG_EV_CONNECT) {
-        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
-        size_t object_length = 0;
-        char object[4096];
-
-        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
-
-        object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
-
-        // Send request
-        mg_printf(c,
-        "POST /request_attestation HTTP/1.1\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %ld\r\n"
-        "\r\n"
-        "%s\n",
-        object_length,
-        object);
-
-    } else if (ev == MG_EV_HTTP_MSG) {
-        const struct mg_http_message *hm = (const struct mg_http_message *) ev_data;
-        int status = mg_http_status(hm);
-        if (status == 200) {
-            MG_INFO(("200 OK"));
-            stop_polling = 0;
-        } else {
-            MG_ERROR(("HTTP ERROR: %d", status));
-            stop_polling = 0;
-        }
-    } else if (ev == MG_EV_CLOSE) {
-        MG_INFO(("Connection closed"));
-        stop_polling = 0;
-    }
-} */
-
 void *queue_manager(void *vargp){
     struct mg_mgr mgr;
+    char topic[25];
+    char object[4096];
 
     mg_mgr_init(&mgr);
-
-    printf("INFO: queue manager started\n");
+#ifdef DEBUG
+    printf("DEBUG: queue manager started\n");
+#endif
     fflush(stdout);
     while(!stop_event){
         pthread_mutex_lock(&mutex);
@@ -253,23 +212,26 @@ void *queue_manager(void *vargp){
 
         pthread_mutex_unlock(&mutex);
 
-        printf("INFO: popped uuid: %s\n", uuid);
+        fprintf(stdout, "[Attestation Request]: Request attestation for %s, selecting a verifier...\n", uuid);
         fflush(stdout);
 
         /*Uuid and AK pem and ip address*/
         struct ak_db_entry *ak_entry = retrieve_ak(uuid);
-        int id = get_verifier_id();
-        // if(id == -1){
-           // fprintf(stderr, "ERROR: could not get verifier id\n");
-            //continue;
-        //} 
+        int id = -1;
+        do
+        {
+            id = get_verifier_id();
+            if(id == -1){
+                fprintf(stdout, "[Attestation Request]: No available verifier, waiting for a verifier join\n");
+                fflush(stdout);
+                sleep(5);
+            } 
+        } while (id == -1);
         
-        //get_verifier_ip(id, ip);
-        char topic[25];
+        
         sprintf(topic, "%s%d", ATTEST_TOPIC_PREFIX, id);
-        char object[4096];
-
-        fprintf(stdout, "INFO: Request attestation of agent uuid %s\n from verifier id %d\n", ak_entry->uuid, id);
+        
+        fprintf(stdout, "[Attestation] Selected verifier %d to attest agent %s\n", id, ak_entry->uuid);
 
         snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\",\"whitelist_uri\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip, ak_entry->whitelist);
 
@@ -277,7 +239,9 @@ void *queue_manager(void *vargp){
 
     }
 
-    printf("INFO: queue manager ended\n");
+#ifdef DEBUG
+    printf("DEBUG: queue manager ended\n");
+#endif
     fflush(stdout);
     return NULL;
 }
@@ -340,7 +304,9 @@ static int set_agent_data(char *uuid){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: AK confirmed and validity, succesfully updated\n");
+#ifdef DEBUG
+        fprintf(stdout, "AK confirmed and validity, succesfully updated\n");
+#endif
     }
     else {
         fprintf(stderr, "ERROR: could not update confirmed and validity of AK\n");
@@ -452,7 +418,9 @@ static int insert_verifier(char *ip){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-        fprintf(stdout, "INFO: verifier succesfully inserted into the db\n");
+        #ifdef DEBUG
+        fprintf(stdout, "debug: verifier succesfully inserted into the db\n");
+        #endif
         ret = sqlite3_last_insert_rowid(db);
         verifiers_id[verifier_num++] = (int) ret;
     }
@@ -529,14 +497,16 @@ static int save_ak(struct ak_db_entry *ak_entry){
             return -1;
         }
     } else {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
     }
         
     int step = sqlite3_step(res);
     sqlite3_finalize(res);
     if (step != SQLITE_ROW){
         //agent not present, add it
-        fprintf(stdout, "INFO: agent not present in the db, adding it\n");
+#ifdef DEBUG
+        fprintf(stdout, "agent not present in the db, adding it\n");
+#endif
         rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
         if (rc == SQLITE_OK) {
             rc = sqlite3_bind_text(res, 1, ak_entry->uuid, -1, SQLITE_TRANSIENT);
@@ -576,7 +546,9 @@ static int save_ak(struct ak_db_entry *ak_entry){
         step = sqlite3_step(res);
         
         if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-            fprintf(stdout, "INFO: AK succesfully inserted into the db\n");
+#ifdef DEBUG
+            fprintf(stdout, "AK successfully inserted into the db\n");
+#endif
         }
         else {
             fprintf(stderr, "ERROR: could not insert AK into the db\n");
@@ -612,7 +584,9 @@ static int save_ak(struct ak_db_entry *ak_entry){
         step = sqlite3_step(res);
     
         if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-            fprintf(stdout, "INFO: AK succesfully updated\n");
+#ifdef DEBUG
+            fprintf(stdout, "AK successfully updated\n");
+#endif
         }
         else {
             fprintf(stderr, "ERROR: could not update AK\n");
@@ -656,7 +630,9 @@ static int insert_ek(struct ek_db_entry *ek_entry){
     int step = sqlite3_step(res);
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1){
-        fprintf(stdout, "INFO: EK succesfully inserted into the db\n");
+#ifdef DEBUG
+        fprintf(stdout, "EK succesfully inserted into the db\n");
+#endif
     }
     else {
         fprintf(stderr, "ERROR: could not insert EK into the db\n");
@@ -669,13 +645,14 @@ static int insert_ek(struct ek_db_entry *ek_entry){
 }
 
 static void join_service_manager(struct mg_connection *c, int ev, void *ev_data) {
+    fflush(stdout);
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         if (mg_http_match_uri(hm, API_JOIN) && !strncmp(hm->method.ptr, POST, hm->method.len)) {               
         #ifdef DEBUG
             printf("%.*s\n", (int) hm->message.len, hm->message.ptr);
         #endif
-
+            
             /* Read post */
             /*
                 {
@@ -697,12 +674,14 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             size_t ak_name_len = B64DECODE_OUT_SAFESIZE(strlen((char *) ak_name_b64));
 
             unsigned char *ek_cert_buff = (unsigned char *) malloc(ek_cert_len);
+
+            fprintf(stdout, "[Agent Join] Agent %s wants to join\n", uuid);
             
         #ifdef DEBUG
-            printf("EK_CERT: %s\n", ek_cert_b64);
-            printf("AK_PUB: %s\n", ak_pub_b64);
+            printf("DEBUG EK_CERT: %s\n", ek_cert_b64);
+            printf("DEBUG AK_PUB: %s\n", ak_pub_b64);
         #endif
-
+            fprintf(stdout, "[Agent Join] Checking EK certificate validity\n");
             if(!check_ek_presence((char *) uuid)) {
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
@@ -716,9 +695,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 }
 
                 #ifdef DEBUG
-                printf("%s\n", ek_cert_b64);
-                printf("%d\n", ek_cert_len);
-                printf("%d\n", strlen((char *) ek_cert_b64));
+                printf("DEBUG %s\n", ek_cert_b64);
+                printf("DEBUG %d\n", ek_cert_len);
                 #endif
 
                 //Decode b64
@@ -747,7 +725,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                     return;
                 }
                 else {
-                    fprintf(stdout, "INFO: EK certificate verified successfully\n");
+                    fprintf(stdout, "[Agent Join] EK certificate verified successfully\n");
 
                     struct ek_db_entry ek;
                     strcpy((char *) ek.ek_cert,(char *) ek_cert_b64);
@@ -767,6 +745,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             #endif
             }
             else {
+                fprintf(stdout, "[Agent Join] EK certificate alredy verified\n");
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
                     free(ek_cert_b64);
@@ -816,22 +795,26 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
-
+            
             /* create secret */
             if (create_secret(secret) != 0){
                 fprintf(stderr, "ERROR: create_secret failed\n");
                 return;
             }
+            fprintf(stdout, "[Agent Join] Generated random secret: %s\n", secret);
 
             /* tpm2_makecredential */
             unsigned char *out_buf;
             size_t out_buf_size;
+
+            fprintf(stdout, "[Agent Join] Creating the challenge on the secret with the tpm makecredential\n");
+
             if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
             }
 
             #ifdef DEBUG
-            printf("OUT_BUF: ");
+            printf("DEBUG OUT_BUF: ");
             for(int i=0; i<out_buf_size; i++){
                 printf("%02x", out_buf[i]);
             }
@@ -883,6 +866,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, CREATED, APPLICATION_JSON,
                 "{\"mkcred_out\":\"%s\"}\n", mkcred_out_b64);
             MG_INFO(("%s %s %d", POST, API_JOIN, CREATED));
+            fprintf(stdout, "[Agent Join] Sending the challenge to the attester, waiting for a reply ...\n");
 
             free(ak_name_buff);
             free(ek_cert_buff);
@@ -906,7 +890,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 mg_http_reply(c, 500, NULL, "\n");
                 return;
             }
-            
+
             /* Decode b64 */
             secret_len = mg_base64_decode((char *) secret_b64, strlen((char *) secret_b64), (char *) secret_buff, secret_len);
             if(secret_len == 0){
@@ -917,14 +901,15 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
             secret_buff[secret_len] = '\0';
-            fprintf(stdout, "INFO: secret received: %s\n", secret_buff);
+            
+            fprintf(stdout, "[Agent Join] Received challenge reply, secret received: %s\n", secret_buff);
 
             /* verify the correctness of the secret_buff received */
             if(!strcmp((char *) secret_buff, (char *) secret)){
-                fprintf(stdout, "INFO: secret verified succesfully\n");
+                fprintf(stdout, "[Agent Join] Secret succesfully verified, attester joined\n");
             }
             else {
-                fprintf(stdout, "INFO: secret does not match\n");
+                fprintf(stdout, "ERROR: secret does not match\n");
                 free(secret_buff);
                 free(secret_b64);
                 mg_http_reply(c, ANAUTHORIZED, NULL, "\n");
@@ -969,16 +954,18 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
                 return;
             }
 
-            fprintf(stdout, "INFO: verifier ip: %s wants to join\n", verifier_ip);
+            fprintf(stdout, "[Verifier Join] Verifier on %s wants to join\n", verifier_ip);
 
             int ret = check_verifier_presence(verifier_ip);
             if(ret == 0){
                 ret = insert_verifier(verifier_ip);
                 mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
                 MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
+                fprintf(stdout, "[Verifier Join] Verifier joined, id: %d\n", ret);
+
             }
             else {
-                fprintf(stdout, "INFO: verifier alredy joined, id: %d\n", ret);
+                fprintf(stdout, "[Verifier Join] Verifier alredy joined, id: %d\n", ret);
                 mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
                 MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
            }
@@ -987,74 +974,8 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             mg_http_reply(c, 404, NULL, "\n");
         }
     } 
+    fflush(stdout);
 }
-
-/* static void request_attestation(struct mg_connection *c, int ev, void *ev_data){
-    if (ev == MG_EV_OPEN) {
-        // Connection created. Store connect expiration time in c->data
-        *(uint64_t *) c->data = mg_millis() + s_timeout_ms;
-    } else if (ev == MG_EV_POLL) {
-        if (mg_millis() > *(uint64_t *) c->data && (c->is_connecting || c->is_resolving)) {
-            mg_error(c, "Connect timeout");
-        }
-    } else if (ev == MG_EV_CONNECT){
-        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
-        size_t object_length = 0;
-        char object[4096];
-
-        fprintf(stdout, "INFO: %s\n %s\n", ak_entry->uuid, ak_entry->ak_pem);
-
-        object_length = snprintf(object, 4096, "{\"uuid\":\"%s\",\"ak_pem\":\"%s\",\"ip_addr\":\"%s\"}", ak_entry->uuid, ak_entry->ak_pem, ak_entry->ip);
-
-        // Send request
-        mg_printf(c,
-        "POST /request_attestation HTTP/1.1\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %d\r\n"
-        "\r\n"
-        "%s\n",
-        object_length,
-        object);
-    } else if (ev == MG_EV_HTTP_MSG) {
-        // Response is received. Print it
-    } else if (ev == MG_EV_ERROR) {
-        struct ak_db_entry *ak_entry = (struct ak_db_entry *) c->fn_data;
-        ak_entry->Continue = false;  // Error, tell event loop to stop
-    }
-} */
-
-/* int notify_verifier(int id, struct ak_db_entry  * ak_entry){
-    char url[MAX_BUF];
-    struct mg_mgr mgr;  // Event manager
-    struct mg_connection *c;
-    
-    ak_entry->Continue = true;
-
-    fprintf(stdout, "INFO: Retrieve verifier information id: %d\n", id);
-
-    if (get_verifier_ip(id, ak_entry->ip) != 0){
-        fprintf(stderr, "ERROR: get_verifier_ip\n");
-        return -1;
-    }
-    
-    // Contact the join service
-    snprintf(url, 280, "http://%s", ak_entry->ip);
-    
-    fprintf(stdout, "INFO: ip: %s\n", url);
-
-    // Connect to the verifier
-
-    mg_mgr_init(&mgr);
-
-    c = mg_http_connect(&mgr, url, request_attestation, ak_entry);
-    if (c == NULL) {
-        MG_ERROR(("CLIENT cant' open a connection"));
-        return -1;
-    }
-
-    while (ak_entry->Continue) mg_mgr_poll(&mgr, 1); //1ms
-    return 0;
-} */
 
 static void is_alive(struct mg_connection *c, int ev, void *ev_data){
     if (ev == MG_EV_OPEN) {
@@ -1077,14 +998,16 @@ static void is_alive(struct mg_connection *c, int ev, void *ev_data){
         
         if(status == 200){
             js->value = 0;
+            fprintf(stdout, "[Attestation] Verifier /api/still_alive 200 OK\n");
         }
         else{
             js->value = -1;
+            fprintf(stdout, "[Attestation] Verifier /api/still_alive response error, status %d\n", status); 
         }
         js->Continue = false;
     } else if (ev == MG_EV_ERROR) {
         struct js_reboot *js = (struct js_reboot *) c->fn_data;
-
+        fprintf(stdout, "[Attestation] Verifier is unreachable, removing it from verifier list\n");
         js->Continue = false;  // Error, tell event loop to stop
     }
 }
@@ -1104,11 +1027,14 @@ int verifier_is_alive(char * ip){
     c = mg_http_connect(&mgr, ip, is_alive, (void *) &js);
 
     if (c == NULL) {
-    MG_ERROR(("CLIENT cant' open a connection"));
-    return -1;
-  }
+        //MG_ERROR(("CLIENT cant' open a connection"));
+        fprintf(stderr, "ERROR CLIENT cant' open a connection\n");
+        return -1;
+    }
 
   while (js.Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+    fflush(stdout);
     return js.value;
 }
 
@@ -1133,6 +1059,9 @@ int get_verifier_id(void){
             id = -1;
             break;
         }
+
+        fprintf(stdout, "[Attestation] Selected verifier id %d on %s\n", id, ip);
+
         ret = verifier_is_alive(ip);
         // delete form verifiers_id an unreachable verifier
         if(ret != 0){
@@ -1148,6 +1077,8 @@ int get_verifier_id(void){
             }
             verifiers_id[MAX_VERIFIERS-1] = 0;
             verifier_num--;
+
+            id = -1;
         }
 
     } while(verifier_num != 0 && ret != 0);
@@ -1233,9 +1164,10 @@ static int init_database(void){
         }
 
         sqlite3_reset(res);
-
-        fprintf(stdout, "INFO: Old database present with %d verifiers joined still connected\n", verifier_num);
-        fprintf(stdout, "INFO: delete number = %d\n", delete_numer);
+        #ifdef DEBUG
+        fprintf(stdout, "Old database present with %d verifiers joined still connected\n", verifier_num);
+        fprintf(stdout, "delete number = %d\n", delete_numer);
+        #endif
         for(int i = 0 ; i <  delete_numer; i++){
             rc = sqlite3_prepare_v2(db, sql5, -1, &res, 0);
             if (rc == SQLITE_OK) {
@@ -1249,7 +1181,9 @@ static int init_database(void){
 
             int step = sqlite3_step(res);
             if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
-                fprintf(stdout, "INFO: verifier succesfully removed from the db\n");
+                #ifdef DEBUG
+                fprintf(stdout, "DEBUG: verifier succesfully removed from the db\n");
+                #endif
             }
             else {
                 fprintf(stderr, "ERROR: could not remove verifier from the db\n");
@@ -1264,14 +1198,14 @@ static int init_database(void){
     //verifiers table
     rc = sqlite3_prepare_v2(db, sql3, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql3, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -1279,14 +1213,14 @@ static int init_database(void){
     //attesters_ek_certs table
     rc = sqlite3_prepare_v2(db, sql1, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql1, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -1294,14 +1228,14 @@ static int init_database(void){
     //attesters_credentials table
     rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
 
     rc = sqlite3_exec(db, sql2, NULL, NULL, NULL);
     if (rc != SQLITE_OK) {
-        fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+        fprintf(stderr, "ERROR: Failed to execute statement: %s\n", sqlite3_errmsg(db));
         sqlite3_close(db);
         return -1;
     }
@@ -1315,12 +1249,14 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     MG_INFO(("%lu CREATED", c->id));
   } else if (ev == MG_EV_ERROR) {
     // On error, log error message
-    MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+    //MG_ERROR(("%lu ERROR %s", c->id, (char *) ev_data));
+    printf("[Init] MQTT connection error: %s\n", (char *) ev_data);
   } else if (ev == MG_EV_MQTT_OPEN) {
     // MQTT connect is successful
-    MG_INFO(("%lu CONNECTED", c->id));
+    //MG_INFO(("%lu CONNECTED", c->id));
     char topic[20];
     sprintf(topic, "%s+", STATUS_TOPIC_PREFIX);
+    printf("[Init] Connected on topic %s\n", topic);
     mqtt_subscribe(c_mqtt, topic);
     
   } else if (ev == MG_EV_MQTT_MSG) {
@@ -1330,8 +1266,12 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
     char* uuid = mg_json_get_str(mm->data, "$.uuid");
     char* ak_pub = mg_json_get_str(mm->data, "$.ak_pub");
     int status = (int) mg_json_get_long(mm->data, "$.status", -99);
+    
+    char topic [30];
+    memcpy(topic, mm->topic.ptr, mm->topic.len);
+    topic[mm->topic.len] = '\0';
 
-    printf("STATUS: Integrity report from topic %s.\n UUID %s => %s\n", mm->topic.ptr, uuid, get_error(status));
+    printf("[Integrity Report] Agent %s => %s\n", uuid, get_error(status));
     if(status != 0){
         /*Log the error*/
         char buff[4096]; 
@@ -1344,6 +1284,7 @@ static void mqtt_handler(struct mg_connection *c, int ev, void *ev_data) {
 
   } else if (ev == MG_EV_CLOSE) {
     MG_INFO(("%lu CLOSED", c->id));
+    printf("[Init] MQTT connection to broker closed\n");
     //s_conn = NULL;  // Mark that we're closed
   }
   (void) c->fn_data;
@@ -1358,6 +1299,12 @@ int main(int argc, char *argv[]) {
     pthread_t thread_id;  // queue manager thread
     stop_event = 0;
 
+#ifdef DEBUG
+  mg_log_set(MG_LL_INFO);  /* Set log level */
+#else
+  mg_log_set(MG_LL_NONE);
+#endif
+
     /* read configuration from cong file */
     if(read_config(/* join_service */ 2, (void * ) &js_config)){
         int err = errno;
@@ -1365,6 +1312,8 @@ int main(int argc, char *argv[]) {
         exit(err);
     }
     snprintf(mqtt_conn, 280, "http://%s:%d", js_config.mqtt_broker_ip, js_config.mqtt_broker_port);
+    printf("[Init] Connecting to the MQTT broker on %s:%d\n", js_config.mqtt_broker_ip, js_config.mqtt_broker_port);
+
     mg_mgr_init(&mgr_mqtt);
     c_mqtt = mqtt_connect(&mgr_mqtt, mqtt_handler, "join_service", mqtt_conn);
 
@@ -1380,7 +1329,7 @@ int main(int argc, char *argv[]) {
     struct stat st = {0};
     if (stat("/var/embrave", &st) == -1) {
         if(!mkdir("/var/embrave", 0711)) {
-            fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
+            fprintf(stdout, "[Init] /var/embrave directory successfully created\n");
         }
         else {
             fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
@@ -1389,7 +1338,7 @@ int main(int argc, char *argv[]) {
 
     if (stat("/var/embrave/join_service", &st) == -1) {
         if(!mkdir("/var/embrave/join_service", 0711)) {
-            fprintf(stdout, "INFO: /var/embrave/join_service directory successfully created\n");
+            fprintf(stdout, "[Init] /var/embrave/join_service directory successfully created\n");
         }
         else {
             fprintf(stderr, "ERROR: cannot create /var/embrave/join_service directory\n");
@@ -1418,8 +1367,9 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    MG_INFO(("Listening on http://%s:%d", js_config.ip, js_config.port));
+    printf("[Init] Listening on http://%s:%d\n", js_config.ip, js_config.port);
 
+    fflush(stdout);
     for (;;) {
         mg_mgr_poll(&mgr, 1000);    //http
         mg_mgr_poll(&mgr_mqtt, 1000);   //mqtt

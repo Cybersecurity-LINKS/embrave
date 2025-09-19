@@ -348,10 +348,12 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     uint32_t field_len;
 	uint32_t field_path_len;
 	uint8_t alg_field[8];
-    uint8_t alg_sha1_field[6];
+    //uint8_t alg_sha1_field[6];
     uint8_t acc = 0;
     uint8_t *entry_aggregate;
+    uint8_t zeros [SHA256_DIGEST_LENGTH] = {0};
     int sz;
+    int offset = 0;
     unsigned char *calculated_template_hash = NULL;
 
     memcpy(&pcr, rply ->ima_log, sizeof(uint32_t));
@@ -381,18 +383,21 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
     memcpy(entry_aggregate + acc, &field_len, sizeof(uint32_t));
     acc += sizeof(uint32_t);
 
-
-    //sha256 len = 0x28
+    //sha1 or sha256
     if(field_len != 0x28){
-        //the next field must be "sha256:" 
-        //so if it is "sha1:" means that there was an error during the IMA log creation => skip row
-        //EX: 10 20..5c ima-ng sha256:a6..e6 /var/lib/logrotate/status
-        //10 00..00 ima-ng sha1:00..00 /var/lib/logrotate/status
-        memcpy(alg_sha1_field, rply ->ima_log + *total_read, 6*sizeof(uint8_t));
-        *total_read += 6 * sizeof(uint8_t);
-        memcpy(entry_aggregate + acc, alg_sha1_field, sizeof alg_sha1_field);
-        acc += sizeof alg_sha1_field;
-        
+        offset = 6;
+    } else {
+        offset = 8;
+    }
+
+    memcpy(alg_field, rply ->ima_log + *total_read, offset);
+    *total_read += offset;
+
+    memcpy(entry_aggregate + acc, alg_field, offset);
+    acc += offset;
+
+    if(offset == 6){
+        //SHA1 => 00..00 LOG VIOLATION
         *total_read += SHA_DIGEST_LENGTH * sizeof(uint8_t);
 
         //PCR10 extends FF not 00
@@ -404,17 +409,25 @@ int read_ima_log_row(tpm_challenge_reply *rply, size_t *total_read, uint8_t * te
         *total_read += sizeof(char) * field_path_len;
         free(entry_aggregate);
         return 1;
-    } 
+        
+    } else {
+        //check for possibile sha2256 violation
+        memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
+        *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
+        bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        
+        if(memcmp(hash_name_byte, zeros, SHA256_DIGEST_LENGTH) == 0){
+            //PCR10 extends FF not 00
+            memset(template_hash, 0xff, SHA_DIGEST_LENGTH);
+            memset(template_hash_sha256, 0xff, SHA256_DIGEST_LENGTH); 
 
-    memcpy(alg_field, rply ->ima_log + *total_read, 8*sizeof(uint8_t));
-    *total_read += 8 * sizeof(uint8_t);
-
-    memcpy(entry_aggregate + acc, alg_field, sizeof alg_field);
-    acc += 8*sizeof(uint8_t);
-
-    memcpy(hash_name_byte, rply ->ima_log + *total_read, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
-    *total_read += SHA256_DIGEST_LENGTH * sizeof(uint8_t);
-    bin_2_hash(hash_name, hash_name_byte, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+            memcpy(&field_path_len, rply ->ima_log + *total_read, sizeof(uint32_t));
+            *total_read += sizeof(uint32_t);
+            *total_read += sizeof(char) * field_path_len;
+            free(entry_aggregate);
+            return 1;
+        }
+    }
 
     memcpy(entry_aggregate + acc, hash_name_byte, SHA256_DIGEST_LENGTH *sizeof(uint8_t));
     acc += SHA256_DIGEST_LENGTH *sizeof(uint8_t);
@@ -586,7 +599,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
 
     /*No new event in the agent*/
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
-        fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one\n");
+        fprintf(stdout, "[%s Attestation] No IMA log received, skipping IMA log verification\n", agent->uuid);
         goto PCR10;
     } 
     else if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
@@ -597,7 +610,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         }
     } 
     else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
-        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 present\n");
+        fprintf(stderr, "ERROR: No IMA log received but no previous PCR10 present\n");
         ret = VERIFIER_INTERNAL_ERROR;
         goto error;
     }
@@ -638,7 +651,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         //verify that (name,hash) present in in golden values db
         ret = check_goldenvalue(db, file_hash, path_name);
         if(ret != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            printf("GOLDENVALUE MISMATCH: Event name %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             free(path_name);
             ret = GOLDEN_VALUE_MISMATCH;
             goto error;
@@ -710,9 +723,7 @@ PCR10:
 
 ok: 
     agent->byte_rcv += total_read;
-    //printf("WARNING check_goldenvalue output todo!\n");
-    fprintf(stdout, "INFO: PCR10 calculation OK\n");
-    fprintf(stdout, "INFO: IMA log verification OK\n");
+    fprintf(stdout, "[%s Attestation] PCR10 calculation and IMA log verification: OK\n", agent->uuid);
 
     //Convert PCR10 and save it
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
