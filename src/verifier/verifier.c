@@ -31,13 +31,14 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
 
   if(rpl == NULL) return -1;
   
+  fprintf(stdout, "[%s Attestation] Verify TPM Quote\n", agent_data->uuid);
   //verify quote
   ret = verify_quote(rpl, agent_data->ak_pub,  agent_data);
   if (ret != 0){
     fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
     return ret;
   } else {
-    fprintf(stdout, "INFO: Successful verification of TPM quote\n");
+    fprintf(stdout, "[%s Attestation] TPM Quote verification: OK\n", agent_data->uuid);
   }
 
   //Open the goldenvalues DB
@@ -49,12 +50,13 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
     goto end;
   }
 
+  fprintf(stdout, "[%s Attestation] Verify IMA log and PCR10.\n", agent_data->uuid);
   //verify IMA log
   ret = verify_ima_log(rpl, db, agent_data);
   if (ret != 0){
     fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
   } else {
-    fprintf(stdout, "INFO: Successful verification of IMA log and PCR10.\n Trusted agent\n");
+    fprintf(stdout, "[%s Attestation] Verify IMA log and PCR10: OK\n", agent_data->uuid);
   }
 
 end:

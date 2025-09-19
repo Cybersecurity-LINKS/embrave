@@ -34,7 +34,7 @@ void print_sent_data(tpm_challenge_reply *rpl);
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 {
 #ifdef DEBUG
-  printf("load challenge request\n");
+  printf("DEBUG: load challenge request\n");
   printf("%s\n", hm->body.ptr);
   printf("%d\n", hm->body.len);
 #endif
@@ -42,17 +42,17 @@ int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl)
 
   size_t sz = mg_base64_decode(hm->body.ptr, hm->body.len,(char *) chl, dec);
   if(sz == 0){
-    printf("Transmission challenge data error \n");
+    printf("ERROR: Transmission challenge data error \n");
     return -1;
   }
 
 #ifdef DEBUG
-  printf("NONCE Received:");
+  printf("DEBUG: nonce Received:");
   for(int i= 0; i< (int) NONCE_SIZE; i++)
     printf("%02X", chl->nonce[i]);
   printf("\n");
-  printf("send all IMA LOG? %d\n", chl->send_wholeLog);
-  printf("from byte %d\n", chl->send_from_byte);
+  printf("DEBUG: send all log %d\n", chl->send_wholeLog);
+  printf("DEBUG: log from byte %d\n", chl->send_from_byte);
 #endif
 
   return 0;
@@ -210,7 +210,7 @@ int create_request_body(size_t *object_length, char *object){
   /* Read EK certificate */
   FILE *fd_ek_cert = fopen(attester_config.ek_ecc_cert, "r");
   if(fd_ek_cert == NULL){
-    fprintf(stdout, "INFO: EK ECC certificate not present, looking for RSA certificate\n");
+    fprintf(stdout, "EK ECC certificate not present, looking for RSA certificate\n");
     fd_ek_cert = fopen(attester_config.ek_rsa_cert, "r");
     if(fd_ek_cert == NULL){
       fprintf(stderr, "ERROR: EK RSA certificate not found\n");
@@ -257,7 +257,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 #ifdef DEBUG
-  fprintf(stdout, "INFO: EK cert base64: %s\n", b64_buff_ek);
+  fprintf(stdout, "DEBUG: EK cert base64: %s\n", b64_buff_ek);
 #endif
   free(ek_cert);
 
@@ -281,7 +281,7 @@ int create_request_body(size_t *object_length, char *object){
     return -1;
   }
 #ifdef DEBUG
-  fprintf(stdout, "INFO: AK pem size: %ld\n", size);
+  fprintf(stdout, "DEBUG: AK pem size: %ld\n", size);
 #endif
   ret = fread(ak_pub, 1, (size_t) size, fd_ak_pub);
   ak_pub[size] = '\0';
@@ -295,7 +295,7 @@ int create_request_body(size_t *object_length, char *object){
 
   fclose(fd_ak_pub);
 #ifdef DEBUG
-  fprintf(stdout, "INFO: AK pem \n%s\n", ak_pub);
+  fprintf(stdout, "DEBUG: AK pem \n%s\n", ak_pub);
 #endif
   tot_sz += size;
   //Encode in b64
@@ -359,9 +359,6 @@ int create_request_body(size_t *object_length, char *object){
   sprintf(object, "{\"uuid\":\"%s\",\"ek_cert_b64\":\"%s\",\"ak_pub_b64\":\"%s\",\"ak_name_b64\":\"%s\",\"ip_addr\":\"%s\",\"whitelist_uri\":\"%s\"}", attester_config.uuid, b64_buff_ek, ak_pub, ak_name_b64, buff, attester_config.whitelist_uri);
   *object_length = strlen(object);
 
-#ifdef DEBUG
-  printf("Final object : %s\n", object);
-#endif
   free(b64_buff_ek);
   free(ak_pub);
   free(ak_name_b64);
@@ -385,10 +382,6 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       fprintf(stderr, "ERROR: cannot create the http body contacting the join_service\n");
       exit(-1);
     }
-
-#ifdef DEBUG
-    printf("%s\n", object);
-#endif
 
     /* Send request */
     mg_printf(c,
@@ -419,8 +412,8 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       unsigned char *mkcred_out_b64 = (unsigned char *) mg_json_get_str(hm->body, "$.mkcred_out");
       size_t mkcred_out_len = B64DECODE_OUT_SAFESIZE(strlen((char *) mkcred_out_b64));
       #ifdef DEBUG
-      fprintf(stdout, "INFO: MKCRED_OUT b64: %s\n", mkcred_out_b64);
-      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out_len);
+      fprintf(stdout, "DEBUG: MKCRED_OUT b64: %s\n", mkcred_out_b64);
+      fprintf(stdout, "DEBUG: MKCRED_OUT len:%d\n", mkcred_out_len);
       #endif
       mkcred_out->value = (unsigned char *) malloc(mkcred_out_len);
       if(mkcred_out->value == NULL) {
@@ -439,13 +432,13 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
       }
 
       #ifdef DEBUG
-      fprintf(stdout, "INFO: MKCRED_OUT: ");
+      fprintf(stdout, "DEBUG: MKCRED_OUT: ");
       for(int i=0; i<mkcred_out->len; i++){
         printf("%02x", mkcred_out->value[i]);
       }
       printf("\n");
-      fprintf(stdout, "INFO: MKCRED_OUT len:%d\n", mkcred_out->len); 
-      fprintf(stdout, "INFO: mkcred_out received from join service.\n");
+      fprintf(stdout, "DEBUG: MKCRED_OUT len:%d\n", mkcred_out->len); 
+      fprintf(stdout, "DEBUG: mkcred_out received from join service.\n");
       #endif
       free(mkcred_out_b64);
 
@@ -567,6 +560,8 @@ static int join_procedure(){
   snprintf(s_conn, 280, "http://%s:%d", attester_config.join_service_ip, attester_config.join_service_port);
   mg_mgr_init(&mgr);
 
+  fprintf(stdout, "[Join] Attester request join to join service on %s\n", s_conn);
+
   /* request to join (receive tpm_makecredential output) */
   c = mg_http_connect(&mgr, s_conn, request_join, (void *) &mkcred_out);
 
@@ -599,7 +594,7 @@ int main(int argc, char *argv[]) {
 
   if (stat("/var/embrave", &st) == -1) {
     if(!mkdir("/var/embrave", 0711)) {
-        fprintf(stdout, "INFO: /var/embrave directory successfully created\n");
+        fprintf(stdout, "[Init] /var/embrave directory successfully created\n");
       }
       else {
         fprintf(stderr, "ERROR: cannot create /var/embrave directory\n");
@@ -608,7 +603,7 @@ int main(int argc, char *argv[]) {
 
   if (stat("/var/embrave/attester", &st) == -1) {
       if(!mkdir("/var/embrave/attester", 0711)) {
-        fprintf(stdout, "INFO: /var/embrave/attester directory successfully created\n");
+        fprintf(stdout, "[Init] /var/embrave/attester directory successfully created\n");
       }
       else {
         fprintf(stderr, "ERROR: cannot create /var/embrave/attester directory\n");
@@ -645,6 +640,8 @@ int main(int argc, char *argv[]) {
     exit(-1);
   };
 
+  fprintf(stdout, "[Join] Successful join procedure\n");
+
   mg_log_set(MG_LL_INFO);  /* Set log level */
   mg_mgr_init(&mgr);        /* Initialize event manager */
   
@@ -657,7 +654,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  fprintf(stdout, "INFO: Server listen to %s \n", s_conn);
+  fprintf(stdout, "[Attestation] Agent server listen on %s \n", s_conn);
 
   Continue = true;
 

@@ -599,7 +599,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
 
     /*No new event in the agent*/
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
-        fprintf(stdout, "INFO: No IMA log received, compare the old PCR10 with received one\n");
+        fprintf(stdout, "[%s Attestation] No IMA log received, skipping IMA log verification\n", agent->uuid);
         goto PCR10;
     } 
     else if(agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
@@ -610,7 +610,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         }
     } 
     else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
-        fprintf(stderr, "ERROR: No IMA log received but no old PCR10 present\n");
+        fprintf(stderr, "ERROR: No IMA log received but no previous PCR10 present\n");
         ret = VERIFIER_INTERNAL_ERROR;
         goto error;
     }
@@ -651,7 +651,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         //verify that (name,hash) present in in golden values db
         ret = check_goldenvalue(db, file_hash, path_name);
         if(ret != 0){
-            printf("Event name: %s and hash value %s not found from golden values db!\n", path_name, file_hash);
+            printf("GOLDENVALUE MISMATCH: Event name %s and hash value %s not found from golden values db!\n", path_name, file_hash);
             free(path_name);
             ret = GOLDEN_VALUE_MISMATCH;
             goto error;
@@ -723,9 +723,7 @@ PCR10:
 
 ok: 
     agent->byte_rcv += total_read;
-    //printf("WARNING check_goldenvalue output todo!\n");
-    fprintf(stdout, "INFO: PCR10 calculation OK\n");
-    fprintf(stdout, "INFO: IMA log verification OK\n");
+    fprintf(stdout, "[%s Attestation] PCR10 calculation and IMA log verification: OK\n", agent->uuid);
 
     //Convert PCR10 and save it
     bin_2_hash(agent->pcr10_sha1, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
