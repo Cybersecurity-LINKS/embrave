@@ -32,7 +32,7 @@ int attester_init(/* struct attester_conf* conf */) {
 
   fprintf(stdout, "[Init] Initialisation of TPM keys...\n");
 
-  tss_r = Tss2_TctiLdr_Initialize(NULL, &tcti_context);
+  tss_r = Tss2_TctiLdr_Initialize("swtpm:host=localhost,port=2321", &tcti_context);
   if (tss_r != TSS2_RC_SUCCESS) {
     fprintf(stderr, "ERROR: Could not initialize tcti context\n");
     return -1;
