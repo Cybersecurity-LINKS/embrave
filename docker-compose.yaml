@@ -20,7 +20,7 @@ services:
     image: embrave
     hostname: join-service
     container_name: join-service
-    restart: unless-stopped
+    #restart: unless-stopped
     entrypoint: ["/app/join_service.sh"]
     ports:
       - "8000:8000"
@@ -39,7 +39,7 @@ services:
     image: embrave
     hostname: verifier
     container_name: verifier
-    restart: unless-stopped
+    #restart: unless-stopped
     entrypoint: ["bash",  "/app/verifier.sh"]
     ports:
       - "8001:80"
