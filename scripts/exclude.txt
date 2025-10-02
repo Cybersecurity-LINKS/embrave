@@ -17,3 +17,4 @@
 /root/.lesshst
 /home/pi/embrave/
 /home/pi/.vscode-server/
+/etc/ld.so.cache
