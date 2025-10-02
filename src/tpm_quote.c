@@ -574,7 +574,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     int ret_val;
     bool goldenvalue_trust = true;
     FILE *file_goldenvalue = NULL;
-    char file_goldenvalue_name [350];
+    char file_goldenvalue_name [450];
     size_t total_read = 0;
     uint32_t template_len;
     uint8_t * pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(uint8_t));
@@ -635,7 +635,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         return UNKNOWN_IMA_TEMPLATE;
     }//other template here
 
-    snprintf(file_goldenvalue_name, 300, "/var/embrave/verifier/goldenvalue_files/goldenvalue_mismatch_%s.txt", agent->uuid);
+    snprintf(file_goldenvalue_name, 450, "/var/embrave/verifier/goldenvalue_files/goldenvalue_mismatch_%s.txt", agent->uuid);
     file_goldenvalue = fopen(file_goldenvalue_name, "w");
 
     while(rply->ima_log_size != total_read){
@@ -753,7 +753,7 @@ ok:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    fclose(file_goldenvalue);
+    close(file_goldenvalue);
     return TRUSTED;
 error:
     free(pcr10_sha1);
@@ -761,7 +761,7 @@ error:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    fclose(file_goldenvalue);
+    close(file_goldenvalue);
     return ret_val;
 }
 
