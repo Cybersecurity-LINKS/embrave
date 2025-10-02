@@ -44,17 +44,18 @@ def add_row(conn, row):
 
 
 def main():
-    database = r"/var/embrave/verifier/whitelist/goldenvalues.db"
+    
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS whitelist (
                                         name text NOT NULL,
                                         PRIMARY KEY (name)
                                     ); """
-    if len(sys.argv) < 2:
-        print("Required the name to add in the whitelist")
+    if len(sys.argv) < 3:
+        print("USAGE: db_path file_name\nExample: python3 ./scripts/add_excludelist.py ./goldenvalues.db /etc/ld.so.cache")
         sys.exit(1)
 
-    name = sys.argv[1]
-    print(name)
+    database = sys.argv[1]
+    name = sys.argv[2]
+    print("db:", database, "path:", name)
 
     conn = create_connection(database)
     create_table(conn, sql_create_projects_table)
