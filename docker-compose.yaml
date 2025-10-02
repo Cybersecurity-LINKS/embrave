@@ -46,6 +46,7 @@ services:
     volumes:
       - ./embrave.conf:/etc/embrave.conf
       - ./goldenvalues.db:/var/embrave/verifier/whitelist/goldenvalues.db
+      - ./goldenvalue_files:/var/embrave/verifier/goldenvalue_files/
     depends_on:
       - mqtt_broker
       - join-service

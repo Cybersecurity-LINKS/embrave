@@ -571,6 +571,10 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     uint8_t hash_name_byte[SHA256_DIGEST_LENGTH];
     char *path_name = NULL;
     int ret;
+    int ret_val;
+    bool goldenvalue_trust = true;
+    FILE *file_goldenvalue = NULL;
+    char file_goldenvalue_name [350];
     size_t total_read = 0;
     uint32_t template_len;
     uint8_t * pcr10_sha1 = calloc(SHA_DIGEST_LENGTH, sizeof(uint8_t));
@@ -579,7 +583,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     uint8_t * sha256_concatenated = calloc(SHA256_DIGEST_LENGTH * 2, sizeof(uint8_t));
     UINT16 sz = (UINT16) SHA256_DIGEST_LENGTH;
     UINT16 sz1 = (UINT16) SHA_DIGEST_LENGTH;
-
+    
     if((rply->ima_log == NULL && rply->ima_log_size > 0) || (rply->ima_log_size < 0) || (db == NULL)){
         fprintf(stderr, "ERROR: verify_ima_log bad input\n");
         return VERIFIER_INTERNAL_ERROR;
@@ -611,7 +615,7 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
     } 
     else if (rply->ima_log_size == 0 && agent->pcr10_sha256 == NULL && agent->pcr10_sha1 == NULL) {
         fprintf(stderr, "ERROR: No IMA log received but no previous PCR10 present\n");
-        ret = VERIFIER_INTERNAL_ERROR;
+        ret_val = VERIFIER_INTERNAL_ERROR;
         goto error;
     }
     
@@ -631,6 +635,9 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         return UNKNOWN_IMA_TEMPLATE;
     }//other template here
 
+    snprintf(file_goldenvalue_name, 300, "/var/embrave/verifier/goldenvalue_files/goldenvalue_mismatch_%s.txt", agent->uuid);
+    file_goldenvalue = fopen(file_goldenvalue_name, "w");
+
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
         ret = read_ima_log_row(rply, &total_read, template_hash, template_hash_sha256, file_hash, &path_name, hash_name_byte);
@@ -639,12 +646,14 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
             ret = compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256);
             if(ret != 0){
                 fprintf(stderr, "ERROR: pcr10 digest error\n");
+                ret_val = ret;
                 goto error;
             }
             continue;
         } else if(ret != 0){
             free(path_name);
             fprintf(stderr, "ERROR: Error during read_ima_log_row\n");
+            ret_val = ret;
             goto error;
         }
 
@@ -652,50 +661,60 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         ret = check_goldenvalue(db, file_hash, path_name);
         if(ret != 0){
             printf("GOLDENVALUE MISMATCH: Event name %s and hash value %s not found from golden values db!\n", path_name, file_hash);
-            free(path_name);
-            ret = GOLDEN_VALUE_MISMATCH;
-            goto error;
+            goldenvalue_trust = false;
+            ret_val = GOLDEN_VALUE_MISMATCH;
+
+            //save alla mismatch on file
+            fprintf(file_goldenvalue, "%s %s\n", path_name, file_hash);
+            //goto error;
         } 
         
         free(path_name);
 
         //Compute PCR10
-        ret = compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256);
-        if(ret != 0){
-            fprintf(stderr, "ERROR: PCR10 digest error\n");
-            free(path_name);
-            goto error;
+        if (goldenvalue_trust){
+            ret = compute_pcr10(pcr10_sha1, pcr10_sha256, sha1_concatenated, sha256_concatenated, template_hash, template_hash_sha256);
+            if(ret != 0){
+                fprintf(stderr, "ERROR: PCR10 digest error\n");
+                free(path_name);
+                ret_val = ret;
+                goto error;
+            }
         }
+
 
         //pcrs.pcr_values[0].digests->size == 20 == sha1
         //pcrs.pcr_values[1].digests->size == 32 == sha256
         //digests[i] i = pcrid mod 8 => 10 mod 8 2
         //Compare PCR10 with the received one
 
-        if(memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) == 0 
+        if(goldenvalue_trust && memcmp(rply->pcrs.pcr_values[0].digests[0].buffer, pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH) == 0 
             && memcmp(rply->pcrs.pcr_values[1].digests[3].buffer, pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH) == 0){
                 goto ok;
         }
 
     }
+    if (goldenvalue_trust)
+    {
+        fprintf(stdout, "ERROR: PCR10 calculation mismatch\n");
+        fprintf(stdout, "SHA256 received:\n");
+        tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("\n");
 
-    fprintf(stdout, "ERROR: PCR10 calculation mismatch\n");
-    fprintf(stdout, "SHA256 received:\n");
-    tpm2_util_hexdump(rply->pcrs.pcr_values[1].digests[3].buffer, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
+        fprintf(stdout, "SHA256 computed:\n");
+        tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
+        printf("\n");
 
-    fprintf(stdout, "SHA256 computed:\n");
-    tpm2_util_hexdump(pcr10_sha256, sizeof(uint8_t) * SHA256_DIGEST_LENGTH);
-    printf("\n");
+        fprintf(stdout, "SHA1 received:\n");
+        tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");
 
-    fprintf(stdout, "SHA1 received:\n");
-    tpm2_util_hexdump(rply->pcrs.pcr_values[0].digests[0].buffer, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");
-
-    fprintf(stdout, "SHA1 computed:\n");
-    tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
-    printf("\n");  
-    ret = PCR10_VALUE_MISMATCH;
+        fprintf(stdout, "SHA1 computed:\n");
+        tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
+        printf("\n");  
+        ret_val = PCR10_VALUE_MISMATCH;
+    }
+    
     goto error;
 
 PCR10:  
@@ -717,7 +736,7 @@ PCR10:
         fprintf(stdout, "SHA1 computed:\n");
         tpm2_util_hexdump(pcr10_sha1, sizeof(uint8_t) * SHA_DIGEST_LENGTH);
         printf("\n");  
-        ret = PCR10_VALUE_MISMATCH;
+        ret_val = PCR10_VALUE_MISMATCH;
         goto error;
     }
 
@@ -734,6 +753,7 @@ ok:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
+    fclose(file_goldenvalue);
     return TRUSTED;
 error:
     free(pcr10_sha1);
@@ -741,7 +761,8 @@ error:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    return ret;
+    fclose(file_goldenvalue);
+    return ret_val;
 }
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName) {

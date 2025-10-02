@@ -16,6 +16,7 @@
 /var/embrave/
 /var/log/
 /var/cache/
+/var/backups/apt.extended_states.0
 /tmp
 /root/.lesshst
 /home/pi/embrave/

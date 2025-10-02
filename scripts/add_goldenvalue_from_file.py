@@ -33,18 +33,29 @@ def add_row(conn, name, file_hash):
 def main():
     
 
-    if len(sys.argv) < 4:
-        print("USAGE: db_path file_name sha256\nExample: python3 ./scripts/add_goldenvalue.py ./goldenvalues.db /etc/ld.so.cache 50d70673c1902a6e6427a28757ed5b3dc19e9718a96f5aa454a5ee3e71e4fce4")
-        sys.exit(1)
+    if len(sys.argv) < 3:
+        print("USAGE: db_path file_path\nExample: python3 ./scripts/add_goldenvalue_from_file.py ./goldenvalues.db")
 
     database = sys.argv[1]
-    name = sys.argv[2]
-    file_hash = sys.argv[3]
-    print("db:", database, "path:", name, "sha256:", name)
-
+    file_name = sys.argv[2]
+    print("Adding the following golden values to the database ", database, ":")
     conn = create_connection(database)
+    file = open(file_name, 'r')
+
+    lines = file.readlines()
+
+    for line in lines:
+        x = line.split()
+        name = x[0]
+        sha256 = x[1]
+        print(name, sha256)
+        add_row(conn, name, sha256)
+
+
+    file.close()
     
-    add_row(conn, name, file_hash)
+    
+    #add_row(conn, name, file_hash)
     conn.close()
 
 if __name__ == '__main__':
