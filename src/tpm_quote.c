@@ -601,6 +601,9 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         }
     }
 
+    snprintf(file_goldenvalue_name, 450, "/var/embrave/verifier/goldenvalue_files/goldenvalue_mismatch_%s.txt", agent->uuid);
+    file_goldenvalue = fopen(file_goldenvalue_name, "w");
+
     /*No new event in the agent*/
     if(rply->ima_log_size == 0 && agent->pcr10_sha256 != NULL && agent->pcr10_sha1 != NULL){
         fprintf(stdout, "[%s Attestation] No IMA log received, skipping IMA log verification\n", agent->uuid);
@@ -634,9 +637,6 @@ int verify_ima_log(tpm_challenge_reply *rply, sqlite3 *db, agent_list *agent){
         fprintf(stderr, "ERROR: Unknown IMA template\n");
         return UNKNOWN_IMA_TEMPLATE;
     }//other template here
-
-    snprintf(file_goldenvalue_name, 450, "/var/embrave/verifier/goldenvalue_files/goldenvalue_mismatch_%s.txt", agent->uuid);
-    file_goldenvalue = fopen(file_goldenvalue_name, "w");
 
     while(rply->ima_log_size != total_read){
         //Read a row from IMA log
@@ -753,7 +753,7 @@ ok:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    close(file_goldenvalue);
+    fclose(file_goldenvalue);
     return TRUSTED;
 error:
     free(pcr10_sha1);
@@ -761,7 +761,7 @@ error:
     free(sha1_concatenated);
     free(sha256_concatenated);
     free(event_name);
-    close(file_goldenvalue);
+    fclose(file_goldenvalue);
     return ret_val;
 }
 
