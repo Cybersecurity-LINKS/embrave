@@ -212,7 +212,7 @@ void *queue_manager(void *vargp){
 
         pthread_mutex_unlock(&mutex);
 
-        fprintf(stdout, "[Attestation Request]: Request attestation for %s, selecting a verifier...\n", uuid);
+        fprintf(stdout, "[Attestation Request]: Requesting attestation for %s, selecting a verifier...\n", uuid);
         fflush(stdout);
 
         /*Uuid and AK pem and ip address*/
@@ -305,7 +305,7 @@ static int set_agent_data(char *uuid){
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
 #ifdef DEBUG
-        fprintf(stdout, "AK confirmed and validity, succesfully updated\n");
+        fprintf(stdout, "AK confirmed and validity, successfully updated\n");
 #endif
     }
     else {
@@ -419,7 +419,7 @@ static int insert_verifier(char *ip){
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
         #ifdef DEBUG
-        fprintf(stdout, "debug: verifier succesfully inserted into the db\n");
+        fprintf(stdout, "debug: verifier successfully inserted into the db\n");
         #endif
         ret = sqlite3_last_insert_rowid(db);
         verifiers_id[verifier_num++] = (int) ret;
@@ -554,7 +554,7 @@ static int save_ak(struct ak_db_entry *ak_entry){
             fprintf(stderr, "ERROR: could not insert AK into the db\n");
         }
     } else {
-        //agent alredy present, update the ak value in db
+        //agent already present, update the ak value in db
         rc = sqlite3_prepare_v2(db, sql2, -1, &res, 0);
         if (rc == SQLITE_OK) {
             rc = sqlite3_bind_text(res, 1, (char *) ak_entry->ak_pem, -1, SQLITE_TRANSIENT);
@@ -631,7 +631,7 @@ static int insert_ek(struct ek_db_entry *ek_entry){
     
     if (step == SQLITE_DONE && sqlite3_changes(db) == 1){
 #ifdef DEBUG
-        fprintf(stdout, "EK succesfully inserted into the db\n");
+        fprintf(stdout, "EK successfully inserted into the db\n");
 #endif
     }
     else {
@@ -745,7 +745,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             #endif
             }
             else {
-                fprintf(stdout, "[Agent Join] EK certificate alredy verified\n");
+                fprintf(stdout, "[Agent Join] EK certificate already verified\n");
                 //Malloc buffer
                 if(ek_cert_buff == NULL) {
                     free(ek_cert_b64);
@@ -807,7 +807,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
             unsigned char *out_buf;
             size_t out_buf_size;
 
-            fprintf(stdout, "[Agent Join] Creating the challenge on the secret with the tpm makecredential\n");
+            fprintf(stdout, "[Agent Join] Creating the challenge on the secret with the tpm_makecredential\n");
 
             if(tpm_makecredential(ek_cert_buff, ek_cert_len, secret, ak_name_buff, ak_name_len, &out_buf, &out_buf_size)){
                 fprintf(stderr, "ERROR: tpm_makecredential failed\n");
@@ -906,7 +906,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
             /* verify the correctness of the secret_buff received */
             if(!strcmp((char *) secret_buff, (char *) secret)){
-                fprintf(stdout, "[Agent Join] Secret succesfully verified, attester joined\n");
+                fprintf(stdout, "[Agent Join] Secret successfully verified, attester joined\n");
             }
             else {
                 fprintf(stdout, "ERROR: secret does not match\n");
@@ -965,7 +965,7 @@ static void join_service_manager(struct mg_connection *c, int ev, void *ev_data)
 
             }
             else {
-                fprintf(stdout, "[Verifier Join] Verifier alredy joined, id: %d\n", ret);
+                fprintf(stdout, "[Verifier Join] Verifier already joined, id: %d\n", ret);
                 mg_http_reply(c, OK, APPLICATION_JSON, "{\"topic_id\":%d}\n", ret);
                 MG_INFO(("%s %s %d", POST, API_JOIN_VERIFIER, OK));
            }
@@ -1182,7 +1182,7 @@ static int init_database(void){
             int step = sqlite3_step(res);
             if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
                 #ifdef DEBUG
-                fprintf(stdout, "DEBUG: verifier succesfully removed from the db\n");
+                fprintf(stdout, "DEBUG: verifier successfully removed from the db\n");
                 #endif
             }
             else {

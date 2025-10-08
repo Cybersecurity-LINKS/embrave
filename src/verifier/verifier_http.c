@@ -292,7 +292,7 @@ int remove_agent(agent_list * ptr){
     
   if (step == SQLITE_DONE && sqlite3_changes(db) == 1) {
   #ifdef DEBUG
-    fprintf(stdout, "DEBUG: attester succesfully removed from the db\n");
+    fprintf(stdout, "DEBUG: attester successfully removed from the db\n");
   #endif
   }
   else {
@@ -625,7 +625,7 @@ static int init_database(void){
 
   rc = sqlite3_prepare_v2(db, sql_select, -1, &res, NULL);
   if (rc == SQLITE_OK) {
-    /*db alredy present, try to recontatct old agents*/
+    /*db already present, try to recontatct old agents*/
 
     while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
       char *uuid = ( char *)sqlite3_column_text(res, 0);

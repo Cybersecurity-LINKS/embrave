@@ -24,7 +24,7 @@ The join server responds with a
 challenge.
 end note
 
-' alt alredy joined
+' alt already joined
 '  join_service->attester_agent: OK
 ' else join
   join_service->join_service: Validate EK_cert
