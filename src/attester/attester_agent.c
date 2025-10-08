@@ -48,6 +48,8 @@ int attester_init(/* struct attester_conf* conf */) {
 
   /* set ek fixed handle */
   memcpy((void *) ek_handle, (void *) "0x81000003", HANDLE_SIZE);
+
+  fprintf(stdout, "[Init] Checking for the presence of the EK manufacturer's certificate\n");
   
   /* check certificate algo for saved ek certificates */
   unsigned char rc = check_ek_cert_algo(esys_context);
@@ -56,25 +58,25 @@ int attester_init(/* struct attester_conf* conf */) {
   {
   case RSA_CHECK:
     algo = "rsa";
-    fprintf(stdout, "[Init] RSA certificate found in tpm nv ram\n");
+    fprintf(stdout, "[Init] RSA certificate found in TPM's NVRAM\n");
     break;
   
   case ECC_CHECK:
     algo = "ecc";
-    fprintf(stdout, "[Init] ECC certificate found in tpm nv ram\n");
+    fprintf(stdout, "[Init] ECC certificate found in TPM's NVRAM\n");
     break;
 
   case ECC_AND_RSA_CHECK:
     algo = "ecc";
-    fprintf(stdout, "[Init] ECC and RSA certificates found in tpm nv ram\n");
+    fprintf(stdout, "[Init] ECC and RSA certificates found in TPM's NVRAM\n");
     break;
 
   case NO_CERT_CHECK:
-    fprintf(stdout, "[Init] No certificate found in tpm nv ram\n");
+    fprintf(stdout, "[Init] No certificate found in TPM's NVRAM\n");
     break;
 
   case ERR_CHECK:
-    fprintf(stderr, "ERROR: Error retriving certificates from tpm nv ram\n");
+    fprintf(stderr, "ERROR: Error retriving certificates from TPM's NVRAM\n");
     break;
 
   default:
@@ -82,7 +84,11 @@ int attester_init(/* struct attester_conf* conf */) {
     break;
   }
 
+  fprintf(stdout, "[Init] Checking the presence of the EK key at handle 0x81000003\n");
+
   if(check_ek(ek_handle, esys_context)) {
+
+    fprintf(stdout, "[Init] EK found! Creating the AK key\n");
 
     /* tpm_createak */
     rc_tool = attester_create_ak(esys_context, &attester_config);
@@ -105,15 +111,21 @@ int attester_init(/* struct attester_conf* conf */) {
     
     fclose(fd);
 
+    fprintf(stdout, "[Init] TPM keys successfully initialised\n");
+
     return 0;
   }
   
+  fprintf(stdout, "[Init] EK not found, creating it at handle 0x81000003\n");
+
   /* tpm_createek */
   rc_tool = attester_create_ek(esys_context, algo);
   if(rc_tool != TPM2_RC_SUCCESS){
     fprintf(stderr, "ERROR: attester_create_ek error\n");
     goto error;
   }
+
+  fprintf(stdout, "[Init] Creating AK\n");
 
   /* tpm_createak */
   rc_tool =  attester_create_ak(esys_context, &attester_config);
@@ -128,6 +140,8 @@ int attester_init(/* struct attester_conf* conf */) {
     fprintf(stderr, "ERROR: get_ek_certificates error\n");
     goto error;
   }
+
+  fprintf(stdout, "[Init] TPM keys successfully initialised\n");
 
   Esys_Finalize(&esys_context);
   Tss2_TctiLdr_Finalize (&tcti_context);
@@ -177,7 +191,7 @@ int attester_activatecredential(unsigned char *mkcred_out, unsigned int mkcred_o
     goto error;
   }
 
-  fprintf(stdout, "[Join] Prove AK possession with tpm activatecredential\n");
+  fprintf(stdout, "[Join] Prove AK possession with tpm_activatecredential\n");
   rc_tool = tpm_activatecredential(esys_context, &attester_config, mkcred_out, mkcred_out_len, secret, secret_len);
   if(rc_tool != tool_rc_success){
     fprintf(stderr, "ERROR: Could not activate credential\n");
@@ -232,7 +246,7 @@ int tpm_challenge_create(tpm_challenge *chl, tpm_challenge_reply *rpl)
 
   //Load IMA log
   ret = load_ima_log("/sys/kernel/security/integrity/ima/binary_runtime_measurements", rpl, chl->send_wholeLog, chl->send_from_byte);
-  fprintf(stdout, "[Attestation] Attestation procedure terminated\n");
+  fprintf(stdout, "[Attestation] Attestation procedure terminated\n\n");
 
 end: 
   Esys_Finalize(&esys_context);
@@ -259,7 +273,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
   FILE *fp;
   size_t read_bytes, buff_sz;
   uint32_t ima_byte_sent;
-  //all_log ? fprintf(stdout, "[Attestation] request whole IMA log\n") :  fprintf(stdout, "[Attestation] Request IMA log from byte %d\n", from_bytes);
+  
   fp = fopen(path, "rb");
 	if (!fp) {
 	  fprintf(stderr, "ERROR: Unable to open IMA file\n");
@@ -300,7 +314,7 @@ int load_ima_log(const char *path, tpm_challenge_reply *rpl, int all_log, uint32
         }
         else{
           //No new entry in the IMA log, no need to re send it
-          fprintf(stdout, "[Attestation] No new entry in the IMA log: nothing to send to the verifier\n");
+          fprintf(stdout, "[Attestation] IMA log: no new entry\n");
           break;
         }
       } else {
