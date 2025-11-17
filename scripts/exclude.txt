@@ -10,9 +10,13 @@
 /var/lib/dhcpcd/
 /var/lib/systemd/random-seed
 /var/lib/logrotate/status
+/var/lib/dpkg/status
+/var/lib/apt/extended_states
+/var/lib/apt/lists/
 /var/embrave/
 /var/log/
 /var/cache/
+/var/backups/apt.extended_states.0
 /tmp
 /root/.lesshst
 /home/pi/embrave/

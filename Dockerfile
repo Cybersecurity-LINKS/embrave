@@ -34,6 +34,6 @@ COPY --from=build /app/tpm_ca_certs_hash_dir  /app/tpm_ca_certs_hash_dir
 COPY --from=build /app/join_service.sh /app/join_service.sh
 COPY --from=build /app/verifier.sh /app/verifier.sh
 RUN mkdir -p /var/embrave/verifier/whitelist/
-COPY --from=build /app/goldenvalues.db //var/embrave/verifier/whitelist/goldenvalues.db
+#COPY --from=build /app/goldenvalues.db //var/embrave/verifier/whitelist/goldenvalues.db
 
 ENTRYPOINT []

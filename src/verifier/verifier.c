@@ -53,10 +53,11 @@ int ra_challenge_verify(tpm_challenge_reply *rpl, agent_list *agent_data)
   fprintf(stdout, "[%s Attestation] Verify IMA log and PCR10.\n", agent_data->uuid);
   //verify IMA log
   ret = verify_ima_log(rpl, db, agent_data);
-  if (ret != 0){
-    fprintf(stderr, "ERROR: Untrusted agent. Reason: %s\n", get_error(ret));
-  } else {
+  fflush(stdout);
+  if (ret == 0){
     fprintf(stdout, "[%s Attestation] Verify IMA log and PCR10: OK\n", agent_data->uuid);
+  } else {
+    fprintf(stderr, "[%s Attestation] Untrusted agent. Reason: %s\n", agent_data->uuid, get_error(ret));
   }
 
 end:
