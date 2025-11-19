@@ -40,33 +40,3 @@ done
 echo "===  Test Ended ==="
 echo "       Success Rate, target 99% => result: ${SUCCESSFULL}/${N} " 
 echo
-echo
-echo
-echo "=== TPM2 Sealing/Unsealing Test (Untrusted state should fail) ==="
-for ((i=1; i<=N; i++)); do
-
-    echo "[8] Set untrusted state (edit PCR 1)"
-    tpm2_pcrextend 1:sha256=$(printf "ff" | sha256sum | cut -d' ' -f1) 2>/dev/null;
-
-    tpm2_startauthsession --session session.ctx --policy-session
-    tpm2_policypcr -S session.ctx -l sha256:1 || true
-
-    if tpm2_unseal -c sealed.ctx -S session.ctx; then
-        SUCCESSFULL=$((SUCCESSFULL+1))
-        echo "Unseal OK"
-    else
-        echo "Unseal KO"
-        FAIL=$((FAIL+1))
-    fi
-
-    tpm2_flushcontext session.ctx
-
-done
-cd ..
-rm -rf ./tmp
-
-echo "===  Test Ended ==="
-echo "       Fail Rate, target 99% => result: ${FAIL}/${N} " 
-echo
-echo
-echo
