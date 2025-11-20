@@ -192,7 +192,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
 
       tpm_challenge_free(&rpl);
       get_finish_timer(1);
-      save_timer("test.txt");
+      save_timer("attester.txt");
       } else {
         mg_http_reply(c, 500, NULL, "\n");
       }
