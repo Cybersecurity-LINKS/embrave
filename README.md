@@ -14,7 +14,21 @@ Refer to the [Quick-start](https://cybersecurity-links.github.io/embrave/categor
 ## License
 [GNU General Public License v2.0 only](https://spdx.org/licenses/GPL-2.0-only.html)
 
+## Citation
 
+```bibtex
+@article{s25175514,
+	author = {Bravi, Enrico and Claudio, Alessio and Lioy, Antonio and Vesco, Andrea},
+	title = {{EMBRAVE: EMBedded Remote Attestation and Verification framEwork}},
+	journal = {Sensors},
+	volume = {25},
+	year = {2025},
+	number = {17},
+	article-number = {5514},
+	issn = {1424-8220},
+	doi = {10.3390/s25175514}
+}
+```
 
 
 

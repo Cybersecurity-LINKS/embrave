@@ -25,6 +25,8 @@ struct mkcred_out {
 };
 
 static bool Continue = true;
+static bool Con_error = false;
+
 static const uint64_t s_timeout_ms = 1500;  // Connect timeout in milliseconds
 
 int load_challenge_request(struct mg_http_message *hm , tpm_challenge *chl);
@@ -449,6 +451,8 @@ static void request_join(struct mg_connection *c, int ev, void *ev_data) {
     }
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
+    Con_error = true;
+
   }
 }
 
@@ -548,6 +552,7 @@ static void confirm_credential(struct mg_connection *c, int ev, void *ev_data) {
     Continue = false;  // Tell event loop to stop
   } else if (ev == MG_EV_ERROR) {
     Continue = false;  // Error, tell event loop to stop
+    Con_error = true;
   }
 }
 
@@ -572,6 +577,11 @@ static int join_procedure(){
   }
 
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+  if (Con_error)
+  {
+    return -1;
+  }
   
   /* send back the value calculated with tpm_activatecredential */
   Continue = true;
@@ -583,6 +593,11 @@ static int join_procedure(){
   }
 
   while (Continue) mg_mgr_poll(&mgr, 10); //10ms
+
+  if (Con_error)
+  {
+    return -1;
+  }
 
   return 0;
 }

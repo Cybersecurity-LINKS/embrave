@@ -120,4 +120,4 @@ if __name__ == '__main__':
                 add_row_excludelist(conn, lines[:-1])
             except Error as e:
                 print(e)
-    conn.close
+    conn.close()
