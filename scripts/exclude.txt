@@ -13,6 +13,7 @@
 /var/embrave/
 /var/log/
 /var/cache/
+/var/backups/dpkg.status.0
 /tmp
 /root/.lesshst
 /home/pi/embrave/
