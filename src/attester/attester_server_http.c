@@ -167,7 +167,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (mg_http_match_uri(hm, API_QUOTE)) {
       tpm_challenge chl;
       tpm_challenge_reply rpl;
-      get_start_timer();
+      //get_start_timer();
       //load challenge data from http body
       if(load_challenge_request(hm, &chl) != 0){
         printf("Load challenge error\n");
@@ -193,8 +193,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       }
 
       tpm_challenge_free(&rpl);
-      get_finish_timer(1);
-      save_timer("attester.txt");
+      //get_finish_timer(1);
+      //save_timer("attester.txt");
       } else {
         mg_http_reply(c, 500, NULL, "\n");
       }
